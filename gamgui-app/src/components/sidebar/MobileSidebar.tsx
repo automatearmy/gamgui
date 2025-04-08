@@ -10,9 +10,16 @@ interface MobileSidebarProps {
     name: string;
     role: string;
   };
+  onNavigate?: (path: string) => void;
+  currentPath?: string;
 }
 
-export function MobileSidebar({ children, userProfileProps }: MobileSidebarProps) {
+export function MobileSidebar({ 
+  children, 
+  userProfileProps,
+  onNavigate,
+  currentPath 
+}: MobileSidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (

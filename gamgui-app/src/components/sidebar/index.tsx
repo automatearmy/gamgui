@@ -10,19 +10,30 @@ interface SidebarProps {
     name: string;
     role: string;
   };
+  onNavigate?: (path: string) => void;
+  currentPath?: string;
 }
 
 interface NavItemProps {
-  href: string;
+  path: string;
   icon: React.ReactNode;
   children: React.ReactNode;
   isActive?: boolean;
+  onClick?: (path: string) => void;
 }
 
-function NavItem({ href, icon, children, isActive = false }: NavItemProps) {
+function NavItem({ path, icon, children, isActive = false, onClick }: NavItemProps) {
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (onClick) {
+      onClick(path);
+    }
+  };
+
   return (
     <a
-      href={href}
+      href={path}
+      onClick={handleClick}
       className={cn(
         "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
         focusRing,
@@ -48,15 +59,34 @@ function NavSection({ title, children }: { title: string; children: React.ReactN
   );
 }
 
-export function Sidebar({ className, userProfileProps }: SidebarProps) {
+export function Sidebar({ className, userProfileProps, onNavigate, currentPath = "/" }: SidebarProps) {
+  const handleNavigation = (path: string) => {
+    if (onNavigate) {
+      onNavigate(path);
+    } else {
+      // Fallback to traditional navigation if onNavigate is not provided
+      window.location.href = path;
+    }
+  };
+
   // Navigation content to be used in both desktop and mobile sidebars
   const navigationContent = (
     <>
       <NavSection title="Main">
-        <NavItem href="/sessions" icon={<LayoutDashboard className="h-4 w-4" />} isActive>
+        <NavItem 
+          path="/sessions" 
+          icon={<LayoutDashboard className="h-4 w-4" />} 
+          isActive={currentPath === "/" || currentPath === "/sessions"}
+          onClick={handleNavigation}
+        >
           Sessions
         </NavItem>
-        <NavItem href="/settings" icon={<Settings className="h-4 w-4" />}>
+        <NavItem 
+          path="/settings" 
+          icon={<Settings className="h-4 w-4" />}
+          isActive={currentPath === "/settings"}
+          onClick={handleNavigation}
+        >
           Settings
         </NavItem>
       </NavSection>
@@ -89,7 +119,11 @@ export function Sidebar({ className, userProfileProps }: SidebarProps) {
       </aside>
 
       {/* Mobile sidebar */}
-      <MobileSidebar userProfileProps={userProfileProps}>
+      <MobileSidebar 
+        userProfileProps={userProfileProps}
+        onNavigate={onNavigate}
+        currentPath={currentPath}
+      >
         {navigationContent}
       </MobileSidebar>
     </>
