@@ -29,8 +29,14 @@ export function NewSessionPage({ onNavigate }: NewSessionPageProps = {}) {
         
         // Get available images
         const imagesResponse = await getImages();
-        if (!imagesResponse || !imagesResponse.length) {
-          throw new Error("No Docker images available. Please create an image first.");
+        if (!imagesResponse || !Array.isArray(imagesResponse) || imagesResponse.length === 0) {
+          // Redirect to settings page if no images are available
+          if (onNavigate) {
+            onNavigate("/settings");
+          } else {
+            window.location.href = "/settings";
+          }
+          throw new Error("No Docker images available. Please create an image in Settings first.");
         }
         
         // Use the first available image
@@ -43,7 +49,21 @@ export function NewSessionPage({ onNavigate }: NewSessionPageProps = {}) {
           throw new Error(response.error);
         }
         
-        setSessionId(response.session.id);
+        if (!response.session || !response.session.id) {
+          throw new Error("Failed to create session: invalid response from server");
+        }
+        
+        const newSessionId = response.session.id;
+        setSessionId(newSessionId);
+        
+        // Navigate to the session detail page
+        if (onNavigate) {
+          onNavigate(`/sessions/${newSessionId}`);
+        } else {
+          // Fallback for direct navigation
+          window.location.href = `/sessions/${newSessionId}`;
+        }
+        
         setIsLoading(false);
       } catch (err) {
         console.error("Failed to initialize session:", err);
@@ -64,7 +84,7 @@ export function NewSessionPage({ onNavigate }: NewSessionPageProps = {}) {
         socketRef.current.disconnect();
       }
     };
-  }, []);
+  }, [onNavigate]);
   
   // Connect to the terminal socket when sessionId is available
   useEffect(() => {

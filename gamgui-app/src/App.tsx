@@ -3,6 +3,7 @@ import { Sidebar } from "@/components/sidebar";
 import { SessionsPage } from "@/pages/sessions";
 import { SettingsPage } from "@/pages/settings";
 import { NewSessionPage } from "@/pages/sessions/new";
+import { SessionDetailPage } from "@/pages/sessions/[id]";
 
 function App() {
   const [currentPath, setCurrentPath] = useState<string>(window.location.pathname);
@@ -35,6 +36,13 @@ function App() {
     if (currentPath === "/sessions/new") {
       return <NewSessionPage onNavigate={navigate} />;
     }
+
+    // Check if the path matches /sessions/{id} pattern
+    const sessionMatch = currentPath.match(/^\/sessions\/([^\/]+)$/);
+    if (sessionMatch && sessionMatch[1] !== "new") {
+      return <SessionDetailPage onNavigate={navigate} sessionId={sessionMatch[1]} />;
+    }
+    
     // Default to sessions page
     return <SessionsPage onNavigate={navigate} />;
   };

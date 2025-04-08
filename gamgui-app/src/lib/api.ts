@@ -69,13 +69,49 @@ export interface Session {
 }
 
 export async function getSessions() {
-  const response = await fetch(`${API_BASE_URL}/sessions`);
-  return response.json();
+  try {
+    console.log('API call: fetching all sessions');
+    const response = await fetch(`${API_BASE_URL}/sessions`);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`API error (${response.status}): ${errorText}`);
+      return { 
+        error: `Failed to fetch sessions: ${response.status} ${response.statusText}`,
+        statusCode: response.status
+      };
+    }
+    
+    const data = await response.json();
+    console.log('API response for sessions list:', data);
+    return data;
+  } catch (err) {
+    console.error('API call error:', err);
+    return { error: err instanceof Error ? err.message : 'Network error' };
+  }
 }
 
 export async function getSession(sessionId: string) {
-  const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}`);
-  return response.json();
+  try {
+    console.log(`API call: fetching session with ID ${sessionId}`);
+    const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}`);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`API error (${response.status}): ${errorText}`);
+      return { 
+        error: `Failed to fetch session: ${response.status} ${response.statusText}`,
+        statusCode: response.status
+      };
+    }
+    
+    const data = await response.json();
+    console.log('API response for session:', data);
+    return data;
+  } catch (err) {
+    console.error('API call error:', err);
+    return { error: err instanceof Error ? err.message : 'Network error' };
+  }
 }
 
 export async function createSession(name: string, imageId: string, config = {}) {
