@@ -1,4 +1,5 @@
 const API_BASE_URL = 'http://localhost:3001/api';
+const SOCKET_URL = 'http://localhost:3001';
 
 export interface AuthFiles {
   clientSecrets: File | null;
@@ -52,4 +53,72 @@ export async function deleteCredentials() {
   });
   
   return response.json();
+}
+
+// Session management functions
+export interface Session {
+  id: string;
+  name: string;
+  containerId: string;
+  containerName: string;
+  imageId: string;
+  imageName: string;
+  createdAt: string;
+  lastModified: string;
+  status: string;
+}
+
+export async function getSessions() {
+  const response = await fetch(`${API_BASE_URL}/sessions`);
+  return response.json();
+}
+
+export async function getSession(sessionId: string) {
+  const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}`);
+  return response.json();
+}
+
+export async function createSession(name: string, imageId: string, config = {}) {
+  const response = await fetch(`${API_BASE_URL}/sessions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ name, imageId, config }),
+  });
+  
+  return response.json();
+}
+
+export async function endSession(sessionId: string) {
+  const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}`, {
+    method: 'DELETE',
+  });
+  
+  return response.json();
+}
+
+export async function uploadSessionFiles(sessionId: string, files: File[]) {
+  const formData = new FormData();
+  
+  files.forEach((file) => {
+    formData.append('files', file);
+  });
+  
+  const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}/files`, {
+    method: 'POST',
+    body: formData,
+  });
+  
+  return response.json();
+}
+
+export async function getImages() {
+  const response = await fetch(`${API_BASE_URL}/images`);
+  return response.json();
+}
+
+// Socket connection helper
+export function getSocketUrl() {
+  return SOCKET_URL;
 }

@@ -11,6 +11,7 @@ dotenv.config();
 const { router: imageRoutes } = require('./routes/imageRoutes');
 const { router: sessionRoutes } = require('./routes/sessionRoutes');
 const { router: credentialRoutes } = require('./routes/credentialRoutes');
+const { router: fileRoutes } = require('./routes/fileRoutes');
 
 // Initialize express app
 const app = express();
@@ -32,6 +33,7 @@ app.use(express.json());
 app.use('/api/images', imageRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/credentials', credentialRoutes);
+app.use('/api/sessions', fileRoutes); // File routes are nested under sessions
 
 // Default route
 app.get('/', (req, res) => {

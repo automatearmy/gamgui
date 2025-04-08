@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/sidebar";
 import { SessionsPage } from "@/pages/sessions";
 import { SettingsPage } from "@/pages/settings";
+import { NewSessionPage } from "@/pages/sessions/new";
 
 function App() {
   const [currentPath, setCurrentPath] = useState<string>(window.location.pathname);
@@ -31,8 +32,11 @@ function App() {
     if (currentPath === "/settings") {
       return <SettingsPage />;
     }
+    if (currentPath === "/sessions/new") {
+      return <NewSessionPage onNavigate={navigate} />;
+    }
     // Default to sessions page
-    return <SessionsPage />;
+    return <SessionsPage onNavigate={navigate} />;
   };
 
   return (

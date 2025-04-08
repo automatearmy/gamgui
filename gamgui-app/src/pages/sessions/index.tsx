@@ -38,9 +38,14 @@ const mockSessions: Session[] = [
   },
 ];
 
-export function SessionsPage() {
+export function SessionsPage({ onNavigate }: { onNavigate?: (path: string) => void }) {
   const handleNewSession = () => {
-    console.log("Create new session");
+    if (onNavigate) {
+      onNavigate("/sessions/new");
+    } else {
+      // Fallback for direct navigation
+      window.location.href = "/sessions/new";
+    }
   };
 
   const handleViewSession = (sessionId: string) => {
