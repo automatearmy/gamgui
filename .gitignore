@@ -47,3 +47,4 @@ coverage
 *.swo 
 .clinerules
 gamgui-server/gam-credentials
+credentials

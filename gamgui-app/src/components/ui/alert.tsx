@@ -19,10 +19,13 @@ const alertVariants = cva(
   }
 )
 
-const Alert = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof alertVariants>
->(({ className, variant, ...props }, ref) => (
+interface AlertProps extends React.HTMLAttributes<HTMLDivElement>,
+  VariantProps<typeof alertVariants> {
+  variant?: "default" | "destructive";
+}
+
+const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
+  ({ className, variant = "default", ...props }, ref) => (
   <div
     ref={ref}
     role="alert"

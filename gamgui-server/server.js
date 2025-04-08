@@ -10,6 +10,7 @@ dotenv.config();
 // Import routes
 const { router: imageRoutes } = require('./routes/imageRoutes');
 const { router: sessionRoutes } = require('./routes/sessionRoutes');
+const { router: credentialRoutes } = require('./routes/credentialRoutes');
 
 // Initialize express app
 const app = express();
@@ -30,6 +31,7 @@ app.use(express.json());
 // Routes
 app.use('/api/images', imageRoutes);
 app.use('/api/sessions', sessionRoutes);
+app.use('/api/credentials', credentialRoutes);
 
 // Default route
 app.get('/', (req, res) => {
@@ -42,4 +44,4 @@ require('./routes/socketHandler')(io);
 // Start server
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-}); 
+});
