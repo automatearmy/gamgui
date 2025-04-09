@@ -72,6 +72,23 @@ export function Terminal({ className, onCommand, output = [] }: TerminalProps) {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   
+  // Auto-focus on the terminal when clicking anywhere in the container
+  React.useEffect(() => {
+    if (!terminalRef.current) return;
+    
+    const handleContainerClick = () => {
+      if (xtermRef.current) {
+        xtermRef.current.focus();
+      }
+    };
+    
+    terminalRef.current.addEventListener('click', handleContainerClick);
+    
+    return () => {
+      terminalRef.current?.removeEventListener('click', handleContainerClick);
+    };
+  }, []);
+  
   // Initialize terminal
   React.useEffect(() => {
     if (!terminalRef.current) return
@@ -162,10 +179,8 @@ export function Terminal({ className, onCommand, output = [] }: TerminalProps) {
             onCommand(currentCommand)
           }
           currentCommand = ""
-          setTimeout(() => {
-            terminal.write('\x1b[32m$: >\x1b[0m ')
-            terminal.focus()
-          }, 10)
+          // Avoid delay in showing prompt to prevent blinking
+          terminal.write('\x1b[32m$>\x1b[0m ')
         } else if (domEvent.key === 'Backspace') {
           if (currentCommand.length > 0) {
             currentCommand = currentCommand.slice(0, -1)
@@ -177,8 +192,8 @@ export function Terminal({ className, onCommand, output = [] }: TerminalProps) {
         }
       })
       
-      // Initial prompt
-      terminal.write('\x1b[32m$: >\x1b[0m ')
+      // Initial prompt - simplified to match standard shells
+      terminal.write('\x1b[32m$>\x1b[0m ')
     }
     
     // Write initial output if any
@@ -191,9 +206,24 @@ export function Terminal({ className, onCommand, output = [] }: TerminalProps) {
       terminal.scrollToBottom()
     }
     
+    // Maintain focus
+    const maintainTerminalFocus = () => {
+      if (document.activeElement !== document.body) return;
+      terminal.focus();
+    };
+    
+    // Focus handlers
+    document.addEventListener('click', maintainTerminalFocus);
+    window.addEventListener('focus', maintainTerminalFocus);
+    
+    // Set initial focus
+    setTimeout(() => terminal.focus(), 100);
+    
     // Clean up
     return () => {
-      terminal.dispose()
+      document.removeEventListener('click', maintainTerminalFocus);
+      window.removeEventListener('focus', maintainTerminalFocus);
+      terminal.dispose();
     }
   }, [onCommand])
   
@@ -208,9 +238,9 @@ export function Terminal({ className, onCommand, output = [] }: TerminalProps) {
       terminal.clear()
       processedLinesRef.current.clear()
       
-      // Re-display prompt
+      // Re-display prompt with consistent format
       if (onCommand) {
-        terminal.write('\x1b[32m$: >\x1b[0m ')
+        terminal.write('\x1b[32m$>\x1b[0m ')
       }
       return
     }
@@ -225,26 +255,19 @@ export function Terminal({ className, onCommand, output = [] }: TerminalProps) {
       }
     }
     
-    // Scroll to bottom if new content was added
     if (hasNewContent) {
-      setTimeout(() => {
-        terminal.scrollToBottom()
-        terminal.focus()
-      }, 10)
+      // Ensure re-focus and scroll to bottom
+      terminal.scrollToBottom()
+      // Always maintain focus - very important!
+      terminal.focus()
     }
   }, [output, onCommand])
   
-  // Focus terminal on first mount
-  React.useEffect(() => {
-    if (xtermRef.current) {
-      setTimeout(() => {
-        xtermRef.current?.focus()
-      }, 100)
-    }
-  }, [])
-  
   return (
-    <div className={cn("w-full h-full flex flex-col", className)}>
+    <div 
+      className={cn("w-full h-full flex flex-col", className)}
+      onClick={() => xtermRef.current?.focus()}
+    >
       <div 
         className="flex-1 overflow-hidden rounded-md border border-gray-200 p-2"
         style={{ minHeight: '300px', maxHeight: '800px', position: 'relative' }}
