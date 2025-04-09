@@ -1,5 +1,24 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
+import { Terminal as XTerm } from '@xterm/xterm'
+import { FitAddon } from '@xterm/addon-fit'
+import { WebLinksAddon } from '@xterm/addon-web-links'
+import '@xterm/xterm/css/xterm.css'
+
+// Add global styles for the terminal
+const terminalStyles = `
+.xterm {
+  width: 100% !important;
+  height: 100% !important;
+}
+.xterm-viewport {
+  width: 100% !important;
+  overflow-x: hidden !important;
+}
+.xterm-screen {
+  width: 100% !important;
+}
+`;
 
 interface TerminalProps {
   className?: string
@@ -10,43 +29,227 @@ interface TerminalProps {
 export function Terminal({ className, onCommand, output = [] }: TerminalProps) {
   const [command, setCommand] = React.useState("")
   const terminalRef = React.useRef<HTMLDivElement>(null)
+  const xtermRef = React.useRef<XTerm | null>(null)
+  const processedLinesRef = React.useRef<Set<string>>(new Set())
   
-  // Scroll to bottom when output changes
+  // Add global styles once
   React.useEffect(() => {
-    if (terminalRef.current) {
-      terminalRef.current.scrollTop = terminalRef.current.scrollHeight
+    // Create style element if it doesn't exist yet
+    const existingStyle = document.getElementById('xterm-custom-styles');
+    if (!existingStyle) {
+      const styleEl = document.createElement('style');
+      styleEl.id = 'xterm-custom-styles';
+      styleEl.innerHTML = terminalStyles;
+      document.head.appendChild(styleEl);
     }
-  }, [output])
+    
+    // Cleanup when component unmounts
+    return () => {
+      const styleEl = document.getElementById('xterm-custom-styles');
+      if (styleEl) {
+        document.head.removeChild(styleEl);
+      }
+    };
+  }, []);
   
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && command.trim() && onCommand) {
-      onCommand(command)
-      setCommand("")
+  // Handle window resize
+  React.useEffect(() => {
+    const handleResize = () => {
+      if (xtermRef.current && terminalRef.current) {
+        // Calculate available width in characters
+        const availableWidth = terminalRef.current.clientWidth - 30; // Account for padding and border
+        const fontSize = xtermRef.current.options.fontSize || 14;
+        const charWidth = fontSize * 0.6;
+        const cols = Math.floor(availableWidth / charWidth);
+        
+        if (cols >= 10) {
+          xtermRef.current.resize(cols, xtermRef.current.rows);
+        }
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
+  // Initialize terminal
+  React.useEffect(() => {
+    if (!terminalRef.current) return
+
+    // Create terminal instance
+    const terminal = new XTerm({
+      cursorBlink: true,
+      fontFamily: 'Menlo, Monaco, Consolas, "Courier New", monospace',
+      fontSize: 14,
+      theme: {
+        background: '#f5f5f5',
+        foreground: '#333333',
+        cursor: '#333333',
+        cursorAccent: '#f5f5f5',
+        selectionBackground: 'rgba(51, 51, 51, 0.3)',
+        black: '#333333',
+        red: '#e01e1e',
+        green: '#0f8641',
+        yellow: '#c49008',
+        blue: '#0550ae',
+        magenta: '#b026b0',
+        cyan: '#076870',
+        white: '#f5f5f5',
+      },
+      scrollback: 1000,
+      rows: 20,
+      convertEol: true,
+      disableStdin: false
+    })
+    
+    // Store ref
+    xtermRef.current = terminal
+    
+    // Open terminal
+    terminal.open(terminalRef.current)
+    
+    // Apply custom styling to make terminal fill container
+    if (terminalRef.current) {
+      const xtermElement = terminalRef.current.querySelector('.xterm');
+      if (xtermElement instanceof HTMLElement) {
+        xtermElement.style.width = '100%';
+        xtermElement.style.height = '100%';
+        
+        const xtermScreen = xtermElement.querySelector('.xterm-screen');
+        if (xtermScreen instanceof HTMLElement) {
+          xtermScreen.style.width = '100%';
+        }
+        
+        const xtermViewport = xtermElement.querySelector('.xterm-viewport');
+        if (xtermViewport instanceof HTMLElement) {
+          xtermViewport.style.width = '100%';
+        }
+      }
     }
-  }
+    
+    // Calculate size to fit container
+    const setOptimalSize = () => {
+      if (terminalRef.current) {
+        const availableWidth = terminalRef.current.clientWidth - 30; // Account for padding and border
+        const fontSize = terminal.options.fontSize || 14;
+        const charWidth = fontSize * 0.6;
+        const cols = Math.floor(availableWidth / charWidth);
+        
+        // Calculate rows based on container height
+        const availableHeight = terminalRef.current.clientHeight - 30;
+        const lineHeight = fontSize * 1.2;
+        const rows = Math.max(10, Math.floor(availableHeight / lineHeight));
+        
+        if (cols >= 10) {
+          terminal.resize(cols, rows);
+        }
+      }
+    };
+    
+    // Set size after a slight delay to ensure DOM is ready
+    setTimeout(setOptimalSize, 50);
+    
+    // Handle commands
+    if (onCommand) {
+      let currentCommand = ""
+      
+      terminal.onKey(({ key, domEvent }) => {
+        const printable = !domEvent.altKey && !domEvent.ctrlKey && !domEvent.metaKey
+        
+        if (domEvent.key === 'Enter') {
+          terminal.write('\r\n')
+          if (currentCommand.trim() && onCommand) {
+            onCommand(currentCommand)
+          }
+          currentCommand = ""
+          setTimeout(() => {
+            terminal.write('\x1b[32m$: >\x1b[0m ')
+            terminal.focus()
+          }, 10)
+        } else if (domEvent.key === 'Backspace') {
+          if (currentCommand.length > 0) {
+            currentCommand = currentCommand.slice(0, -1)
+            terminal.write('\b \b')
+          }
+        } else if (printable) {
+          currentCommand += key
+          terminal.write(key)
+        }
+      })
+      
+      // Initial prompt
+      terminal.write('\x1b[32m$: >\x1b[0m ')
+    }
+    
+    // Write initial output if any
+    if (output.length > 0) {
+      output.forEach(line => {
+        terminal.writeln(line)
+        processedLinesRef.current.add(line)
+      })
+      // Scroll to bottom after initial output
+      terminal.scrollToBottom()
+    }
+    
+    // Clean up
+    return () => {
+      terminal.dispose()
+    }
+  }, [onCommand])
+  
+  // Update terminal with output
+  React.useEffect(() => {
+    if (!xtermRef.current) return
+    
+    const terminal = xtermRef.current
+    
+    // Handle output clearing
+    if (output.length === 0) {
+      terminal.clear()
+      processedLinesRef.current.clear()
+      
+      // Re-display prompt
+      if (onCommand) {
+        terminal.write('\x1b[32m$: >\x1b[0m ')
+      }
+      return
+    }
+    
+    // Process any new lines that haven't been displayed yet
+    let hasNewContent = false
+    for (const line of output) {
+      if (!processedLinesRef.current.has(line)) {
+        terminal.writeln(line)
+        processedLinesRef.current.add(line)
+        hasNewContent = true
+      }
+    }
+    
+    // Scroll to bottom if new content was added
+    if (hasNewContent) {
+      setTimeout(() => {
+        terminal.scrollToBottom()
+        terminal.focus()
+      }, 10)
+    }
+  }, [output, onCommand])
+  
+  // Focus terminal on first mount
+  React.useEffect(() => {
+    if (xtermRef.current) {
+      setTimeout(() => {
+        xtermRef.current?.focus()
+      }, 100)
+    }
+  }, [])
   
   return (
-    <div 
-      className={cn("bg-black text-white font-mono p-4 h-full overflow-auto", className)} 
-      ref={terminalRef}
-    >
-      {/* Terminal output */}
-      {output.map((line, i) => (
-        <div key={i} className="whitespace-pre-wrap">{line}</div>
-      ))}
-      
-      {/* Command input line */}
-      <div className="flex">
-        <span className="text-green-400">$: &gt;</span>
-        <input
-          type="text"
-          value={command}
-          onChange={(e) => setCommand(e.target.value)}
-          onKeyDown={handleKeyDown}
-          className="bg-transparent border-none outline-none text-white flex-1 ml-2"
-          autoFocus
-        />
-      </div>
+    <div className={cn("w-full h-full flex flex-col", className)}>
+      <div 
+        className="flex-1 overflow-hidden rounded-md border border-gray-200 p-2"
+        style={{ minHeight: '300px', maxHeight: '800px', position: 'relative' }}
+        ref={terminalRef}
+      />
     </div>
   )
 }
