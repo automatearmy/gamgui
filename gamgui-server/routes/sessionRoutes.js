@@ -49,7 +49,7 @@ router.post('/', async (req, res) => {
       AttachStdin: true,
       AttachStdout: true,
       AttachStderr: true,
-      Cmd: ['/bin/bash'], // Start with bash shell
+      // Cmd: ['/bin/bash'], // Start with bash shell
     });
     
     // Start the container
@@ -115,7 +115,7 @@ router.get('/:id', (req, res) => {
     return res.status(404).json({ message: 'Session not found' });
   }
   
-  res.json(session);
+  res.json({ session });
 });
 
 /**
