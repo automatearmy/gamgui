@@ -4,6 +4,8 @@ const fs = require('fs');
 const path = require('path');
 const { sessions } = require('./sessionRoutes');
 const Docker = require('dockerode');
+const { promisify } = require('util');
+const chmodAsync = promisify(fs.chmod);
 const router = express.Router();
 
 // Initialize Docker client
@@ -58,40 +60,42 @@ router.post('/:id/files', upload.array('files'), async (req, res) => {
       return res.status(400).json({ message: 'Container is not running' });
     }
     
-    // Create the upload directory in the container if it doesn't exist
+    // Ensure the uploads directory in the container has the right permissions
     await container.exec({
-      Cmd: ['mkdir', '-p', '/uploaded-files'],
+      Cmd: ['mkdir', '-p', '/gam/uploads'],
       AttachStdout: true,
       AttachStderr: true
     }).then(exec => exec.start());
     
-    // Copy each file to the container
+    // Set proper permissions on the uploads directory
+    await container.exec({
+      Cmd: ['chmod', '755', '/gam/uploads'],
+      AttachStdout: true,
+      AttachStderr: true
+    }).then(exec => exec.start());
+    
+    // Use the mounted volume instead of copying files to the container
     const uploadedFiles = [];
     
     for (const file of files) {
       const filePath = file.path;
       const fileName = file.originalname;
       
-      // Read the file content
-      const fileContent = fs.readFileSync(filePath);
-      
-      // Create a tar archive containing the file
-      const tarStream = require('tar-stream').pack();
-      tarStream.entry({ name: fileName }, fileContent);
-      tarStream.finalize();
-      
-      // Upload the file to the container
-      await container.putArchive(tarStream, { path: '/uploaded-files' });
+      // Set appropriate permissions on the uploaded file
+      // This ensures the container can read and write to the file
+      await chmodAsync(filePath, 0o644);
       
       // Add to uploaded files list
+      // The path is now relative to the mounted volume in the container
       uploadedFiles.push({
         name: fileName,
         size: file.size,
-        path: `/uploaded-files/${fileName}`
+        path: `/gam/uploads/${fileName}`
       });
       
-      // Remove the temporary file
-      fs.unlinkSync(filePath);
+      // Note: We're not removing the file since it needs to be accessible
+      // via the mounted volume. Files should be cleaned up by a separate process
+      // or when the session ends.
     }
     
     return res.status(200).json({
