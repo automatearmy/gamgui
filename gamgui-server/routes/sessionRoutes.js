@@ -1,6 +1,8 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const Docker = require('dockerode');
+const path = require('path');
+const fs = require('fs');
 const { images } = require('./imageRoutes');
 const router = express.Router();
 
@@ -50,6 +52,11 @@ router.post('/', async (req, res) => {
       AttachStdout: true,
       AttachStderr: true,
       // Cmd: ['/bin/bash'], // Start with bash shell
+      HostConfig: {
+        Binds: [
+          `${path.resolve(__dirname, '../temp-uploads')}:/gam/uploads:rw`
+        ]
+      }
     });
     
     // Start the container
@@ -157,6 +164,31 @@ router.delete('/:id', async (req, res) => {
       }
     }
     
+    // Clean up any uploaded files for this session
+    try {
+      const tempUploadsDir = path.resolve(__dirname, '../temp-uploads');
+      if (fs.existsSync(tempUploadsDir)) {
+        // Read all files in the temp-uploads directory
+        const files = fs.readdirSync(tempUploadsDir);
+        
+        console.log(`Cleaning up ${files.length} uploaded files for session ${sessionId}`);
+        
+        // Delete each file
+        for (const file of files) {
+          const filePath = path.join(tempUploadsDir, file);
+          
+          // Check if it's a file (not a directory)
+          if (fs.statSync(filePath).isFile()) {
+            fs.unlinkSync(filePath);
+            console.log(`Deleted file: ${file}`);
+          }
+        }
+      }
+    } catch (cleanupError) {
+      console.error(`Error cleaning up files: ${cleanupError.message}`);
+      // Continue with session removal even if cleanup fails
+    }
+    
     // Remove session from array
     sessions.splice(sessionIndex, 1);
     
@@ -173,4 +205,4 @@ router.delete('/:id', async (req, res) => {
 });
 
 // Export router and containerSessions for WebSocket handling
-module.exports = { router, sessions, containerSessions }; 
+module.exports = { router, sessions, containerSessions };
