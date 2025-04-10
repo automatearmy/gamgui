@@ -6,6 +6,8 @@ import { FileDropZone } from "@/components/ui/file-drop-zone";
 import { endSession, uploadSessionFiles, getSession, type Session } from "@/lib/api";
 import { createTerminalConnection } from "@/lib/socket";
 import { RefreshCw } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { File } from "lucide-react";
 
 interface SessionDetailPageProps {
   onNavigate?: (path: string) => void;
@@ -230,26 +232,38 @@ export function SessionDetailPage({ onNavigate, sessionId }: SessionDetailPagePr
         />
         
         {/* File upload sidebar */}
-        <Card className="w-80 p-4 flex flex-col">
+        <Card className="w-80 p-4 flex flex-col h-full">
           <h2 className="text-lg font-medium mb-4">Add Files</h2>
           <FileDropZone 
-            className="flex-1 mb-4" 
+            className="h-32 mb-4" 
             onFilesDropped={handleFilesDropped}
           />
-          <p className="text-sm text-muted-foreground text-center mt-2">
+          <p className="text-sm text-muted-foreground text-center mt-2 mb-4">
             Files will be added to /uploaded-files
           </p>
           
           {/* List of uploaded files */}
-          {uploadedFiles.length > 0 && (
-            <div className="mt-4">
+          {uploadedFiles.length > 0 ? (
+            <div className="flex flex-col flex-1 min-h-0">
               <h3 className="text-sm font-medium mb-2">Uploaded Files</h3>
-              <ul className="space-y-1">
-                {uploadedFiles.map((file, index) => (
-                  <li key={index} className="text-sm truncate">{file.name}</li>
-                ))}
-              </ul>
+              <ScrollArea className="flex-1 rounded-md border">
+                <div className="p-2">
+                  <ul className="space-y-2">
+                    {uploadedFiles.map((file, index) => (
+                      <li key={index} className="flex items-center gap-2 text-sm p-1.5 rounded hover:bg-muted">
+                        <File className="h-4 w-4 shrink-0 text-primary" />
+                        <span className="truncate">{file.name}</span>
+                        <span className="text-xs text-muted-foreground ml-auto">
+                          {(file.size / 1024).toFixed(1)} KB
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </ScrollArea>
             </div>
+          ) : (
+            <div className="flex-1"></div>
           )}
           
           {/* Session details */}

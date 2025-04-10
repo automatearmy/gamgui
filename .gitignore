@@ -48,3 +48,5 @@ coverage
 .clinerules
 gamgui-server/gam-credentials
 credentials
+test-files
+gamgui-server/temp-uploads/*
