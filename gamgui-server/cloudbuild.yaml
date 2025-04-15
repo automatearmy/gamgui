@@ -10,3 +10,7 @@ steps:
 # Images to be stored in Artifact Registry
 images:
   - 'gcr.io/gamgui-registry/gamgui-server-image'
+
+options:
+  logStreamingOption: STREAM_ON
+  logging: CLOUD_LOGGING_ONLY
