@@ -1,8 +1,6 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 import { Terminal as XTerm } from '@xterm/xterm'
-import { FitAddon } from '@xterm/addon-fit'
-import { WebLinksAddon } from '@xterm/addon-web-links'
 import '@xterm/xterm/css/xterm.css'
 
 // Add global styles for the terminal
@@ -27,7 +25,7 @@ interface TerminalProps {
 }
 
 export function Terminal({ className, onCommand, output = [] }: TerminalProps) {
-  const [command, setCommand] = React.useState("")
+  // Removed unused state variables
   const terminalRef = React.useRef<HTMLDivElement>(null)
   const xtermRef = React.useRef<XTerm | null>(null)
   const processedLinesRef = React.useRef<Set<string>>(new Set())

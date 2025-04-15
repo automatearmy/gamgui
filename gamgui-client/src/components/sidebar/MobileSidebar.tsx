@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import * as React from "react";
+import { useState } from "react";
 import { cn, focusRing } from "@/lib/utils";
 import { UserProfile } from "./UserProfile";
 import { Menu, X } from "lucide-react";
@@ -17,8 +18,10 @@ interface MobileSidebarProps {
 export function MobileSidebar({ 
   children, 
   userProfileProps,
-  onNavigate,
-  currentPath 
+  // These props are received but not used in this component
+  // They're kept to maintain compatibility with the parent component
+  onNavigate: _onNavigate,
+  currentPath: _currentPath
 }: MobileSidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
 

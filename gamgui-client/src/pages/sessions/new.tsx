@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Terminal } from "@/components/ui/terminal";
 import { FileDropZone } from "@/components/ui/file-drop-zone";
 import { Button } from "@/components/ui/button";
