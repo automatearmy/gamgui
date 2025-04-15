@@ -26,5 +26,8 @@ COPY . .
 # Expose the server port
 EXPOSE 3001
 
+# Set environment variables
+ENV PROJECT_ID=gamgui-tf-1
+
 # Start the server
 CMD ["node", "server.js"]
