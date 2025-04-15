@@ -1,20 +1,20 @@
 import { io } from "socket.io-client";
 import { getSocketUrl } from "./api";
 
-// Define custom events for our terminal socket
-interface TerminalEvents {
-  // Client -> Server events
-  'join-session': (data: { sessionId: string }) => void;
-  'leave-session': (data: { sessionId: string }) => void;
-  'terminal-input': (data: string) => void;
-  
-  // Server -> Client events
-  'terminal-output': (data: string) => void;
-  'terminal-closed': (data: { message: string }) => void;
-  'session-joined': (data: { message: string }) => void;
-  'session-left': (data: { message: string }) => void;
-  'error': (data: { message: string, error?: string }) => void;
-}
+// Define custom events for our terminal socket (commented out as it's not currently used)
+// interface TerminalEvents {
+//   // Client -> Server events
+//   'join-session': (data: { sessionId: string }) => void;
+//   'leave-session': (data: { sessionId: string }) => void;
+//   'terminal-input': (data: string) => void;
+//   
+//   // Server -> Client events
+//   'terminal-output': (data: string) => void;
+//   'terminal-closed': (data: { message: string }) => void;
+//   'session-joined': (data: { message: string }) => void;
+//   'session-left': (data: { message: string }) => void;
+//   'error': (data: { message: string, error?: string }) => void;
+// }
 
 export function createTerminalConnection(sessionId: string) {
   const socket = io(`${getSocketUrl()}/terminal`);

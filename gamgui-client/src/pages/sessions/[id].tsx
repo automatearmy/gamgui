@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Terminal } from "@/components/ui/terminal";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -279,4 +279,4 @@ export function SessionDetailPage({ onNavigate, sessionId }: SessionDetailPagePr
       </div>
     </div>
   );
-} 
+}

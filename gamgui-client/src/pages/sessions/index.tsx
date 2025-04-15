@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { SessionsTable, type Session as TableSession } from "@/components/sessions/SessionsTable";
 import { Plus, RefreshCw } from "lucide-react";

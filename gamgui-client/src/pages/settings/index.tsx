@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { uploadCredentials, checkCredentials, createImage, deleteCredentials, AuthFiles } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { FileInput } from "@/components/ui/file-input";
@@ -87,12 +87,6 @@ export function SettingsPage() {
     if (file) {
       try {
         setUploadStatus({ loading: true, success: false, error: null });
-        
-        // Create a new object with the updated file
-        const updatedFiles = {
-          ...authFiles,
-          [fileType]: file,
-        };
         
         // Upload the file
         await uploadCredentials({

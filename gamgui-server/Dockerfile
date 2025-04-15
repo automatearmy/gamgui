@@ -1,41 +1,30 @@
-FROM debian:12-slim
+# Use Node.js 18 as the base image
+FROM node:18-alpine
 
-# Install required packages
-RUN apt-get update && apt-get install -y \
-    curl \
-    python3 \
-    python3-pip \
-    xz-utils \
+# Install Docker CLI and other required packages
+RUN apk add --no-cache \
+    docker-cli \
     bash \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+    curl \
+    python3
 
-# Set up working directory
-WORKDIR /gam
+# Set working directory
+WORKDIR /app
 
-# Install GAM with -l flag to update to latest version without creating project or authorizations
-# Using a different approach to handle the curl and bash execution
-RUN curl -s -S -L https://git.io/gam-install > /tmp/gam-install.sh && \
-    bash /tmp/gam-install.sh -l -d /gam && \
-    rm /tmp/gam-install.sh
+# Create temp-uploads directory with appropriate permissions
+RUN mkdir -p temp-uploads && chmod 755 temp-uploads
 
-# Add GAM to PATH
-ENV PATH="/gam/gam7:${PATH}"
+# Copy package files for dependency installation
+COPY package.json package-lock.json ./
 
-# Create .gam directory in root's home for credentials
-RUN mkdir -p /root/.gam
-RUN touch /root/.gam/gam.log
+# Install dependencies
+RUN npm ci
 
-# Update cmdlog setting in gam.cfg
-RUN touch /root/.gam/gam.cfg && \
-    if grep -q "^cmdlog = " /root/.gam/gam.cfg; then \
-        sed -i 's/^cmdlog = .*/cmdlog = gam.log/' /root/.gam/gam.cfg; \
-    else \
-        echo "cmdlog = gam.log" >> /root/.gam/gam.cfg; \
-    fi
+# Copy the rest of the application code
+COPY . .
 
-# Copy GAM credentials into the .gam directory
-COPY gam-credentials/* /root/.gam/
+# Expose the server port
+EXPOSE 3001
 
-# Set entrypoint to bash
-ENTRYPOINT ["/bin/bash"] 
+# Start the server
+CMD ["node", "server.js"]
