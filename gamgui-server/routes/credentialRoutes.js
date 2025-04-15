@@ -3,6 +3,7 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const router = express.Router();
+const { saveToSecretManager, getFromSecretManager } = require('../utils/secretManager');
 
 // Set up multer for file uploads
 const storage = multer.diskStorage({
@@ -37,14 +38,14 @@ const upload = multer({ storage });
 
 /**
  * @route   POST /api/credentials
- * @desc    Upload credential files
+ * @desc    Upload credential files and save to Secret Manager
  * @access  Public
  */
 router.post('/', upload.fields([
   { name: 'client_secrets', maxCount: 1 },
   { name: 'oauth2', maxCount: 1 },
   { name: 'oauth2service', maxCount: 1 }
-]), (req, res) => {
+]), async (req, res) => {
   try {
     const files = req.files;
     
@@ -52,7 +53,32 @@ router.post('/', upload.fields([
       return res.status(400).json({ message: 'No files uploaded' });
     }
     
-    // Check if all required files are now present
+    // Save to Secret Manager
+    const secretManagerPromises = [];
+    const secretManagerUploaded = [];
+    
+    if (files.client_secrets) {
+      const content = fs.readFileSync(files.client_secrets[0].path, 'utf8');
+      secretManagerPromises.push(saveToSecretManager('client-secrets', content));
+      secretManagerUploaded.push('client-secrets');
+    }
+    
+    if (files.oauth2) {
+      const content = fs.readFileSync(files.oauth2[0].path, 'utf8');
+      secretManagerPromises.push(saveToSecretManager('oauth2', content));
+      secretManagerUploaded.push('oauth2');
+    }
+    
+    if (files.oauth2service) {
+      const content = fs.readFileSync(files.oauth2service[0].path, 'utf8');
+      secretManagerPromises.push(saveToSecretManager('oauth2service', content));
+      secretManagerUploaded.push('oauth2service');
+    }
+    
+    // Wait for all Secret Manager operations to complete
+    await Promise.all(secretManagerPromises);
+    
+    // Check if all required files are now present locally
     const credentialsPath = path.join(__dirname, '../gam-credentials');
     const requiredFiles = ['oauth2service.json', 'oauth2.txt', 'client_secrets.json'];
     
@@ -64,7 +90,9 @@ router.post('/', upload.fields([
       message: 'Credentials uploaded successfully',
       files: Object.keys(files),
       complete: missingFiles.length === 0,
-      missingFiles
+      missingFiles,
+      secretManagerUploaded: secretManagerUploaded.length > 0,
+      secretManagerFiles: secretManagerUploaded
     });
   } catch (error) {
     console.error('Error uploading credentials:', error);
@@ -77,30 +105,54 @@ router.post('/', upload.fields([
 
 /**
  * @route   GET /api/credentials/check
- * @desc    Check if all required credential files exist
+ * @desc    Check if all required credential files exist (locally and in Secret Manager)
  * @access  Public
  */
-router.get('/check', (req, res) => {
+router.get('/check', async (req, res) => {
   try {
     const credentialsPath = path.join(__dirname, '../gam-credentials');
     const requiredFiles = ['oauth2service.json', 'oauth2.txt', 'client_secrets.json'];
+    const secretIds = ['oauth2service', 'oauth2', 'client-secrets'];
     
-    // Check if directory exists
-    if (!fs.existsSync(credentialsPath)) {
-      return res.status(200).json({ 
-        complete: false,
-        missingFiles: requiredFiles
-      });
-    }
-    
-    // Check which files exist
-    const missingFiles = requiredFiles.filter(file => 
+    // Check local files
+    const localMissingFiles = requiredFiles.filter(file => 
       !fs.existsSync(path.join(credentialsPath, file))
     );
     
+    // Check Secret Manager
+    const secretManagerStatus = {
+      available: false,
+      missingSecrets: []
+    };
+    
+    try {
+      const checkPromises = secretIds.map(async (secretId) => {
+        try {
+          await getFromSecretManager(secretId);
+          return { secretId, exists: true };
+        } catch (error) {
+          return { secretId, exists: false };
+        }
+      });
+      
+      const results = await Promise.all(checkPromises);
+      const missingSecrets = results
+        .filter(result => !result.exists)
+        .map(result => result.secretId);
+      
+      secretManagerStatus.available = missingSecrets.length === 0;
+      secretManagerStatus.missingSecrets = missingSecrets;
+    } catch (error) {
+      console.error('Error checking Secret Manager:', error);
+      secretManagerStatus.error = error.message;
+    }
+    
     return res.status(200).json({
-      complete: missingFiles.length === 0,
-      missingFiles
+      localFiles: {
+        complete: localMissingFiles.length === 0,
+        missingFiles: localMissingFiles
+      },
+      secretManager: secretManagerStatus
     });
   } catch (error) {
     console.error('Error checking credentials:', error);
