@@ -22,9 +22,34 @@ The application uses environment variables to configure the API and Socket URLs.
 
 ## Deployment Steps
 
-### 1. Build and Deploy the Server
+### Step 1: Deploy Infrastructure with Terraform
+
+First, deploy the infrastructure using Terraform:
 
 ```bash
+# Navigate to the terraform repository
+cd /path/to/gamgui-terraform
+
+# Initialize Terraform if needed
+terraform init
+
+# Apply the Terraform configuration
+terraform apply
+```
+
+After the infrastructure is deployed, get the server URL:
+
+```bash
+terraform output server_url
+# This will output something like: "https://gamgui-server-2fdozy6y5a-uc.a.run.app"
+```
+
+### Step 2: Build and Deploy the Server
+
+```bash
+# Navigate to the app repository
+cd /path/to/gamgui-app
+
 # Submit the build to Google Cloud Build
 gcloud builds submit --config=gamgui-server/cloudbuild.yaml
 
@@ -34,25 +59,50 @@ gcloud builds submit --config=gamgui-server/cloudbuild.yaml
 # - The image will be available for deployment to Cloud Run
 ```
 
-### 2. Build and Deploy the Client
+### Step 3: Build and Deploy the Client
 
-#### Option A: Using the Deployment Script (Recommended)
+#### Option A: Automated Deployment (Recommended)
+
+The easiest way to deploy is to use the automated deployment script in the gamgui-terraform repository:
 
 ```bash
-# Run the deployment script
-./deploy-client.sh
+# In gamgui-terraform repository
+./deploy.sh /path/to/gamgui-app
+```
+
+This script will:
+1. Deploy the infrastructure with Terraform
+2. Get the server URL
+3. Build and push the client image with the correct server URL
+4. Update the infrastructure with the new image
+
+#### Option B: Local Build and Push
+
+If you prefer to build and push the client image manually:
+
+```bash
+# Run the local build and push script
+./build-and-push-client.sh
+
+# When prompted, enter the server URL from terraform output
+# For example: https://gamgui-server-2fdozy6y5a-uc.a.run.app
 
 # This script will:
-# - Prompt for the server URL
-# - Update the cloudbuild.yaml file with the correct URLs
-# - Submit the build to Google Cloud Build
+# - Build the Docker image locally with the correct environment variables
+# - Push the image to Google Container Registry
 # - The image will be available for deployment to Cloud Run
 ```
 
-#### Option B: Manual Deployment
+This approach is reliable because:
+- It avoids potential issues with Cloud Build
+- You have more control over the build process
+- You can see detailed error messages if something goes wrong
+
+#### Option C: Manual Deployment
 
 ```bash
-# Submit the build to Google Cloud Build
+# Edit the cloudbuild.yaml file to update the server URLs
+# Then submit the build to Google Cloud Build
 gcloud builds submit --config=gamgui-client/cloudbuild.yaml
 
 # This will:
@@ -63,7 +113,7 @@ gcloud builds submit --config=gamgui-client/cloudbuild.yaml
 
 > **Important**: Before deploying manually, ensure that the `cloudbuild.yaml` file has the correct server URLs in the build arguments.
 
-### 3. Deploy to Cloud Run (if not automatic)
+### Step 4: Update Cloud Run Services (if not automatic)
 
 If your Cloud Run services are not set to automatically deploy new images, you can deploy them manually:
 
@@ -121,7 +171,7 @@ If you see errors like `ERR_CONNECTION_REFUSED` or the client trying to connect 
    ```
 
 3. **Rebuild and redeploy the client**:
-   Use the `./deploy-client.sh` script to ensure the correct URLs are used.
+   Use the automated deployment script in the gamgui-terraform repository or the `./build-and-push-client.sh` script.
 
 4. **Clear browser cache**:
    After deploying a new version, clear your browser cache to ensure you're getting the latest version.
