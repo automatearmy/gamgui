@@ -16,8 +16,8 @@ ENV NODE_ENV=production
 # Copy package files for dependency installation
 COPY package.json package-lock.json ./
 
-# Install dependencies
-RUN npm ci
+# Install dependencies (including dev dependencies for build)
+RUN npm ci --include=dev
 
 # Copy the rest of the application code
 COPY . .
