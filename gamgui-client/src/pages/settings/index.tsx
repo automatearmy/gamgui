@@ -62,10 +62,27 @@ export function SettingsPage() {
   useEffect(() => {
     const fetchCredentialsStatus = async () => {
       try {
-        const status = await checkCredentials();
-        setCredentialsStatus(status);
+        const response = await checkCredentials();
+        // Map the API response to our state structure
+        if (response && response.localFiles) {
+          setCredentialsStatus({
+            complete: response.localFiles.complete,
+            missingFiles: response.localFiles.missingFiles || []
+          });
+        } else {
+          // Fallback to default state if response is not as expected
+          setCredentialsStatus({
+            complete: false,
+            missingFiles: []
+          });
+        }
       } catch (error) {
         console.error("Failed to check credentials status:", error);
+        // Set default state on error
+        setCredentialsStatus({
+          complete: false,
+          missingFiles: []
+        });
       }
     };
 
@@ -96,8 +113,14 @@ export function SettingsPage() {
         });
         
         // Refresh credentials status
-        const status = await checkCredentials();
-        setCredentialsStatus(status);
+        const response = await checkCredentials();
+        // Map the API response to our state structure
+        if (response && response.localFiles) {
+          setCredentialsStatus({
+            complete: response.localFiles.complete,
+            missingFiles: response.localFiles.missingFiles || []
+          });
+        }
         
         setUploadStatus({ loading: false, success: true, error: null });
         
@@ -162,8 +185,20 @@ export function SettingsPage() {
       });
       
       // Refresh credentials status
-      const status = await checkCredentials();
-      setCredentialsStatus(status);
+      const response = await checkCredentials();
+      // Map the API response to our state structure
+      if (response && response.localFiles) {
+        setCredentialsStatus({
+          complete: response.localFiles.complete,
+          missingFiles: response.localFiles.missingFiles || []
+        });
+      } else {
+        // Fallback to default state if response is not as expected
+        setCredentialsStatus({
+          complete: false,
+          missingFiles: []
+        });
+      }
       
       // Reset image status
       setImageStatus({
@@ -333,7 +368,7 @@ export function SettingsPage() {
                   All required credential files are present.
                 </AlertDescription>
               </Alert>
-            ) : credentialsStatus.missingFiles.length > 0 ? (
+            ) : credentialsStatus.missingFiles && credentialsStatus.missingFiles.length > 0 ? (
               <Alert variant="destructive">
                 <AlertTitle>Missing Credentials</AlertTitle>
                 <AlertDescription>
