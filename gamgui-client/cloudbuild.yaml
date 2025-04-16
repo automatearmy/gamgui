@@ -1,7 +1,13 @@
 steps:
-  # Build the container image
+  # Build the container image with server URL arguments
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/gamgui-registry/gamgui-client-image', '.']
+    args: [
+      'build',
+      '--build-arg', 'VITE_API_URL=https://gamgui-server-2fdozy6y5a-uc.a.run.app/api',
+      '--build-arg', 'VITE_SOCKET_URL=https://gamgui-server-2fdozy6y5a-uc.a.run.app',
+      '-t', 'gcr.io/gamgui-registry/gamgui-client-image',
+      '.'
+    ]
     dir: gamgui-client
     
   # Push the container image to Artifact Registry
