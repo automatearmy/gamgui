@@ -13,7 +13,8 @@ RUN npm ci
 # Copy the rest of the application code
 COPY . .
 
-# Build the application
+# Build the application with production environment
+ENV NODE_ENV=production
 RUN npm run build
 
 # Install serve globally to serve the static files

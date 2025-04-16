@@ -7,6 +7,11 @@ dist-ssr
 
 # Environment variables
 .env
+.env.*
+.env.local
+.env.development
+.env.test
+.env.production
 
 # Logs
 logs
