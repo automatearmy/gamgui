@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { SessionsTable, type Session as TableSession } from "@/components/sessions/SessionsTable";
 import { Plus, RefreshCw } from "lucide-react";
 import { getSessions, type Session as ApiSession } from "@/lib/api";
-import { Tooltip } from "@/components/ui/tooltip";
 
 export function SessionsPage({ onNavigate }: { onNavigate?: (path: string) => void }) {
   const [sessions, setSessions] = useState<TableSession[]>([]);
