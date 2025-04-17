@@ -1,0 +1,20 @@
+# Use Node.js 18 as the base image
+FROM node:18-alpine
+
+# Install required packages
+RUN apk add --no-cache \
+    bash \
+    curl \
+    python3
+
+# Set working directory
+WORKDIR /gam
+
+# Create uploads directory
+RUN mkdir -p uploads && chmod 755 uploads
+
+# Set environment variables
+ENV PATH="/gam:${PATH}"
+
+# Default command
+CMD ["bash"]

@@ -1,9 +1,8 @@
 # Use Node.js 18 as the base image
 FROM node:18-alpine
 
-# Install Docker CLI and other required packages
+# Install required packages
 RUN apk add --no-cache \
-    docker-cli \
     bash \
     curl \
     python3

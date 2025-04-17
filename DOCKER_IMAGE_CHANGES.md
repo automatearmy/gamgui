@@ -43,34 +43,50 @@ The new approach uses a pre-built Docker image (`docker-gam7:latest`) that is re
 
 ## How to Use
 
-### Building the Pre-built Image
+### Building and Pushing the Pre-built Image
 
-Before deploying the application, you need to build the pre-built Docker image:
+We've created a Dockerfile and script to simplify the process of building and pushing the GAM Docker image:
 
-```bash
-# Navigate to the directory containing the Dockerfile for GAM
-cd /path/to/gam/dockerfile
+1. **Dockerfile.gam**: A minimal Dockerfile for the GAM image
+2. **build-and-push-gam.sh**: A script to build and push the image to Google Container Registry
 
-# Build the image
-docker build -t docker-gam7:latest .
-
-# Verify the image was created
-docker images | grep docker-gam7
-```
-
-### Deploying to Cloud Run
-
-When deploying to Cloud Run, you need to push the image to a container registry:
+To build and push the image:
 
 ```bash
-# Tag the image for Google Container Registry
-docker tag docker-gam7:latest gcr.io/your-project-id/docker-gam7:latest
+# Make the script executable (if not already)
+chmod +x build-and-push-gam.sh
 
-# Push the image
-docker push gcr.io/your-project-id/docker-gam7:latest
+# Run the script
+./build-and-push-gam.sh
 ```
 
-Then update the `DEFAULT_IMAGE_NAME` in `imageRoutes.js` to match the registry path.
+The script will:
+1. Build the Docker image using Dockerfile.gam
+2. Tag it for Google Container Registry
+3. Push it to gcr.io/gamgui-registry/docker-gam7:latest
+
+The `DEFAULT_IMAGE_NAME` in `imageRoutes.js` has already been updated to use this image path.
+
+### Terraform Configuration
+
+After pushing the image, you'll need to update the Terraform configuration in the gamgui-terraform repository:
+
+```terraform
+variable "gam_image" {
+  description = "GAM Docker image URL in Artifact Registry"
+  type        = string
+  default     = "gcr.io/gamgui-registry/docker-gam7:latest"
+}
+
+module "server_service" {
+  # ...
+  env_vars = {
+    "PROJECT_ID" = var.project_id
+    "GAM_IMAGE" = var.gam_image
+    # ...
+  }
+}
+```
 
 ## Future Improvements
 

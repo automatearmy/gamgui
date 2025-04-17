@@ -11,13 +11,10 @@
   "dependencies": {
     "@google-cloud/secret-manager": "^5.6.0",
     "cors": "^2.8.5",
-    "dockerode": "^3.3.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "multer": "^1.4.5-lts.2",
     "socket.io": "^4.7.2",
-    "tar-fs": "^2.1.1",
-    "tar-stream": "^3.1.7",
     "uuid": "^9.0.1"
   },
   "devDependencies": {

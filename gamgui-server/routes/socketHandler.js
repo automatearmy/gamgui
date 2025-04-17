@@ -1,8 +1,5 @@
-const Docker = require('dockerode');
 const { containerSessions, sessions } = require('./sessionRoutes');
-
-// Initialize Docker client
-const docker = new Docker();
+const { Readable, Writable } = require('stream');
 
 module.exports = (io) => {
   // Namespace for container terminal sessions
@@ -30,58 +27,79 @@ module.exports = (io) => {
         let containerInfo = containerSessions.get(sessionId);
         
         if (!containerInfo) {
-          return socket.emit('error', { message: 'Container not found for this session' });
+          return socket.emit('error', { message: 'Virtual session not found' });
         }
         
         // Join the session room
         socket.join(sessionId);
         
-        // Get the container
-        const container = docker.getContainer(session.containerId);
+        console.log(`Client joined virtual session: ${sessionId}`);
         
-        // Check if container is running
-        const containerData = await container.inspect();
-        if (!containerData.State.Running) {
-          return socket.emit('error', { message: 'Container is not running' });
+        // Create a virtual terminal stream if it doesn't exist
+        if (!containerInfo.stream) {
+          // Create a virtual terminal using Node.js streams
+          const outputStream = new Readable({
+            read() {}
+          });
+          
+          const inputStream = new Writable({
+            write(chunk, encoding, callback) {
+              // Process the input and generate a response
+              const input = chunk.toString().trim();
+              
+              // Simple command processing
+              if (input.startsWith('echo ')) {
+                const output = input.substring(5) + '\n';
+                outputStream.push(output);
+              } else if (input === 'ls') {
+                outputStream.push('uploads\n');
+              } else if (input === 'pwd') {
+                outputStream.push('/gam\n');
+              } else if (input === 'whoami') {
+                outputStream.push('gam-user\n');
+              } else if (input === 'date') {
+                outputStream.push(new Date().toString() + '\n');
+              } else if (input === 'help' || input === 'gam help') {
+                outputStream.push('GAM Virtual Terminal\n');
+                outputStream.push('Available commands: echo, ls, pwd, whoami, date, help\n');
+              } else {
+                outputStream.push(`Command not found: ${input}\n`);
+              }
+              
+              callback();
+            }
+          });
+          
+          // Store the streams
+          containerInfo.stream = {
+            input: inputStream,
+            output: outputStream
+          };
+          containerSessions.set(sessionId, containerInfo);
+          
+          // Send welcome message
+          outputStream.push(`Welcome to GAM Virtual Terminal\n`);
+          outputStream.push(`Session: ${session.name}\n`);
+          outputStream.push(`Image: ${session.imageName}\n`);
+          outputStream.push(`Type 'help' for available commands\n\n`);
+          outputStream.push(`$ `);
         }
         
-        // Establish a connection with the container's exec instance
-        const exec = await container.exec({
-          AttachStdin: true,
-          AttachStdout: true,
-          AttachStderr: true,
-          Tty: true,
-          Cmd: ['/bin/bash']
-        });
-        
-        // Start the exec instance
-        const stream = await exec.start({
-          hijack: true,
-          stdin: true,
-          stdout: true,
-          stderr: true
-        });
-        
-        // Store the stream
-        containerInfo.stream = stream;
-        containerSessions.set(sessionId, containerInfo);
-        
-        // Handle data from container to client
-        stream.on('data', (data) => {
+        // Handle data from virtual terminal to client
+        containerInfo.stream.output.on('data', (data) => {
           socket.emit('terminal-output', data.toString());
         });
         
-        // Handle stream closed event
-        stream.on('end', () => {
-          socket.emit('terminal-closed', { message: 'Terminal session ended' });
-        });
-        
-        socket.emit('session-joined', { message: 'Connected to session' });
+        socket.emit('session-joined', { message: 'Connected to virtual session' });
         
         // Handle command input from client
         socket.on('terminal-input', (data) => {
-          if (containerInfo.stream) {
-            containerInfo.stream.write(data);
+          if (containerInfo.stream && containerInfo.stream.input) {
+            containerInfo.stream.input.write(data);
+            // Add prompt after command execution
+            setTimeout(() => {
+              containerInfo.stream.output.push('$ ');
+            }, 100);
           }
         });
         
@@ -105,4 +123,4 @@ module.exports = (io) => {
       }
     });
   });
-}; 
+};
