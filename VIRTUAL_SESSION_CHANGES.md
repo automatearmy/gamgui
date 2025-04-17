@@ -51,11 +51,14 @@ The virtual terminal is implemented using Node.js streams:
 The virtual terminal supports the following commands:
 
 - `echo [text]`: Outputs the provided text
-- `ls`: Lists files (simulated)
-- `pwd`: Shows the current directory (simulated)
+- `ls` or `ls -la`: Lists files in the current directory
+- `cd [directory]`: Changes the current directory
+- `pwd`: Shows the current directory
+- `cat [filename]`: Displays the content of a file
 - `whoami`: Shows the current user (simulated)
 - `date`: Shows the current date and time
 - `help` or `gam help`: Shows available commands
+- `gam [command]`: Simulates GAM commands
 
 ## Benefits
 
@@ -66,9 +69,9 @@ The virtual terminal supports the following commands:
 
 ## Limitations
 
-1. **Limited Functionality**: The virtual terminal only supports basic commands
-2. **No Actual GAM Execution**: Commands are simulated, not actually executed in a GAM environment
-3. **No File System Access**: File operations are simulated, not actually performed
+1. **Limited Command Set**: While improved, the virtual terminal still supports only a subset of bash commands
+2. **No Actual GAM Execution**: GAM commands are simulated, not actually executed in a GAM environment
+3. **Basic File System**: The virtual file system provides basic functionality but lacks many features of a real file system
 
 ## Future Improvements
 
