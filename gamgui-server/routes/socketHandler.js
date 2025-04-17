@@ -7,8 +7,20 @@ module.exports = (io) => {
   // Namespace for container terminal sessions
   const terminalNamespace = io.of('/terminal');
   
+  // Track active sessions and their sockets
+  const activeSessions = new Map();
+  
+  // Middleware to log connection events
+  terminalNamespace.use((socket, next) => {
+    console.log(`Socket connection attempt: ${socket.id}`);
+    next();
+  });
+  
   terminalNamespace.on('connection', (socket) => {
-    console.log('New WebSocket connection');
+    console.log(`New WebSocket connection established: ${socket.id}`);
+    
+    // Set a longer timeout for this socket
+    socket.conn.pingTimeout = 60000;
     
     // Handle joining a session
     socket.on('join-session', async (data) => {
@@ -35,7 +47,18 @@ module.exports = (io) => {
         // Join the session room
         socket.join(sessionId);
         
-        console.log(`Client joined virtual session: ${sessionId}`);
+        // Store socket in active sessions map
+        if (!activeSessions.has(sessionId)) {
+          activeSessions.set(sessionId, new Set());
+        }
+        activeSessions.get(sessionId).add(socket.id);
+        
+        // Set session data on socket for easy access
+        socket.sessionId = sessionId;
+        socket.containerInfo = containerInfo;
+        
+        console.log(`Client ${socket.id} joined virtual session: ${sessionId}`);
+        console.log(`Active connections for session ${sessionId}: ${activeSessions.get(sessionId).size}`);
         
         // Create a virtual terminal stream if it doesn't exist
         if (!containerInfo.stream) {
@@ -171,17 +194,40 @@ module.exports = (io) => {
                 
                 if (fs.existsSync(filePath)) {
                   try {
+                    outputStream.push(`Executing script: ${fileName}...\n`);
+                    
                     const { exec } = require('child_process');
                     exec(`bash ${filePath}`, { cwd: '/gam' }, (error, stdout, stderr) => {
-                      if (error) {
-                        outputStream.push(`Error executing script: ${error.message}\n`);
+                      // Check if session still exists
+                      const sessionStillExists = sessions.find(s => s.id === sessionId);
+                      const containerInfoStillExists = containerSessions.get(sessionId);
+                      
+                      if (!sessionStillExists || !containerInfoStillExists) {
+                        console.error(`Session ${sessionId} no longer exists during bash execution`);
                         return;
                       }
-                      if (stderr) {
-                        outputStream.push(`${stderr}\n`);
+                      
+                      if (error) {
+                        outputStream.push(`Error executing script: ${error.message}\n`);
+                      } else {
+                        if (stderr && stderr.trim() !== '') {
+                          outputStream.push(`${stderr}\n`);
+                        }
+                        if (stdout && stdout.trim() !== '') {
+                          outputStream.push(`${stdout}\n`);
+                        } else {
+                          outputStream.push(`Script executed successfully (no output)\n`);
+                        }
                       }
-                      outputStream.push(`${stdout}\n`);
+                      
+                      // Add prompt after command execution
+                      setTimeout(() => {
+                        outputStream.push('$ ');
+                      }, 100);
                     });
+                    
+                    // Don't add prompt here - it will be added after command completes
+                    return;
                   } catch (err) {
                     outputStream.push(`Error executing script: ${err.message}\n`);
                   }
@@ -191,17 +237,40 @@ module.exports = (io) => {
               } else if (input.startsWith('gam ')) {
                 // Execute real GAM commands
                 try {
+                  outputStream.push(`Executing GAM command...\n`);
+                  
                   const { exec } = require('child_process');
                   exec(input, { cwd: '/gam' }, (error, stdout, stderr) => {
-                    if (error) {
-                      outputStream.push(`Error executing GAM command: ${error.message}\n`);
+                    // Check if session still exists
+                    const sessionStillExists = sessions.find(s => s.id === sessionId);
+                    const containerInfoStillExists = containerSessions.get(sessionId);
+                    
+                    if (!sessionStillExists || !containerInfoStillExists) {
+                      console.error(`Session ${sessionId} no longer exists during GAM execution`);
                       return;
                     }
-                    if (stderr) {
-                      outputStream.push(`${stderr}\n`);
+                    
+                    if (error) {
+                      outputStream.push(`Error executing GAM command: ${error.message}\n`);
+                    } else {
+                      if (stderr && stderr.trim() !== '') {
+                        outputStream.push(`${stderr}\n`);
+                      }
+                      if (stdout && stdout.trim() !== '') {
+                        outputStream.push(`${stdout}\n`);
+                      } else {
+                        outputStream.push(`Command executed successfully (no output)\n`);
+                      }
                     }
-                    outputStream.push(`${stdout}\n`);
+                    
+                    // Add prompt after command execution
+                    setTimeout(() => {
+                      outputStream.push('$ ');
+                    }, 100);
                   });
+                  
+                  // Don't add prompt here - it will be added after command completes
+                  return;
                 } catch (err) {
                   outputStream.push(`Error executing GAM command: ${err.message}\n`);
                 }
@@ -238,17 +307,43 @@ module.exports = (io) => {
         // Handle command input from client
         socket.on('terminal-input', (data) => {
           if (containerInfo.stream && containerInfo.stream.input) {
+            const input = data.toString().trim();
+            
+            // For bash and gam commands, don't add prompt here
+            // as it will be added after the command completes
+            const isLongRunningCommand = 
+              input.startsWith('bash ') || 
+              input.startsWith('gam ');
+            
             containerInfo.stream.input.write(data);
-            // Add prompt after command execution
-            setTimeout(() => {
-              containerInfo.stream.output.push('$ ');
-            }, 100);
+            
+            // Add prompt after command execution only for non-long-running commands
+            if (!isLongRunningCommand) {
+              setTimeout(() => {
+                containerInfo.stream.output.push('$ ');
+              }, 100);
+            }
           }
         });
         
         // Handle client disconnection
-        socket.on('disconnect', () => {
-          console.log(`Client disconnected from session ${sessionId}`);
+        socket.on('disconnect', (reason) => {
+          const sessionId = socket.sessionId;
+          if (!sessionId) return;
+          
+          console.log(`Client ${socket.id} disconnected from session ${sessionId}. Reason: ${reason}`);
+          
+          // Remove socket from active sessions
+          if (activeSessions.has(sessionId)) {
+            activeSessions.get(sessionId).delete(socket.id);
+            console.log(`Remaining connections for session ${sessionId}: ${activeSessions.get(sessionId).size}`);
+            
+            // If this was the last connection for this session, clean up resources
+            if (activeSessions.get(sessionId).size === 0) {
+              console.log(`No more active connections for session ${sessionId}. Keeping session alive for reconnection.`);
+              // We don't delete the session here to allow for reconnection
+            }
+          }
         });
         
       } catch (error) {
@@ -262,7 +357,44 @@ module.exports = (io) => {
       const { sessionId } = data;
       if (sessionId) {
         socket.leave(sessionId);
+        
+        // Remove socket from active sessions
+        if (activeSessions.has(sessionId)) {
+          activeSessions.get(sessionId).delete(socket.id);
+        }
+        
         socket.emit('session-left', { message: 'Disconnected from session' });
+      }
+    });
+    
+    // Handle socket errors
+    socket.on('error', (error) => {
+      console.error(`Socket error for ${socket.id}:`, error);
+      
+      // Try to notify the client about the error
+      try {
+        socket.emit('error', { 
+          message: 'Socket connection error', 
+          error: error.message || 'Unknown error' 
+        });
+      } catch (e) {
+        console.error('Failed to send error to client:', e);
+      }
+    });
+    
+    // Handle reconnection attempts
+    socket.on('reconnect_attempt', (attemptNumber) => {
+      console.log(`Client ${socket.id} reconnection attempt #${attemptNumber}`);
+    });
+    
+    // Handle successful reconnection
+    socket.on('reconnect', () => {
+      console.log(`Client ${socket.id} successfully reconnected`);
+      
+      // If the socket had a session before, try to rejoin it
+      if (socket.sessionId) {
+        console.log(`Attempting to rejoin session ${socket.sessionId}`);
+        socket.emit('rejoin-session', { sessionId: socket.sessionId });
       }
     });
   });
