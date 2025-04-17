@@ -133,9 +133,19 @@ module.exports = (io) => {
                 outputStream.push('gam-user\n');
               } else if (input === 'date') {
                 outputStream.push(new Date().toString() + '\n');
-              } else if (input === 'help' || input === 'gam help') {
+              } else if (input === 'help') {
                 outputStream.push('GAM Virtual Terminal\n');
-                outputStream.push('Available commands: echo, ls, cd, pwd, whoami, date, help\n');
+                outputStream.push('Available commands:\n');
+                outputStream.push('  echo [text]    - Display text\n');
+                outputStream.push('  ls             - List files in current directory\n');
+                outputStream.push('  cd [directory] - Change directory\n');
+                outputStream.push('  pwd            - Show current directory\n');
+                outputStream.push('  cat [file]     - Display file contents\n');
+                outputStream.push('  bash [file]    - Execute bash script\n');
+                outputStream.push('  gam [command]  - Execute GAM command\n');
+                outputStream.push('  whoami         - Show current user\n');
+                outputStream.push('  date           - Show current date and time\n');
+                outputStream.push('  help           - Show this help message\n');
               } else if (input.startsWith('cat ')) {
                 const fileName = input.substring(4).trim();
                 const filePath = fs.currentDir === '/gam' 
@@ -154,14 +164,49 @@ module.exports = (io) => {
                 } else {
                   outputStream.push(`cat: ${fileName}: No such file or directory\n`);
                 }
-              } else {
-                // Check if it might be a GAM command
-                if (input.startsWith('gam ')) {
-                  outputStream.push(`Simulated GAM command: ${input}\n`);
-                  outputStream.push(`(Note: This is a virtual session, GAM commands are simulated)\n`);
+              } else if (input.startsWith('bash ')) {
+                // Execute bash scripts
+                const fileName = input.substring(5).trim();
+                const filePath = path.join(__dirname, '../temp-uploads', fileName);
+                
+                if (fs.existsSync(filePath)) {
+                  try {
+                    const { exec } = require('child_process');
+                    exec(`bash ${filePath}`, { cwd: '/gam' }, (error, stdout, stderr) => {
+                      if (error) {
+                        outputStream.push(`Error executing script: ${error.message}\n`);
+                        return;
+                      }
+                      if (stderr) {
+                        outputStream.push(`${stderr}\n`);
+                      }
+                      outputStream.push(`${stdout}\n`);
+                    });
+                  } catch (err) {
+                    outputStream.push(`Error executing script: ${err.message}\n`);
+                  }
                 } else {
-                  outputStream.push(`Command not found: ${input}\n`);
+                  outputStream.push(`bash: ${fileName}: No such file or directory\n`);
                 }
+              } else if (input.startsWith('gam ')) {
+                // Execute real GAM commands
+                try {
+                  const { exec } = require('child_process');
+                  exec(input, { cwd: '/gam' }, (error, stdout, stderr) => {
+                    if (error) {
+                      outputStream.push(`Error executing GAM command: ${error.message}\n`);
+                      return;
+                    }
+                    if (stderr) {
+                      outputStream.push(`${stderr}\n`);
+                    }
+                    outputStream.push(`${stdout}\n`);
+                  });
+                } catch (err) {
+                  outputStream.push(`Error executing GAM command: ${err.message}\n`);
+                }
+              } else {
+                outputStream.push(`Command not found: ${input}\n`);
               }
               
               callback();

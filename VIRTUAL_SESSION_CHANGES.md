@@ -55,10 +55,11 @@ The virtual terminal supports the following commands:
 - `cd [directory]`: Changes the current directory
 - `pwd`: Shows the current directory
 - `cat [filename]`: Displays the content of a file
+- `bash [filename]`: Executes a bash script
 - `whoami`: Shows the current user (simulated)
 - `date`: Shows the current date and time
-- `help` or `gam help`: Shows available commands
-- `gam [command]`: Simulates GAM commands
+- `help`: Shows available commands
+- `gam [command]`: Executes real GAM commands
 
 ## Benefits
 
@@ -69,8 +70,8 @@ The virtual terminal supports the following commands:
 
 ## Limitations
 
-1. **Limited Command Set**: While improved, the virtual terminal still supports only a subset of bash commands
-2. **No Actual GAM Execution**: GAM commands are simulated, not actually executed in a GAM environment
+1. **Limited Command Set**: The virtual terminal supports only a subset of bash commands
+2. **Real GAM Execution**: GAM commands are now executed in the actual GAM environment
 3. **Basic File System**: The virtual file system provides basic functionality but lacks many features of a real file system
 
 ## Future Improvements
