@@ -7,8 +7,8 @@ const router = express.Router();
 // In-memory storage for images (replace with a database in production)
 const images = [];
 
-// Default pre-built image
-const DEFAULT_IMAGE_NAME = "docker-gam7:latest";
+// Default pre-built image in Google Container Registry
+const DEFAULT_IMAGE_NAME = "gcr.io/gamgui-registry/docker-gam7:latest";
 
 /**
  * @route   POST /api/images

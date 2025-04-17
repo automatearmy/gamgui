@@ -1,20 +1,19 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
-const Docker = require('dockerode');
 const path = require('path');
 const fs = require('fs');
 const { images } = require('./imageRoutes');
 const router = express.Router();
 
-// Initialize Docker client
-const docker = new Docker();
-
 // Default pre-built image to use if no images are available
 const DEFAULT_IMAGE = {
   id: "default-gam-image",
   name: "Default GAM Image",
-  imageName: "docker-gam7:latest"
+  imageName: "gcr.io/gamgui-registry/docker-gam7:latest"
 };
+
+// Get GAM image from environment variable if available
+const GAM_IMAGE = process.env.GAM_IMAGE || DEFAULT_IMAGE.imageName;
 
 // In-memory storage for sessions (replace with a database in production)
 const sessions = [];
@@ -24,7 +23,7 @@ const containerSessions = new Map();
 
 /**
  * @route   POST /api/sessions
- * @desc    Create a new session with a Docker container
+ * @desc    Create a new virtual session
  * @access  Public
  */
 router.post('/', async (req, res) => {
@@ -50,33 +49,24 @@ router.post('/', async (req, res) => {
     
     // Generate session ID
     const sessionId = uuidv4();
+    const containerName = `gam-session-${sessionId.substring(0, 8)}`;
+    const containerId = `virtual-container-${sessionId}`;
     
-    // Create a Docker container from the image
-    const container = await docker.createContainer({
-      Image: image.imageName,
-      name: `gam-session-${sessionId.substring(0, 8)}`,
-      Tty: true,
-      OpenStdin: true,
-      StdinOnce: false,
-      AttachStdin: true,
-      AttachStdout: true,
-      AttachStderr: true,
-      // Cmd: ['/bin/bash'], // Start with bash shell
-      HostConfig: {
-        Binds: [
-          `${path.resolve(__dirname, '../temp-uploads')}:/gam/uploads:rw`
-        ]
-      }
-    });
+    // Create a virtual session instead of a Docker container
+    console.log(`Creating virtual session with image: ${image.imageName}`);
     
-    // Start the container
-    await container.start();
+    // Ensure temp-uploads directory exists
+    const tempUploadsDir = path.resolve(__dirname, '../temp-uploads');
+    if (!fs.existsSync(tempUploadsDir)) {
+      fs.mkdirSync(tempUploadsDir, { recursive: true });
+    }
     
-    // Store container information
+    // Store virtual container information
     const containerInfo = {
-      id: container.id,
+      id: containerId,
       sessionId,
-      stream: null
+      stream: null,
+      virtual: true
     };
     
     containerSessions.set(sessionId, containerInfo);
@@ -85,9 +75,9 @@ router.post('/', async (req, res) => {
     const newSession = {
       id: sessionId,
       name,
-      containerId: container.id,
-      containerName: `gam-session-${sessionId.substring(0, 8)}`,
-      imageId,
+      containerId,
+      containerName,
+      imageId: imageId || DEFAULT_IMAGE.id,
       imageName: image.imageName,
       config: config || {},
       createdAt: new Date().toISOString(),
@@ -137,7 +127,7 @@ router.get('/:id', (req, res) => {
 
 /**
  * @route   DELETE /api/sessions/:id
- * @desc    Stop and remove a session
+ * @desc    Stop and remove a virtual session
  * @access  Public
  */
 router.delete('/:id', async (req, res) => {
@@ -151,27 +141,10 @@ router.delete('/:id', async (req, res) => {
     
     const session = sessions[sessionIndex];
     
-    // Get container info from map
-    const containerInfo = containerSessions.get(sessionId);
-    if (containerInfo) {
-      try {
-        // Get the container
-        const container = docker.getContainer(session.containerId);
-        
-        // Stop the container if it's running
-        const containerData = await container.inspect();
-        if (containerData.State.Running) {
-          await container.stop();
-        }
-        
-        // Remove the container
-        await container.remove();
-        
-        // Remove from container sessions map
-        containerSessions.delete(sessionId);
-      } catch (containerError) {
-        console.error(`Error stopping container: ${containerError.message}`);
-      }
+    // Get container info from map and remove it
+    if (containerSessions.has(sessionId)) {
+      console.log(`Removing virtual session: ${sessionId}`);
+      containerSessions.delete(sessionId);
     }
     
     // Clean up any uploaded files for this session
