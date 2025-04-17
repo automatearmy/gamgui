@@ -14,12 +14,12 @@ RUN apk add --no-cache \
 # Set working directory
 WORKDIR /app
 
-# Download and install the latest GAM release
+# Download and install the latest GAM release (7.06.04)
 RUN mkdir -p /gam && \
     cd /gam && \
-    wget -q https://github.com/GAM-team/GAM/releases/download/v6.80/gam-6.80-linux-x86_64.tar.xz && \
-    tar -xf gam-6.80-linux-x86_64.tar.xz && \
-    rm gam-6.80-linux-x86_64.tar.xz && \
+    wget -q "https://github.com/GAM-team/GAM/releases/download/v7.06.04/gam-7.06.04-linux-x86_64-legacy.tar.xz" && \
+    tar -xf "gam-7.06.04-linux-x86_64-legacy.tar.xz" && \
+    rm "gam-7.06.04-linux-x86_64-legacy.tar.xz" && \
     ln -s /gam/gam/gam /usr/local/bin/gam
 
 # Create temp-uploads directory with appropriate permissions

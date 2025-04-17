@@ -16,17 +16,49 @@ const { router: fileRoutes } = require('./routes/fileRoutes');
 // Initialize express app
 const app = express();
 const server = http.createServer(app);
+
+// Define allowed origins
+const allowedOrigins = [
+  'https://gamgui-client-2fdozy6y5a-uc.a.run.app',
+  'http://localhost:3000',
+  'http://localhost:5173'
+];
+
+// Configure CORS
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1 || origin.includes('localhost')) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      callback(null, true); // Still allow for now, but log it
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+// Configure Socket.io with CORS and improved connection settings
 const io = new Server(server, {
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST']
+  cors: corsOptions,
+  pingTimeout: 60000, // Increase ping timeout to 60 seconds
+  pingInterval: 25000, // Send ping every 25 seconds
+  connectTimeout: 30000, // Increase connection timeout
+  maxHttpBufferSize: 5e6, // Increase buffer size for larger payloads
+  transports: ['websocket', 'polling'], // Try WebSocket first, fallback to polling
+  allowUpgrades: true, // Allow transport upgrades
+  perMessageDeflate: {
+    threshold: 1024 // Compress data if message is larger than 1KB
   }
 });
 
 const PORT = process.env.PORT || 3001;
 
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Routes
