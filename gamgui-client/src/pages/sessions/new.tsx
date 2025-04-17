@@ -29,21 +29,15 @@ export function NewSessionPage({ onNavigate }: NewSessionPageProps = {}) {
         
         // Get available images
         const imagesResponse = await getImages();
-        if (!imagesResponse || !Array.isArray(imagesResponse) || imagesResponse.length === 0) {
-          // Redirect to settings page if no images are available
-          if (onNavigate) {
-            onNavigate("/settings");
-          } else {
-            window.location.href = "/settings";
-          }
-          throw new Error("No Docker images available. Please create an image in Settings first.");
+        
+        // Create a new session with an image ID if available, or null to use the default image
+        let imageId = null;
+        if (imagesResponse && Array.isArray(imagesResponse) && imagesResponse.length > 0) {
+          imageId = imagesResponse[0].id;
         }
         
-        // Use the first available image
-        const defaultImage = imagesResponse[0];
-        
         // Create a new session
-        const response = await createSession("New Session", defaultImage.id);
+        const response = await createSession("New Session", imageId);
         
         if (response.error) {
           throw new Error(response.error);

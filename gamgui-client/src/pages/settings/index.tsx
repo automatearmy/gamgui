@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { uploadCredentials, checkCredentials, createImage, deleteCredentials, AuthFiles } from "@/lib/api";
+import { uploadCredentials, checkCredentials, deleteCredentials, AuthFiles } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { FileInput } from "@/components/ui/file-input";
 import { 
@@ -14,7 +14,7 @@ import {
   AlertTitle, 
   AlertDescription 
 } from "@/components/ui/alert";
-import { Info, Trash2, Play } from "lucide-react";
+import { Info, Trash2 } from "lucide-react";
 
 
 export function SettingsPage() {
@@ -38,15 +38,6 @@ export function SettingsPage() {
   }>({
     complete: false,
     missingFiles: [],
-  });
-  const [imageStatus, setImageStatus] = useState<{
-    loading: boolean;
-    success: boolean;
-    error: string | null;
-  }>({
-    loading: false,
-    success: false,
-    error: null,
   });
   const [deleteStatus, setDeleteStatus] = useState<{
     loading: boolean;
@@ -147,34 +138,6 @@ export function SettingsPage() {
     }
   };
 
-  const handleCreateImage = async () => {
-    try {
-      setImageStatus({ loading: true, success: false, error: null });
-      
-      // Create the Docker image
-      const response = await createImage("gam-default-image");
-      
-      if (response.error) {
-        throw new Error(response.error);
-      }
-      
-      setImageStatus({ loading: false, success: true, error: null });
-    } catch (error) {
-      console.error("Failed to create Docker image:", error);
-      
-      // Extract error message if available
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : "Unknown error occurred";
-        
-      setImageStatus({
-        loading: false,
-        success: false,
-        error: `Failed to create Docker image: ${errorMessage}`
-      });
-    }
-  };
-
   const handleDeleteAll = async () => {
     try {
       setDeleteStatus({ loading: true, success: false, error: null });
@@ -204,13 +167,6 @@ export function SettingsPage() {
           missingFiles: []
         });
       }
-      
-      // Reset image status
-      setImageStatus({
-        loading: false,
-        success: false,
-        error: null,
-      });
       
       setDeleteStatus({ loading: false, success: true, error: null });
       
@@ -312,33 +268,6 @@ export function SettingsPage() {
               </Alert>
             )}
             
-            {imageStatus.loading && (
-              <Alert>
-                <AlertTitle>Creating Docker Image</AlertTitle>
-                <AlertDescription>
-                  Creating Docker image with your credentials. This may take a moment.
-                </AlertDescription>
-              </Alert>
-            )}
-            
-            {imageStatus.success && (
-              <Alert>
-                <AlertTitle>Docker Image Created</AlertTitle>
-                <AlertDescription>
-                  Docker image has been successfully created with your credentials.
-                </AlertDescription>
-              </Alert>
-            )}
-            
-            {imageStatus.error && (
-              <Alert variant="destructive">
-                <AlertTitle>Image Creation Error</AlertTitle>
-                <AlertDescription>
-                  {imageStatus.error}
-                </AlertDescription>
-              </Alert>
-            )}
-            
             {deleteStatus.loading && (
               <Alert>
                 <AlertTitle>Deleting...</AlertTitle>
@@ -370,7 +299,7 @@ export function SettingsPage() {
               <Alert>
                 <AlertTitle>Credentials Status</AlertTitle>
                 <AlertDescription>
-                  All required credential files are present.
+                  All required credential files are present. You can now create a new session.
                 </AlertDescription>
               </Alert>
             ) : credentialsStatus.missingFiles && credentialsStatus.missingFiles.length > 0 ? (
@@ -385,18 +314,6 @@ export function SettingsPage() {
 
           {/* Action buttons */}
           <div className="flex justify-end gap-4 mt-4">
-            {/* Create Docker Image button - only shown when all credentials are present */}
-            {credentialsStatus.complete && (
-              <Button 
-                onClick={handleCreateImage}
-                className="flex items-center gap-2"
-                disabled={imageStatus.loading}
-              >
-                <Play className="h-4 w-4" />
-                {imageStatus.loading ? "Creating..." : "Create Docker Image"}
-              </Button>
-            )}
-
             {/* Delete Credentials button */}
             {(authFiles.clientSecrets || authFiles.oauth2 || authFiles.oauth2service || credentialsStatus.complete) && (
               <Button 
