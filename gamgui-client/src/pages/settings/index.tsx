@@ -105,26 +105,31 @@ export function SettingsPage() {
       try {
         setUploadStatus({ loading: true, success: false, error: null });
         
-        // Upload the file
-        await uploadCredentials({
-          clientSecrets: fileType === 'clientSecrets' ? file : authFiles.clientSecrets,
-          oauth2: fileType === 'oauth2' ? file : authFiles.oauth2,
-          oauth2service: fileType === 'oauth2service' ? file : authFiles.oauth2service,
-        });
+        // Create a temporary AuthFiles object with only the changed file
+        const filesToUpload: AuthFiles = {
+          clientSecrets: null,
+          oauth2: null,
+          oauth2service: null
+        };
+        
+        // Set only the changed file
+        filesToUpload[fileType] = file;
+        
+        // Upload only the changed file using the API function
+        await uploadCredentials(filesToUpload);
         
         // Refresh credentials status
-        const response = await checkCredentials();
-        // Map the API response to our state structure
-        if (response && response.localFiles) {
+        const statusResponse = await checkCredentials();
+        
+        // Update credentials status
+        if (statusResponse && statusResponse.localFiles) {
           setCredentialsStatus({
-            complete: response.localFiles.complete,
-            missingFiles: response.localFiles.missingFiles || []
+            complete: statusResponse.localFiles.complete,
+            missingFiles: statusResponse.localFiles.missingFiles || []
           });
         }
         
         setUploadStatus({ loading: false, success: true, error: null });
-        
-        // No longer automatically creating the Docker image
       } catch (error) {
         console.error("Failed to upload file:", error);
         
