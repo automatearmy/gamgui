@@ -1,20 +1,18 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
-const Docker = require('dockerode');
 const fs = require('fs');
 const path = require('path');
-const tar = require('tar-fs');
 const router = express.Router();
-
-// Initialize Docker client
-const docker = new Docker();
 
 // In-memory storage for images (replace with a database in production)
 const images = [];
 
+// Default pre-built image
+const DEFAULT_IMAGE_NAME = "docker-gam7:latest";
+
 /**
  * @route   POST /api/images
- * @desc    Create a new image
+ * @desc    Create a reference to the pre-built image
  * @access  Public
  */
 router.post('/', async (req, res) => {
@@ -24,10 +22,6 @@ router.post('/', async (req, res) => {
     if (!name) {
       return res.status(400).json({ message: 'Name is required' });
     }
-    
-    // Generate a unique ID for the image
-    const imageId = uuidv4();
-    const imageName = `gam-${name.toLowerCase().replace(/\s+/g, '-')}-${imageId.substring(0, 8)}`;
     
     // Check if credentials exist
     const credentialsPath = path.join(__dirname, '../gam-credentials');
@@ -43,49 +37,24 @@ router.post('/', async (req, res) => {
       });
     }
     
-    // Build Docker image using dockerode
-    const buildContext = path.join(__dirname, '..');
+    // Generate a unique ID for the image reference
+    const imageId = uuidv4();
     
-    // Create a tarball of the build context
-    const tarStream = tar.pack(buildContext);
-    
-    // Build the Docker image
-    const stream = await docker.buildImage(tarStream, {
-      t: imageName,
-      dockerfile: 'Dockerfile'
-    });
-    
-    // Process the build output
-    let buildOutput = '';
-    await new Promise((resolve, reject) => {
-      docker.modem.followProgress(
-        stream,
-        (err, res) => err ? reject(err) : resolve(res),
-        (detail) => {
-          if (detail.stream) {
-            buildOutput += detail.stream;
-            console.log(detail.stream.trim());
-          }
-        }
-      );
-    });
-    
-    // Create the new image record
+    // Create the new image record using the pre-built image
     const newImage = {
       id: imageId,
       name,
-      imageName,
+      imageName: DEFAULT_IMAGE_NAME,
       data: data || {},
       metadata: metadata || {},
-      dockerBuildOutput: buildOutput,
       createdAt: new Date().toISOString()
     };
     
-    // Store the image
+    // Store the image reference
     images.push(newImage);
     
     return res.status(201).json({
-      message: 'Image created successfully',
+      message: 'Image reference created successfully',
       image: newImage
     });
   } catch (error) {
@@ -122,4 +91,4 @@ router.get('/:id', (req, res) => {
 });
 
 // Export images array for use in other modules
-module.exports = { router, images }; 
+module.exports = { router, images };

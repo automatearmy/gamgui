@@ -2,16 +2,13 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { SessionsTable, type Session as TableSession } from "@/components/sessions/SessionsTable";
 import { Plus, RefreshCw } from "lucide-react";
-import { getSessions, getImages, type Session as ApiSession } from "@/lib/api";
-import { Tooltip } from "@/components/ui/tooltip";
+import { getSessions, type Session as ApiSession } from "@/lib/api";
 
 export function SessionsPage({ onNavigate }: { onNavigate?: (path: string) => void }) {
   const [sessions, setSessions] = useState<TableSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [hasImages, setHasImages] = useState(true);
-
   // Function to fetch all sessions
   const fetchSessions = async () => {
     try {
@@ -48,23 +45,10 @@ export function SessionsPage({ onNavigate }: { onNavigate?: (path: string) => vo
     }
   };
   
-  // Fetch all sessions and check for images on component mount
+  // Fetch all sessions on component mount
   useEffect(() => {
     setIsLoading(true);
     fetchSessions();
-    
-    // Check if any images exist
-    const checkImages = async () => {
-      try {
-        const imagesResponse = await getImages();
-        setHasImages(Array.isArray(imagesResponse) && imagesResponse.length > 0);
-      } catch (err) {
-        console.error("Failed to fetch images:", err);
-        setHasImages(false);
-      }
-    };
-    
-    checkImages();
   }, []);
 
   const handleRefresh = () => {
@@ -122,19 +106,10 @@ export function SessionsPage({ onNavigate }: { onNavigate?: (path: string) => vo
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           </Button>
           
-          {hasImages ? (
-            <Button onClick={handleNewSession} className="shrink-0">
-              <Plus className="h-4 w-4" />
-              New Session
-            </Button>
-          ) : (
-            <Tooltip content="No Docker images available. Please create an image in Settings first">
-              <Button disabled className="shrink-0 cursor-not-allowed">
-                <Plus className="h-4 w-4" />
-                New Session
-              </Button>
-            </Tooltip>
-          )}
+          <Button onClick={handleNewSession} className="shrink-0">
+            <Plus className="h-4 w-4" />
+            New Session
+          </Button>
         </div>
       </div>
 

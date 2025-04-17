@@ -9,6 +9,13 @@ const router = express.Router();
 // Initialize Docker client
 const docker = new Docker();
 
+// Default pre-built image to use if no images are available
+const DEFAULT_IMAGE = {
+  id: "default-gam-image",
+  name: "Default GAM Image",
+  imageName: "docker-gam7:latest"
+};
+
 // In-memory storage for sessions (replace with a database in production)
 const sessions = [];
 
@@ -28,14 +35,17 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: 'Session name is required' });
     }
     
-    if (!imageId) {
-      return res.status(400).json({ message: 'Image ID is required' });
+    // Find the image by ID or use default image
+    let image;
+    
+    if (imageId) {
+      image = images.find(img => img.id === imageId);
     }
     
-    // Find the image by ID
-    const image = images.find(img => img.id === imageId);
+    // If no image is found or no imageId provided, use the default image
     if (!image) {
-      return res.status(404).json({ message: 'Image not found' });
+      console.log('Using default GAM image for session');
+      image = DEFAULT_IMAGE;
     }
     
     // Generate session ID
