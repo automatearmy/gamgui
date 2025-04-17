@@ -2,14 +2,10 @@ const express = require('express');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
-const { sessions } = require('./sessionRoutes');
-const Docker = require('dockerode');
+const { sessions, containerSessions } = require('./sessionRoutes');
 const { promisify } = require('util');
 const chmodAsync = promisify(fs.chmod);
 const router = express.Router();
-
-// Initialize Docker client
-const docker = new Docker();
 
 // Set up multer for file uploads
 const storage = multer.diskStorage({
@@ -33,7 +29,7 @@ const upload = multer({ storage });
 
 /**
  * @route   POST /api/sessions/:id/files
- * @desc    Upload files to a session container
+ * @desc    Upload files to a virtual session
  * @access  Public
  */
 router.post('/:id/files', upload.array('files'), async (req, res) => {
@@ -51,30 +47,22 @@ router.post('/:id/files', upload.array('files'), async (req, res) => {
       return res.status(404).json({ message: 'Session not found' });
     }
     
-    // Get the container
-    const container = docker.getContainer(session.containerId);
-    
-    // Check if container is running
-    const containerData = await container.inspect();
-    if (!containerData.State.Running) {
-      return res.status(400).json({ message: 'Container is not running' });
+    // Get container info from map
+    const containerInfo = containerSessions.get(sessionId);
+    if (!containerInfo) {
+      return res.status(404).json({ message: 'Virtual session not found' });
     }
     
-    // Ensure the uploads directory in the container has the right permissions
-    await container.exec({
-      Cmd: ['mkdir', '-p', '/gam/uploads'],
-      AttachStdout: true,
-      AttachStderr: true
-    }).then(exec => exec.start());
+    // Ensure the uploads directory exists
+    const tempDir = path.join(__dirname, '../temp-uploads');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
     
     // Set proper permissions on the uploads directory
-    await container.exec({
-      Cmd: ['chmod', '755', '/gam/uploads'],
-      AttachStdout: true,
-      AttachStderr: true
-    }).then(exec => exec.start());
+    await chmodAsync(tempDir, 0o755);
     
-    // Use the mounted volume instead of copying files to the container
+    // Process the uploaded files
     const uploadedFiles = [];
     
     for (const file of files) {
@@ -82,20 +70,21 @@ router.post('/:id/files', upload.array('files'), async (req, res) => {
       const fileName = file.originalname;
       
       // Set appropriate permissions on the uploaded file
-      // This ensures the container can read and write to the file
       await chmodAsync(filePath, 0o644);
       
       // Add to uploaded files list
-      // The path is now relative to the mounted volume in the container
       uploadedFiles.push({
         name: fileName,
         size: file.size,
         path: `/gam/uploads/${fileName}`
       });
       
-      // Note: We're not removing the file since it needs to be accessible
-      // via the mounted volume. Files should be cleaned up by a separate process
-      // or when the session ends.
+      // Update the virtual file system if it exists
+      if (containerInfo.fs && containerInfo.fs.files['/gam/uploads']) {
+        if (!containerInfo.fs.files['/gam/uploads'].includes(fileName)) {
+          containerInfo.fs.files['/gam/uploads'].push(fileName);
+        }
+      }
     }
     
     return res.status(200).json({
