@@ -188,16 +188,27 @@ module.exports = (io) => {
                   outputStream.push(`cat: ${fileName}: No such file or directory\n`);
                 }
               } else if (input.startsWith('bash ')) {
-                // Execute bash scripts
+                // Execute bash scripts using spawn for better streaming
                 const fileName = input.substring(5).trim();
                 const filePath = path.join(__dirname, '../temp-uploads', fileName);
                 
                 if (fs.existsSync(filePath)) {
                   try {
+                    // Log the script being executed for debugging
+                    console.log(`Executing bash script: ${fileName}`);
                     outputStream.push(`Executing script: ${fileName}...\n`);
                     
-                    const { exec } = require('child_process');
-                    exec(`bash ${filePath}`, { cwd: '/gam' }, (error, stdout, stderr) => {
+                    // Use spawn instead of exec for better streaming of output
+                    const { spawn } = require('child_process');
+                    
+                    // Spawn the process
+                    const bashProcess = spawn('bash', [filePath], { 
+                      cwd: '/gam',
+                      shell: true
+                    });
+                    
+                    // Handle stdout data
+                    bashProcess.stdout.on('data', (data) => {
                       // Check if session still exists
                       const sessionStillExists = sessions.find(s => s.id === sessionId);
                       const containerInfoStillExists = containerSessions.get(sessionId);
@@ -207,17 +218,46 @@ module.exports = (io) => {
                         return;
                       }
                       
-                      if (error) {
-                        outputStream.push(`Error executing script: ${error.message}\n`);
+                      // Send output to client
+                      const output = data.toString();
+                      console.log(`Bash stdout: ${output}`);
+                      outputStream.push(output);
+                    });
+                    
+                    // Handle stderr data
+                    bashProcess.stderr.on('data', (data) => {
+                      // Check if session still exists
+                      const sessionStillExists = sessions.find(s => s.id === sessionId);
+                      const containerInfoStillExists = containerSessions.get(sessionId);
+                      
+                      if (!sessionStillExists || !containerInfoStillExists) {
+                        console.error(`Session ${sessionId} no longer exists during bash execution`);
+                        return;
+                      }
+                      
+                      // Send error output to client
+                      const errorOutput = data.toString();
+                      console.log(`Bash stderr: ${errorOutput}`);
+                      outputStream.push(errorOutput);
+                    });
+                    
+                    // Handle process completion
+                    bashProcess.on('close', (code) => {
+                      // Check if session still exists
+                      const sessionStillExists = sessions.find(s => s.id === sessionId);
+                      const containerInfoStillExists = containerSessions.get(sessionId);
+                      
+                      if (!sessionStillExists || !containerInfoStillExists) {
+                        console.error(`Session ${sessionId} no longer exists during bash execution`);
+                        return;
+                      }
+                      
+                      console.log(`Bash process exited with code ${code}`);
+                      
+                      if (code !== 0) {
+                        outputStream.push(`\nScript exited with code ${code}\n`);
                       } else {
-                        if (stderr && stderr.trim() !== '') {
-                          outputStream.push(`${stderr}\n`);
-                        }
-                        if (stdout && stdout.trim() !== '') {
-                          outputStream.push(`${stdout}\n`);
-                        } else {
-                          outputStream.push(`Script executed successfully (no output)\n`);
-                        }
+                        outputStream.push(`\nScript executed successfully\n`);
                       }
                       
                       // Add prompt after command execution
@@ -226,53 +266,126 @@ module.exports = (io) => {
                       }, 100);
                     });
                     
+                    // Handle process errors
+                    bashProcess.on('error', (err) => {
+                      console.error(`Error spawning bash process: ${err.message}`);
+                      outputStream.push(`Error executing script: ${err.message}\n`);
+                      
+                      // Add prompt after error
+                      setTimeout(() => {
+                        outputStream.push('$ ');
+                      }, 100);
+                    });
+                    
                     // Don't add prompt here - it will be added after command completes
                     return;
                   } catch (err) {
+                    console.error(`Exception executing bash script: ${err.message}`);
                     outputStream.push(`Error executing script: ${err.message}\n`);
-                  }
-                } else {
-                  outputStream.push(`bash: ${fileName}: No such file or directory\n`);
-                }
-              } else if (input.startsWith('gam ')) {
-                // Execute real GAM commands
-                try {
-                  outputStream.push(`Executing GAM command...\n`);
-                  
-                  const { exec } = require('child_process');
-                  exec(input, { cwd: '/gam' }, (error, stdout, stderr) => {
-                    // Check if session still exists
-                    const sessionStillExists = sessions.find(s => s.id === sessionId);
-                    const containerInfoStillExists = containerSessions.get(sessionId);
                     
-                    if (!sessionStillExists || !containerInfoStillExists) {
-                      console.error(`Session ${sessionId} no longer exists during GAM execution`);
-                      return;
-                    }
-                    
-                    if (error) {
-                      outputStream.push(`Error executing GAM command: ${error.message}\n`);
-                    } else {
-                      if (stderr && stderr.trim() !== '') {
-                        outputStream.push(`${stderr}\n`);
-                      }
-                      if (stdout && stdout.trim() !== '') {
-                        outputStream.push(`${stdout}\n`);
-                      } else {
-                        outputStream.push(`Command executed successfully (no output)\n`);
-                      }
-                    }
-                    
-                    // Add prompt after command execution
+                    // Add prompt after error
                     setTimeout(() => {
                       outputStream.push('$ ');
                     }, 100);
+                  }
+                } else {
+                  outputStream.push(`bash: ${fileName}: No such file or directory\n`);
+                  
+                  // Add prompt after error
+                  setTimeout(() => {
+                    outputStream.push('$ ');
+                  }, 100);
+                }
+              } else if (input.startsWith('gam ')) {
+                // Execute GAM commands in a Docker container
+                try {
+                  // Log the command being executed for debugging
+                  console.log(`Executing GAM command: ${input}`);
+                  outputStream.push(`Executing GAM command: ${input}\n`);
+                  
+                  // Get the command without the 'gam' prefix
+                  const gamCommand = input.substring(4).trim();
+                  
+                  // Import the Docker GAM utility
+                  const { executeGamCommand } = require('../utils/dockerGam');
+                  
+                  // Execute the command in a Docker container
+                  const gamProcess = executeGamCommand(gamCommand, {
+                    cwd: process.cwd(),
+                    onStdout: (data) => {
+                      // Check if session still exists
+                      const sessionStillExists = sessions.find(s => s.id === sessionId);
+                      const containerInfoStillExists = containerSessions.get(sessionId);
+                      
+                      if (!sessionStillExists || !containerInfoStillExists) {
+                        console.error(`Session ${sessionId} no longer exists during GAM execution`);
+                        return;
+                      }
+                      
+                      // Send output to client
+                      const output = data.toString();
+                      console.log(`GAM stdout: ${output}`);
+                      outputStream.push(output);
+                    },
+                    onStderr: (data) => {
+                      // Check if session still exists
+                      const sessionStillExists = sessions.find(s => s.id === sessionId);
+                      const containerInfoStillExists = containerSessions.get(sessionId);
+                      
+                      if (!sessionStillExists || !containerInfoStillExists) {
+                        console.error(`Session ${sessionId} no longer exists during GAM execution`);
+                        return;
+                      }
+                      
+                      // Send error output to client
+                      const errorOutput = data.toString();
+                      console.log(`GAM stderr: ${errorOutput}`);
+                      outputStream.push(errorOutput);
+                    },
+                    onClose: (code) => {
+                      // Check if session still exists
+                      const sessionStillExists = sessions.find(s => s.id === sessionId);
+                      const containerInfoStillExists = containerSessions.get(sessionId);
+                      
+                      if (!sessionStillExists || !containerInfoStillExists) {
+                        console.error(`Session ${sessionId} no longer exists during GAM execution`);
+                        return;
+                      }
+                      
+                      console.log(`GAM process exited with code ${code}`);
+                      
+                      if (code !== 0) {
+                        outputStream.push(`\nGAM command exited with code ${code}\n`);
+                      } else {
+                        outputStream.push(`\nGAM command completed successfully\n`);
+                      }
+                      
+                      // Add prompt after command execution
+                      setTimeout(() => {
+                        outputStream.push('$ ');
+                      }, 100);
+                    },
+                    onError: (err) => {
+                      console.error(`Error spawning GAM process: ${err.message}`);
+                      outputStream.push(`Error executing GAM command: ${err.message}\n`);
+                      
+                      // Add prompt after error
+                      setTimeout(() => {
+                        outputStream.push('$ ');
+                      }, 100);
+                    }
                   });
                   
                   // Don't add prompt here - it will be added after command completes
                   return;
                 } catch (err) {
+                  console.error(`Exception executing GAM command: ${err.message}`);
                   outputStream.push(`Error executing GAM command: ${err.message}\n`);
+                  
+                  // Add prompt after error
+                  setTimeout(() => {
+                    outputStream.push('$ ');
+                  }, 100);
                 }
               } else {
                 outputStream.push(`Command not found: ${input}\n`);
