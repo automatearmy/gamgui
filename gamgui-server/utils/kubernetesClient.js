@@ -45,12 +45,15 @@ const namespace = process.env.K8S_NAMESPACE || 'gamgui';
  * Create a pod for a GAM session
  * @param {string} sessionId - The session ID
  * @param {object} options - Options for the pod
+ * @param {string} options.cpu - CPU resource limit
+ * @param {string} options.memory - Memory resource limit
+ * @param {string} options.credentialsSecret - Name of the credentials secret (default: gam-credentials)
  * @returns {Promise<object>} - The created pod
  */
 async function createSessionPod(sessionId, options = {}) {
   try {
     // Generate a unique name for the pod based on the session ID
-    const podName = `gam-session-${sessionId.substring(0, 8)}`;
+    const podName = `gam-session-${sessionId}`;
     
     // Get the pod template from the config map
     const podTemplate = {
@@ -119,8 +122,7 @@ async function createSessionPod(sessionId, options = {}) {
           {
             name: 'gam-credentials',
             secret: {
-              secretName: 'gam-credentials',
-              optional: true
+              secretName: options.credentialsSecret || 'gam-credentials'
             }
           },
           {
@@ -157,7 +159,7 @@ async function createSessionPod(sessionId, options = {}) {
 async function deleteSessionPod(sessionId) {
   try {
     // Generate the pod name based on the session ID
-    const podName = `gam-session-${sessionId.substring(0, 8)}`;
+    const podName = `gam-session-${sessionId}`;
     
     // Delete the pod
     const response = await k8sCoreV1Api.deleteNamespacedPod(podName, namespace);
@@ -180,7 +182,7 @@ async function deleteSessionPod(sessionId) {
 async function executeCommandInPod(sessionId, command) {
   try {
     // Generate the pod name based on the session ID
-    const podName = `gam-session-${sessionId.substring(0, 8)}`;
+    const podName = `gam-session-${sessionId}`;
     
     // Create an exec instance
     const exec = new k8s.Exec(kc);
@@ -224,7 +226,7 @@ async function executeCommandInPod(sessionId, command) {
 async function getPodStatus(sessionId) {
   try {
     // Generate the pod name based on the session ID
-    const podName = `gam-session-${sessionId.substring(0, 8)}`;
+    const podName = `gam-session-${sessionId}`;
     
     // Get the pod
     const response = await k8sCoreV1Api.readNamespacedPod(podName, namespace);
@@ -246,7 +248,7 @@ async function getPodStatus(sessionId) {
 async function uploadFileToPod(sessionId, localFilePath, podFilePath) {
   try {
     // Generate the pod name based on the session ID
-    const podName = `gam-session-${sessionId.substring(0, 8)}`;
+    const podName = `gam-session-${sessionId}`;
     
     // Read the file
     const fileContent = fs.readFileSync(localFilePath);
@@ -321,7 +323,7 @@ async function uploadFileToPod(sessionId, localFilePath, podFilePath) {
 async function downloadFileFromPod(sessionId, podFilePath, localFilePath) {
   try {
     // Generate the pod name based on the session ID
-    const podName = `gam-session-${sessionId.substring(0, 8)}`;
+    const podName = `gam-session-${sessionId}`;
     
     // Create an exec instance
     const exec = new k8s.Exec(kc);

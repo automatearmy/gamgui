@@ -114,13 +114,13 @@ export async function getSession(sessionId: string) {
   }
 }
 
-export async function createSession(name: string, imageId: string, config = {}) {
+export async function createSession(name: string, imageId: string, config = {}, credentialsSecret?: string) {
   const response = await fetch(`${API_BASE_URL}/sessions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ name, imageId, config }),
+    body: JSON.stringify({ name, imageId, config, credentialsSecret }),
   });
   
   return response.json();
@@ -151,6 +151,11 @@ export async function uploadSessionFiles(sessionId: string, files: File[]) {
 
 export async function getImages() {
   const response = await fetch(`${API_BASE_URL}/images`);
+  return response.json();
+}
+
+export async function getCredentialSecrets() {
+  const response = await fetch(`${API_BASE_URL}/credentials/secrets`);
   return response.json();
 }
 

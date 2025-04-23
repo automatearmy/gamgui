@@ -32,7 +32,7 @@ const containerSessions = new Map();
  */
 router.post('/', async (req, res) => {
   try {
-    const { name, imageId, config } = req.body;
+    const { name, imageId, config, credentialsSecret } = req.body;
     
     if (!name) {
       return res.status(400).json({ message: 'Session name is required' });
@@ -90,7 +90,8 @@ router.post('/', async (req, res) => {
         // Create a pod for the session
         const pod = await k8s.createSessionPod(sessionId, {
           cpu: config?.resources?.cpu || '500m',
-          memory: config?.resources?.memory || '512Mi'
+          memory: config?.resources?.memory || '512Mi',
+          credentialsSecret: credentialsSecret || 'gam-credentials'
         });
         
         // Store Kubernetes pod information

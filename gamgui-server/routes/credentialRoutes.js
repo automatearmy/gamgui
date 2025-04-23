@@ -3,7 +3,7 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const router = express.Router();
-const { saveToSecretManager, getFromSecretManager } = require('../utils/secretManager');
+const { saveToSecretManager, getFromSecretManager, listSecrets } = require('../utils/secretManager');
 
 // Set up multer for file uploads
 const storage = multer.diskStorage({
@@ -196,6 +196,27 @@ router.delete('/', (req, res) => {
     });
   } catch (error) {
     console.error('Error deleting credentials:', error);
+    return res.status(500).json({ 
+      message: 'Server error', 
+      error: error.message 
+    });
+  }
+});
+
+/**
+ * @route   GET /api/credentials/secrets
+ * @desc    Get a list of all credential secrets from Secret Manager
+ * @access  Public
+ */
+router.get('/secrets', async (req, res) => {
+  try {
+    const secrets = await listSecrets();
+    
+    return res.status(200).json({
+      secrets
+    });
+  } catch (error) {
+    console.error('Error listing credential secrets:', error);
     return res.status(500).json({ 
       message: 'Server error', 
       error: error.message 

@@ -133,6 +133,12 @@ Access the application at: http://localhost:5173
 - Seamless user experience regardless of the backend
 - Automatic pod cleanup when sessions end
 
+### Terraform Integration (NEW)
+- Support for Terraform-managed infrastructure
+- Custom credential secrets for different sessions
+- Improved error reporting for missing secrets
+- Full session ID for better traceability
+
 ## Development
 
 ### Server Structure
@@ -160,7 +166,7 @@ The application provides a RESTful API for interacting with GAM containers and K
 - **Credentials**: `/api/credentials` - Manage GAM credentials
 - **Files**: `/api/sessions/:id/files` - File operations within sessions
 
-For detailed API documentation, see the [Server README](gamgui-server/README.md) and [Kubernetes Integration](gamgui-server/KUBERNETES_INTEGRATION.md).
+For detailed API documentation, see the [Server README](gamgui-server/README.md), [Kubernetes Integration](gamgui-server/KUBERNETES_INTEGRATION.md), and [Terraform Integration](docs/TERRAFORM_INTEGRATION.md).
 
 ## WebSocket Integration
 
