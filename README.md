@@ -19,6 +19,7 @@ The application consists of two main components:
 
 An Express.js API server that provides:
 - Docker container management
+- Kubernetes pod management (NEW)
 - Session handling
 - Real-time terminal interaction via WebSockets
 - Credential management
@@ -32,6 +33,14 @@ A React-based web application that offers:
 - Session management UI
 - Responsive design with Tailwind CSS
 
+### 3. Kubernetes Integration (NEW)
+
+The application now supports running GAM sessions in Kubernetes pods:
+- Isolated execution environment for each session
+- Better resource management and scalability
+- Automatic fallback to Docker if Kubernetes is not available
+- Seamless user experience regardless of the backend
+
 ## Prerequisites
 
 - Docker installed and running
@@ -41,6 +50,10 @@ A React-based web application that offers:
   - `oauth2service.json`
   - `oauth2.txt`
   - `client_secrets.json`
+- For Kubernetes integration (optional):
+  - Access to a Kubernetes cluster (e.g., GKE)
+  - `kubectl` command-line tool configured
+  - Kubernetes namespace and service account
 
 ## Getting Started
 
@@ -99,18 +112,32 @@ Access the application at: http://localhost:5173
 - View available images
 
 ### Session Management
-- Create persistent sessions with running containers
+- Create persistent sessions with running containers or Kubernetes pods
 - Connect to active sessions
 - Manage multiple concurrent sessions
+- Automatic fallback between Kubernetes and Docker
 
 ### Terminal Interaction
 - Real-time command execution via WebSocket
 - Terminal emulation in the browser
 - Command history and output viewing
+- Execute commands in Kubernetes pods or Docker containers
 
 ### Credential Management
-- Securely use GAM credentials in Docker containers
+- Securely use GAM credentials in Docker containers and Kubernetes pods
 - Support for multiple credential sets
+
+### Kubernetes Integration (NEW)
+- Run GAM sessions in isolated Kubernetes pods
+- Better resource management and scalability
+- Seamless user experience regardless of the backend
+- Automatic pod cleanup when sessions end
+
+### Terraform Integration (NEW)
+- Support for Terraform-managed infrastructure
+- Custom credential secrets for different sessions
+- Improved error reporting for missing secrets
+- Full session ID for better traceability
 
 ## Development
 
@@ -118,22 +145,28 @@ Access the application at: http://localhost:5173
 - Express.js with RESTful API endpoints
 - Socket.io for real-time communication
 - Dockerode for Docker API integration
+- Kubernetes client for pod management
 
 ### Frontend Structure
 - React with React Router
 - Tailwind CSS for styling
 - xterm.js for terminal emulation
 
+### Kubernetes Integration
+- @kubernetes/client-node for Kubernetes API integration
+- Pod templates for GAM sessions
+- Fallback mechanism for environments without Kubernetes
+
 ## API Documentation
 
-The application provides a RESTful API for interacting with GAM containers. Key endpoints include:
+The application provides a RESTful API for interacting with GAM containers and Kubernetes pods. Key endpoints include:
 
 - **Images**: `/api/images` - Manage Docker images
-- **Sessions**: `/api/sessions` - Manage container sessions
+- **Sessions**: `/api/sessions` - Manage container sessions and Kubernetes pods
 - **Credentials**: `/api/credentials` - Manage GAM credentials
 - **Files**: `/api/sessions/:id/files` - File operations within sessions
 
-For detailed API documentation, see the [Server README](gamgui-server/README.md).
+For detailed API documentation, see the [Server README](gamgui-server/README.md), [Kubernetes Integration](gamgui-server/KUBERNETES_INTEGRATION.md), and [Terraform Integration](docs/TERRAFORM_INTEGRATION.md).
 
 ## WebSocket Integration
 
@@ -141,10 +174,13 @@ Real-time terminal interaction is facilitated through WebSockets:
 
 - **Namespace**: `/terminal`
 - **Events**:
-  - `join-session`: Connect to a session
-  - `terminal-input`: Send commands
-  - `terminal-output`: Receive command output
+  - `join-session`: Connect to a session (Docker container or Kubernetes pod)
+  - `terminal-input`: Send commands to the session
+  - `terminal-output`: Receive command output from the session
+  - `session-joined`: Confirmation that the session was joined successfully
+  - `session-left`: Confirmation that the session was left successfully
+  - `error`: Error messages from the session
 
 ## License
 
-[Add your license here] 
+[Add your license here]

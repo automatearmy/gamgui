@@ -3,7 +3,11 @@ const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs');
 const { images } = require('./imageRoutes');
+const k8s = require('../utils/kubernetesClient');
 const router = express.Router();
+
+// Check if Kubernetes is enabled
+const KUBERNETES_ENABLED = process.env.GKE_CLUSTER_NAME && process.env.GKE_CLUSTER_LOCATION;
 
 // Default pre-built image to use if no images are available
 const DEFAULT_IMAGE = {
@@ -23,12 +27,12 @@ const containerSessions = new Map();
 
 /**
  * @route   POST /api/sessions
- * @desc    Create a new virtual session
+ * @desc    Create a new session (virtual or Kubernetes pod)
  * @access  Public
  */
 router.post('/', async (req, res) => {
   try {
-    const { name, imageId, config } = req.body;
+    const { name, imageId, config, credentialsSecret } = req.body;
     
     if (!name) {
       return res.status(400).json({ message: 'Session name is required' });
@@ -52,24 +56,11 @@ router.post('/', async (req, res) => {
     const containerName = `gam-session-${sessionId.substring(0, 8)}`;
     const containerId = `virtual-container-${sessionId}`;
     
-    // Create a virtual session instead of a Docker container
-    console.log(`Creating virtual session with image: ${image.imageName}`);
-    
     // Ensure temp-uploads directory exists
     const tempUploadsDir = path.resolve(__dirname, '../temp-uploads');
     if (!fs.existsSync(tempUploadsDir)) {
       fs.mkdirSync(tempUploadsDir, { recursive: true });
     }
-    
-    // Store virtual container information
-    const containerInfo = {
-      id: containerId,
-      sessionId,
-      stream: null,
-      virtual: true
-    };
-    
-    containerSessions.set(sessionId, containerInfo);
     
     // Create the session record
     const newSession = {
@@ -87,6 +78,59 @@ router.post('/', async (req, res) => {
     
     // Store the session
     sessions.push(newSession);
+    
+    // Container information
+    let containerInfo;
+    
+    // Check if Kubernetes is enabled
+    if (KUBERNETES_ENABLED) {
+      try {
+        console.log(`Creating Kubernetes pod for session: ${sessionId}`);
+        
+        // Create a pod for the session
+        const pod = await k8s.createSessionPod(sessionId, {
+          cpu: config?.resources?.cpu || '500m',
+          memory: config?.resources?.memory || '512Mi',
+          credentialsSecret: credentialsSecret || 'gam-credentials'
+        });
+        
+        // Store Kubernetes pod information
+        containerInfo = {
+          id: containerId,
+          sessionId,
+          podName: pod.metadata.name,
+          kubernetes: true,
+          stream: null
+        };
+        
+        console.log(`Created Kubernetes pod: ${pod.metadata.name} for session: ${sessionId}`);
+      } catch (k8sError) {
+        console.error(`Error creating Kubernetes pod for session ${sessionId}:`, k8sError);
+        
+        // Fall back to virtual session if Kubernetes pod creation fails
+        console.log(`Falling back to virtual session for: ${sessionId}`);
+        
+        containerInfo = {
+          id: containerId,
+          sessionId,
+          stream: null,
+          virtual: true
+        };
+      }
+    } else {
+      // Create a virtual session
+      console.log(`Creating virtual session with image: ${image.imageName}`);
+      
+      containerInfo = {
+        id: containerId,
+        sessionId,
+        stream: null,
+        virtual: true
+      };
+    }
+    
+    // Store container information
+    containerSessions.set(sessionId, containerInfo);
     
     return res.status(201).json({
       message: 'Session created successfully',
@@ -127,7 +171,7 @@ router.get('/:id', (req, res) => {
 
 /**
  * @route   DELETE /api/sessions/:id
- * @desc    Stop and remove a virtual session
+ * @desc    Stop and remove a session (virtual or Kubernetes pod)
  * @access  Public
  */
 router.delete('/:id', async (req, res) => {
@@ -141,9 +185,25 @@ router.delete('/:id', async (req, res) => {
     
     const session = sessions[sessionIndex];
     
-    // Get container info from map and remove it
-    if (containerSessions.has(sessionId)) {
-      console.log(`Removing virtual session: ${sessionId}`);
+    // Get container info from map
+    const containerInfo = containerSessions.get(sessionId);
+    
+    if (containerInfo) {
+      // Check if this is a Kubernetes pod
+      if (containerInfo.kubernetes) {
+        try {
+          console.log(`Deleting Kubernetes pod for session: ${sessionId}`);
+          await k8s.deleteSessionPod(sessionId);
+          console.log(`Deleted Kubernetes pod for session: ${sessionId}`);
+        } catch (k8sError) {
+          console.error(`Error deleting Kubernetes pod for session ${sessionId}:`, k8sError);
+          // Continue with session removal even if pod deletion fails
+        }
+      } else {
+        console.log(`Removing virtual session: ${sessionId}`);
+      }
+      
+      // Remove from container sessions map
       containerSessions.delete(sessionId);
     }
     

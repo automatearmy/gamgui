@@ -47,7 +47,7 @@ function executeGamCommand(command, options = {}) {
     '-v', `${credentialsPath}:/root/.gam`,  // Mount credentials
     '-v', `${uploadsDir}:/gam/uploads`,     // Mount uploads
     'gcr.io/gamgui-registry/docker-gam7:latest',  // Use the GAM image
-    '/gam/gam7/gam', command  // Execute the command with full path
+    '/bin/bash', '-c', `/gam/gam7/gam ${command}`  // Execute the command with bash to ensure proper argument handling
   ];
 
   console.log(`Executing Docker command: ${dockerCommand} ${dockerArgs.join(' ')}`);

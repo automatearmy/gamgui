@@ -2,6 +2,11 @@ const { containerSessions, sessions } = require('./sessionRoutes');
 const { Readable, Writable } = require('stream');
 const fs = require('fs');
 const path = require('path');
+const { spawn } = require('child_process');
+const k8s = require('../utils/kubernetesClient');
+
+// Check if Kubernetes is enabled
+const KUBERNETES_ENABLED = process.env.GKE_CLUSTER_NAME && process.env.GKE_CLUSTER_LOCATION;
 
 module.exports = (io) => {
   // Namespace for container terminal sessions
@@ -41,7 +46,7 @@ module.exports = (io) => {
         let containerInfo = containerSessions.get(sessionId);
         
         if (!containerInfo) {
-          return socket.emit('error', { message: 'Virtual session not found' });
+          return socket.emit('error', { message: 'Session not found' });
         }
         
         // Join the session room
@@ -57,8 +62,11 @@ module.exports = (io) => {
         socket.sessionId = sessionId;
         socket.containerInfo = containerInfo;
         
-        console.log(`Client ${socket.id} joined virtual session: ${sessionId}`);
+        console.log(`Client ${socket.id} joined session: ${sessionId}`);
         console.log(`Active connections for session ${sessionId}: ${activeSessions.get(sessionId).size}`);
+        
+        // Check if this is a Kubernetes pod
+        const isKubernetesPod = KUBERNETES_ENABLED && containerInfo.kubernetes;
         
         // Create a virtual terminal stream if it doesn't exist
         if (!containerInfo.stream) {
@@ -99,65 +107,113 @@ module.exports = (io) => {
             write(chunk, encoding, callback) {
               // Process the input and generate a response
               const input = chunk.toString().trim();
-              const fs = containerInfo.fs;
+              const vfs = containerInfo.fs;
               
               // Advanced command processing
               if (input.startsWith('echo ')) {
-                const output = input.substring(5) + '\n';
-                outputStream.push(output);
-              } else if (input === 'ls' || input === 'ls -la') {
-                const currentDirPath = fs.currentDir;
-                const currentDirName = currentDirPath.split('/').pop();
-                
-                if (currentDirPath === '/gam') {
-                  outputStream.push('uploads\n');
-                } else if (currentDirPath === '/gam/uploads') {
-                  // List actual files in the uploads directory
-                  const files = fs.files[currentDirPath] || [];
-                  if (files.length === 0) {
-                    outputStream.push('(empty directory)\n');
-                  } else {
-                    outputStream.push(files.join('\n') + '\n');
-                  }
+                if (isKubernetesPod) {
+                  // Execute echo command in Kubernetes pod
+                  executeCommandInPod(sessionId, input, outputStream);
                 } else {
-                  outputStream.push('(empty directory)\n');
+                  // Execute echo command in virtual terminal
+                  const output = input.substring(5) + '\n';
+                  outputStream.push(output);
+                }
+              } else if (input === 'ls' || input === 'ls -la') {
+                if (isKubernetesPod) {
+                  // Execute ls command in Kubernetes pod
+                  executeCommandInPod(sessionId, input, outputStream);
+                } else {
+                  // Execute ls command in virtual terminal
+                  const currentDirPath = vfs.currentDir;
+                  const currentDirName = currentDirPath.split('/').pop();
+                  
+                  if (currentDirPath === '/gam') {
+                    outputStream.push('uploads\n');
+                  } else if (currentDirPath === '/gam/uploads') {
+                    // Refresh the file list from the actual directory
+                    try {
+                      const uploadsDir = path.join(__dirname, '../temp-uploads');
+                      if (fs.existsSync(uploadsDir)) {
+                        const actualFiles = fs.readdirSync(uploadsDir);
+                        vfs.files[currentDirPath] = actualFiles;
+                        console.log(`Refreshed uploads directory: ${actualFiles.length} files found`);
+                      }
+                    } catch (err) {
+                      console.error('Error refreshing uploads directory:', err);
+                    }
+                    
+                    // List actual files in the uploads directory
+                    const files = vfs.files[currentDirPath] || [];
+                    if (files.length === 0) {
+                      outputStream.push('(empty directory)\n');
+                    } else {
+                      outputStream.push(files.join('\n') + '\n');
+                    }
+                  } else {
+                    outputStream.push('(empty directory)\n');
+                  }
                 }
               } else if (input.startsWith('cd ')) {
-                const targetDir = input.substring(3).trim();
-                
-                if (targetDir === '..') {
-                  // Move up one directory
-                  if (fs.currentDir !== '/gam') {
-                    fs.currentDir = fs.currentDir.split('/').slice(0, -1).join('/');
-                    if (fs.currentDir === '') fs.currentDir = '/';
-                  }
-                } else if (targetDir.startsWith('/')) {
-                  // Absolute path
-                  if (fs.dirs[targetDir]) {
-                    fs.currentDir = targetDir;
-                  } else {
-                    outputStream.push(`cd: no such directory: ${targetDir}\n`);
-                  }
+                if (isKubernetesPod) {
+                  // Execute cd command in Kubernetes pod
+                  executeCommandInPod(sessionId, input, outputStream);
                 } else {
-                  // Relative path
-                  const newPath = fs.currentDir === '/' 
-                    ? `/${targetDir}` 
-                    : `${fs.currentDir}/${targetDir}`;
+                  // Execute cd command in virtual terminal
+                  const targetDir = input.substring(3).trim();
                   
-                  if (fs.dirs[newPath]) {
-                    fs.currentDir = newPath;
+                  if (targetDir === '..') {
+                    // Move up one directory
+                    if (vfs.currentDir !== '/gam') {
+                      vfs.currentDir = vfs.currentDir.split('/').slice(0, -1).join('/');
+                      if (vfs.currentDir === '') vfs.currentDir = '/';
+                    }
+                  } else if (targetDir.startsWith('/')) {
+                    // Absolute path
+                    if (vfs.dirs[targetDir]) {
+                      vfs.currentDir = targetDir;
+                    } else {
+                      outputStream.push(`cd: no such directory: ${targetDir}\n`);
+                    }
                   } else {
-                    outputStream.push(`cd: no such directory: ${targetDir}\n`);
+                    // Relative path
+                    const newPath = vfs.currentDir === '/' 
+                      ? `/${targetDir}` 
+                      : `${vfs.currentDir}/${targetDir}`;
+                    
+                    if (vfs.dirs[newPath]) {
+                      vfs.currentDir = newPath;
+                    } else {
+                      outputStream.push(`cd: no such directory: ${targetDir}\n`);
+                    }
                   }
                 }
               } else if (input === 'pwd') {
-                outputStream.push(`${fs.currentDir}\n`);
+                if (isKubernetesPod) {
+                  // Execute pwd command in Kubernetes pod
+                  executeCommandInPod(sessionId, input, outputStream);
+                } else {
+                  // Execute pwd command in virtual terminal
+                  outputStream.push(`${vfs.currentDir}\n`);
+                }
               } else if (input === 'whoami') {
-                outputStream.push('gam-user\n');
+                if (isKubernetesPod) {
+                  // Execute whoami command in Kubernetes pod
+                  executeCommandInPod(sessionId, input, outputStream);
+                } else {
+                  // Execute whoami command in virtual terminal
+                  outputStream.push('gam-user\n');
+                }
               } else if (input === 'date') {
-                outputStream.push(new Date().toString() + '\n');
+                if (isKubernetesPod) {
+                  // Execute date command in Kubernetes pod
+                  executeCommandInPod(sessionId, input, outputStream);
+                } else {
+                  // Execute date command in virtual terminal
+                  outputStream.push(new Date().toString() + '\n');
+                }
               } else if (input === 'help') {
-                outputStream.push('GAM Virtual Terminal\n');
+                outputStream.push('GAM Terminal\n');
                 outputStream.push('Available commands:\n');
                 outputStream.push('  echo [text]    - Display text\n');
                 outputStream.push('  ls             - List files in current directory\n');
@@ -170,225 +226,64 @@ module.exports = (io) => {
                 outputStream.push('  date           - Show current date and time\n');
                 outputStream.push('  help           - Show this help message\n');
               } else if (input.startsWith('cat ')) {
-                const fileName = input.substring(4).trim();
-                const filePath = fs.currentDir === '/gam' 
-                  ? `/gam/uploads/${fileName}` 
-                  : `${fs.currentDir}/${fileName}`;
-                
-                // Check if file exists in virtual file system
-                if (fs.currentDir === '/gam/uploads' && fs.files['/gam/uploads'].includes(fileName)) {
-                  try {
-                    // Try to read the actual file
-                    const fileContent = fs.readFileSync(path.join(__dirname, '../temp-uploads', fileName), 'utf8');
-                    outputStream.push(fileContent + '\n');
-                  } catch (err) {
-                    outputStream.push(`Error reading file: ${err.message}\n`);
-                  }
+                if (isKubernetesPod) {
+                  // Execute cat command in Kubernetes pod
+                  executeCommandInPod(sessionId, input, outputStream);
                 } else {
-                  outputStream.push(`cat: ${fileName}: No such file or directory\n`);
+                  // Execute cat command in virtual terminal
+                  const fileName = input.substring(4).trim();
+                  const filePath = vfs.currentDir === '/gam' 
+                    ? `/gam/uploads/${fileName}` 
+                    : `${vfs.currentDir}/${fileName}`;
+                  
+                  // Check if file exists in the actual filesystem
+                  const actualFilePath = path.join(__dirname, '../temp-uploads', fileName);
+                  if (fs.existsSync(actualFilePath)) {
+                    try {
+                      // Update virtual filesystem if needed
+                      if (vfs.currentDir === '/gam/uploads' && !vfs.files['/gam/uploads'].includes(fileName)) {
+                        vfs.files['/gam/uploads'].push(fileName);
+                        console.log(`Added ${fileName} to virtual filesystem`);
+                      }
+                      
+                      // Try to read the actual file
+                      const fileContent = fs.readFileSync(actualFilePath, 'utf8');
+                      outputStream.push(fileContent + '\n');
+                    } catch (err) {
+                      outputStream.push(`Error reading file: ${err.message}\n`);
+                    }
+                  } else {
+                    outputStream.push(`cat: ${fileName}: No such file or directory\n`);
+                  }
                 }
               } else if (input.startsWith('bash ')) {
-                // Execute bash scripts using spawn for better streaming
-                const fileName = input.substring(5).trim();
-                const filePath = path.join(__dirname, '../temp-uploads', fileName);
-                
-                if (fs.existsSync(filePath)) {
-                  try {
-                    // Log the script being executed for debugging
-                    console.log(`Executing bash script: ${fileName}`);
-                    outputStream.push(`Executing script: ${fileName}...\n`);
-                    
-                    // Use spawn instead of exec for better streaming of output
-                    const { spawn } = require('child_process');
-                    
-                    // Spawn the process
-                    const bashProcess = spawn('bash', [filePath], { 
-                      cwd: '/gam',
-                      shell: true
-                    });
-                    
-                    // Handle stdout data
-                    bashProcess.stdout.on('data', (data) => {
-                      // Check if session still exists
-                      const sessionStillExists = sessions.find(s => s.id === sessionId);
-                      const containerInfoStillExists = containerSessions.get(sessionId);
-                      
-                      if (!sessionStillExists || !containerInfoStillExists) {
-                        console.error(`Session ${sessionId} no longer exists during bash execution`);
-                        return;
-                      }
-                      
-                      // Send output to client
-                      const output = data.toString();
-                      console.log(`Bash stdout: ${output}`);
-                      outputStream.push(output);
-                    });
-                    
-                    // Handle stderr data
-                    bashProcess.stderr.on('data', (data) => {
-                      // Check if session still exists
-                      const sessionStillExists = sessions.find(s => s.id === sessionId);
-                      const containerInfoStillExists = containerSessions.get(sessionId);
-                      
-                      if (!sessionStillExists || !containerInfoStillExists) {
-                        console.error(`Session ${sessionId} no longer exists during bash execution`);
-                        return;
-                      }
-                      
-                      // Send error output to client
-                      const errorOutput = data.toString();
-                      console.log(`Bash stderr: ${errorOutput}`);
-                      outputStream.push(errorOutput);
-                    });
-                    
-                    // Handle process completion
-                    bashProcess.on('close', (code) => {
-                      // Check if session still exists
-                      const sessionStillExists = sessions.find(s => s.id === sessionId);
-                      const containerInfoStillExists = containerSessions.get(sessionId);
-                      
-                      if (!sessionStillExists || !containerInfoStillExists) {
-                        console.error(`Session ${sessionId} no longer exists during bash execution`);
-                        return;
-                      }
-                      
-                      console.log(`Bash process exited with code ${code}`);
-                      
-                      if (code !== 0) {
-                        outputStream.push(`\nScript exited with code ${code}\n`);
-                      } else {
-                        outputStream.push(`\nScript executed successfully\n`);
-                      }
-                      
-                      // Add prompt after command execution
-                      setTimeout(() => {
-                        outputStream.push('$ ');
-                      }, 100);
-                    });
-                    
-                    // Handle process errors
-                    bashProcess.on('error', (err) => {
-                      console.error(`Error spawning bash process: ${err.message}`);
-                      outputStream.push(`Error executing script: ${err.message}\n`);
-                      
-                      // Add prompt after error
-                      setTimeout(() => {
-                        outputStream.push('$ ');
-                      }, 100);
-                    });
-                    
-                    // Don't add prompt here - it will be added after command completes
-                    return;
-                  } catch (err) {
-                    console.error(`Exception executing bash script: ${err.message}`);
-                    outputStream.push(`Error executing script: ${err.message}\n`);
-                    
-                    // Add prompt after error
-                    setTimeout(() => {
-                      outputStream.push('$ ');
-                    }, 100);
-                  }
+                if (isKubernetesPod) {
+                  // Execute bash script in Kubernetes pod
+                  executeBashScriptInPod(sessionId, input, outputStream);
+                  return; // Don't add prompt here - it will be added after command completes
                 } else {
-                  outputStream.push(`bash: ${fileName}: No such file or directory\n`);
-                  
-                  // Add prompt after error
-                  setTimeout(() => {
-                    outputStream.push('$ ');
-                  }, 100);
+                  // Execute bash script in Docker container
+                  executeBashScriptInDocker(sessionId, input, outputStream);
+                  return; // Don't add prompt here - it will be added after command completes
                 }
               } else if (input.startsWith('gam ')) {
-                // Execute GAM commands in a Docker container
-                try {
-                  // Log the command being executed for debugging
-                  console.log(`Executing GAM command: ${input}`);
-                  outputStream.push(`Executing GAM command: ${input}\n`);
-                  
-                  // Get the command without the 'gam' prefix
-                  const gamCommand = input.substring(4).trim();
-                  
-                  // Import the Docker GAM utility
-                  const { executeGamCommand } = require('../utils/dockerGam');
-                  
-                  // Execute the command in a Docker container
-                  const gamProcess = executeGamCommand(gamCommand, {
-                    cwd: process.cwd(),
-                    onStdout: (data) => {
-                      // Check if session still exists
-                      const sessionStillExists = sessions.find(s => s.id === sessionId);
-                      const containerInfoStillExists = containerSessions.get(sessionId);
-                      
-                      if (!sessionStillExists || !containerInfoStillExists) {
-                        console.error(`Session ${sessionId} no longer exists during GAM execution`);
-                        return;
-                      }
-                      
-                      // Send output to client
-                      const output = data.toString();
-                      console.log(`GAM stdout: ${output}`);
-                      outputStream.push(output);
-                    },
-                    onStderr: (data) => {
-                      // Check if session still exists
-                      const sessionStillExists = sessions.find(s => s.id === sessionId);
-                      const containerInfoStillExists = containerSessions.get(sessionId);
-                      
-                      if (!sessionStillExists || !containerInfoStillExists) {
-                        console.error(`Session ${sessionId} no longer exists during GAM execution`);
-                        return;
-                      }
-                      
-                      // Send error output to client
-                      const errorOutput = data.toString();
-                      console.log(`GAM stderr: ${errorOutput}`);
-                      outputStream.push(errorOutput);
-                    },
-                    onClose: (code) => {
-                      // Check if session still exists
-                      const sessionStillExists = sessions.find(s => s.id === sessionId);
-                      const containerInfoStillExists = containerSessions.get(sessionId);
-                      
-                      if (!sessionStillExists || !containerInfoStillExists) {
-                        console.error(`Session ${sessionId} no longer exists during GAM execution`);
-                        return;
-                      }
-                      
-                      console.log(`GAM process exited with code ${code}`);
-                      
-                      if (code !== 0) {
-                        outputStream.push(`\nGAM command exited with code ${code}\n`);
-                      } else {
-                        outputStream.push(`\nGAM command completed successfully\n`);
-                      }
-                      
-                      // Add prompt after command execution
-                      setTimeout(() => {
-                        outputStream.push('$ ');
-                      }, 100);
-                    },
-                    onError: (err) => {
-                      console.error(`Error spawning GAM process: ${err.message}`);
-                      outputStream.push(`Error executing GAM command: ${err.message}\n`);
-                      
-                      // Add prompt after error
-                      setTimeout(() => {
-                        outputStream.push('$ ');
-                      }, 100);
-                    }
-                  });
-                  
-                  // Don't add prompt here - it will be added after command completes
-                  return;
-                } catch (err) {
-                  console.error(`Exception executing GAM command: ${err.message}`);
-                  outputStream.push(`Error executing GAM command: ${err.message}\n`);
-                  
-                  // Add prompt after error
-                  setTimeout(() => {
-                    outputStream.push('$ ');
-                  }, 100);
+                if (isKubernetesPod) {
+                  // Execute GAM command in Kubernetes pod
+                  executeGamCommandInPod(sessionId, input, outputStream);
+                  return; // Don't add prompt here - it will be added after command completes
+                } else {
+                  // Execute GAM command in Docker container
+                  executeGamCommandInDocker(sessionId, input, outputStream);
+                  return; // Don't add prompt here - it will be added after command completes
                 }
               } else {
-                outputStream.push(`Command not found: ${input}\n`);
+                if (isKubernetesPod) {
+                  // Execute command in Kubernetes pod
+                  executeCommandInPod(sessionId, input, outputStream);
+                } else {
+                  // Unknown command in virtual terminal
+                  outputStream.push(`Command not found: ${input}\n`);
+                }
               }
               
               callback();
@@ -403,9 +298,14 @@ module.exports = (io) => {
           containerSessions.set(sessionId, containerInfo);
           
           // Send welcome message
-          outputStream.push(`Welcome to GAM Virtual Terminal\n`);
+          outputStream.push(`Welcome to GAM Terminal\n`);
           outputStream.push(`Session: ${session.name}\n`);
           outputStream.push(`Image: ${session.imageName}\n`);
+          if (isKubernetesPod) {
+            outputStream.push(`Mode: Kubernetes Pod\n`);
+          } else {
+            outputStream.push(`Mode: Virtual Terminal\n`);
+          }
           outputStream.push(`Type 'help' for available commands\n\n`);
           outputStream.push(`$ `);
         }
@@ -415,7 +315,7 @@ module.exports = (io) => {
           socket.emit('terminal-output', data.toString());
         });
         
-        socket.emit('session-joined', { message: 'Connected to virtual session' });
+        socket.emit('session-joined', { message: 'Connected to session' });
         
         // Handle command input from client
         socket.on('terminal-input', (data) => {
@@ -511,4 +411,339 @@ module.exports = (io) => {
       }
     });
   });
+  
+  // Helper function to execute a command in a Kubernetes pod
+  async function executeCommandInPod(sessionId, command, outputStream) {
+    try {
+      console.log(`Executing command in pod for session ${sessionId}: ${command}`);
+      outputStream.push(`Executing command: ${command}\n`);
+      
+      // Execute the command in the pod
+      const result = await k8s.executeCommandInPod(sessionId, command);
+      
+      // Send the output to the client
+      if (result.stdout) {
+        outputStream.push(result.stdout);
+      }
+      
+      if (result.stderr) {
+        outputStream.push(result.stderr);
+      }
+      
+      // Add prompt after command execution
+      setTimeout(() => {
+        outputStream.push('$ ');
+      }, 100);
+    } catch (error) {
+      console.error(`Error executing command in pod for session ${sessionId}:`, error);
+      outputStream.push(`Error executing command: ${error.message}\n`);
+      
+      // Add prompt after error
+      setTimeout(() => {
+        outputStream.push('$ ');
+      }, 100);
+    }
+  }
+  
+  // Helper function to execute a bash script in a Kubernetes pod
+  async function executeBashScriptInPod(sessionId, input, outputStream) {
+    try {
+      const fileName = input.substring(5).trim();
+      console.log(`Executing bash script in pod for session ${sessionId}: ${fileName}`);
+      outputStream.push(`Executing script: ${fileName}...\n`);
+      
+      // Upload the script to the pod
+      const localFilePath = path.join(__dirname, '../temp-uploads', fileName);
+      const podFilePath = `/gam/uploads/${fileName}`;
+      
+      // Check if file exists in the actual filesystem
+      if (!fs.existsSync(localFilePath)) {
+        outputStream.push(`bash: ${fileName}: No such file or directory\n`);
+        
+        // Add prompt after error
+        setTimeout(() => {
+          outputStream.push('$ ');
+        }, 100);
+        return;
+      }
+      
+      // Upload the file to the pod
+      await k8s.uploadFileToPod(sessionId, localFilePath, podFilePath);
+      
+      // Execute the script in the pod
+      const command = `cd /gam/uploads && bash ${fileName}`;
+      const result = await k8s.executeCommandInPod(sessionId, command);
+      
+      // Send the output to the client
+      if (result.stdout) {
+        outputStream.push(result.stdout);
+      }
+      
+      if (result.stderr) {
+        outputStream.push(result.stderr);
+      }
+      
+      outputStream.push(`\nScript executed successfully\n`);
+      
+      // Add prompt after command execution
+      setTimeout(() => {
+        outputStream.push('$ ');
+      }, 100);
+    } catch (error) {
+      console.error(`Error executing bash script in pod for session ${sessionId}:`, error);
+      outputStream.push(`Error executing script: ${error.message}\n`);
+      
+      // Add prompt after error
+      setTimeout(() => {
+        outputStream.push('$ ');
+      }, 100);
+    }
+  }
+  
+  // Helper function to execute a GAM command in a Kubernetes pod
+  async function executeGamCommandInPod(sessionId, input, outputStream) {
+    try {
+      const gamCommand = input.substring(4).trim();
+      console.log(`Executing GAM command in pod for session ${sessionId}: ${gamCommand}`);
+      outputStream.push(`Executing GAM command: ${gamCommand}\n`);
+      
+      // Execute the GAM command in the pod
+      const command = `/gam/gam7/gam ${gamCommand}`;
+      const result = await k8s.executeCommandInPod(sessionId, command);
+      
+      // Send the output to the client
+      if (result.stdout) {
+        outputStream.push(result.stdout);
+      }
+      
+      if (result.stderr) {
+        outputStream.push(result.stderr);
+      }
+      
+      outputStream.push(`\nGAM command completed successfully\n`);
+      
+      // Add prompt after command execution
+      setTimeout(() => {
+        outputStream.push('$ ');
+      }, 100);
+    } catch (error) {
+      console.error(`Error executing GAM command in pod for session ${sessionId}:`, error);
+      outputStream.push(`Error executing GAM command: ${error.message}\n`);
+      
+      // Add prompt after error
+      setTimeout(() => {
+        outputStream.push('$ ');
+      }, 100);
+    }
+  }
+  
+  // Helper function to execute a bash script in a Docker container
+  function executeBashScriptInDocker(sessionId, input, outputStream) {
+    const fileName = input.substring(5).trim();
+    const filePath = path.join(__dirname, '../temp-uploads', fileName);
+    
+    // Check if file exists in the actual filesystem
+    if (fs.existsSync(filePath)) {
+      try {
+        // Log the script being executed for debugging
+        console.log(`Executing bash script in Docker for session ${sessionId}: ${fileName}`);
+        outputStream.push(`Executing script: ${fileName}...\n`);
+        
+        // Build the Docker command manually to avoid using GAM
+        const dockerCommand = 'docker';
+        const dockerArgs = [
+          'run',
+          '--rm',  // Remove container after execution
+          '--entrypoint=',  // Override the entrypoint
+          '-v', path.join(__dirname, '../gam-credentials') + ':/root/.gam',  // Mount credentials
+          '-v', path.join(__dirname, '../temp-uploads') + ':/gam/uploads',     // Mount uploads
+          'gcr.io/gamgui-registry/docker-gam7:latest',  // Use the GAM image
+          '/bin/bash', '-c', `cd /gam/uploads && bash ${fileName}`  // Execute bash directly
+        ];
+        
+        console.log(`Executing Docker command: ${dockerCommand} ${dockerArgs.join(' ')}`);
+        
+        // Spawn the Docker process
+        const bashProcess = spawn(dockerCommand, dockerArgs, {
+          cwd: process.cwd(),
+          shell: true
+        });
+        
+        // Handle stdout data
+        bashProcess.stdout.on('data', (data) => {
+          // Check if session still exists
+          const sessionStillExists = sessions.find(s => s.id === sessionId);
+          const containerInfoStillExists = containerSessions.get(sessionId);
+          
+          if (!sessionStillExists || !containerInfoStillExists) {
+            console.error(`Session ${sessionId} no longer exists during bash execution`);
+            return;
+          }
+          
+          // Send output to client
+          const output = data.toString();
+          console.log(`Bash stdout: ${output}`);
+          outputStream.push(output);
+        });
+        
+        // Handle stderr data
+        bashProcess.stderr.on('data', (data) => {
+          // Check if session still exists
+          const sessionStillExists = sessions.find(s => s.id === sessionId);
+          const containerInfoStillExists = containerSessions.get(sessionId);
+          
+          if (!sessionStillExists || !containerInfoStillExists) {
+            console.error(`Session ${sessionId} no longer exists during bash execution`);
+            return;
+          }
+          
+          // Send error output to client
+          const errorOutput = data.toString();
+          console.log(`Bash stderr: ${errorOutput}`);
+          outputStream.push(errorOutput);
+        });
+        
+        // Handle process completion
+        bashProcess.on('close', (code) => {
+          // Check if session still exists
+          const sessionStillExists = sessions.find(s => s.id === sessionId);
+          const containerInfoStillExists = containerSessions.get(sessionId);
+          
+          if (!sessionStillExists || !containerInfoStillExists) {
+            console.error(`Session ${sessionId} no longer exists during bash execution`);
+            return;
+          }
+          
+          console.log(`Bash process exited with code ${code}`);
+          
+          if (code !== 0) {
+            outputStream.push(`\nScript exited with code ${code}\n`);
+          } else {
+            outputStream.push(`\nScript executed successfully\n`);
+          }
+          
+          // Add prompt after command execution
+          setTimeout(() => {
+            outputStream.push('$ ');
+          }, 100);
+        });
+        
+        // Handle process errors
+        bashProcess.on('error', (err) => {
+          console.error(`Error spawning bash process: ${err.message}`);
+          outputStream.push(`Error executing script: ${err.message}\n`);
+          
+          // Add prompt after error
+          setTimeout(() => {
+            outputStream.push('$ ');
+          }, 100);
+        });
+      } catch (err) {
+        console.error(`Exception executing bash script: ${err.message}`);
+        outputStream.push(`Error executing script: ${err.message}\n`);
+        
+        // Add prompt after error
+        setTimeout(() => {
+          outputStream.push('$ ');
+        }, 100);
+      }
+    } else {
+      outputStream.push(`bash: ${fileName}: No such file or directory\n`);
+      
+      // Add prompt after error
+      setTimeout(() => {
+        outputStream.push('$ ');
+      }, 100);
+    }
+  }
+  
+  // Helper function to execute a GAM command in a Docker container
+  function executeGamCommandInDocker(sessionId, input, outputStream) {
+    try {
+      // Log the command being executed for debugging
+      console.log(`Executing GAM command in Docker for session ${sessionId}: ${input}`);
+      outputStream.push(`Executing GAM command: ${input}\n`);
+      
+      // Get the command without the 'gam' prefix
+      const gamCommand = input.substring(4).trim();
+      
+      // Import the Docker GAM utility
+      const { executeGamCommand } = require('../utils/dockerGam');
+      
+      // Execute the command in a Docker container
+      const gamProcess = executeGamCommand(gamCommand, {
+        cwd: process.cwd(),
+        onStdout: (data) => {
+          // Check if session still exists
+          const sessionStillExists = sessions.find(s => s.id === sessionId);
+          const containerInfoStillExists = containerSessions.get(sessionId);
+          
+          if (!sessionStillExists || !containerInfoStillExists) {
+            console.error(`Session ${sessionId} no longer exists during GAM execution`);
+            return;
+          }
+          
+          // Send output to client
+          const output = data.toString();
+          console.log(`GAM stdout: ${output}`);
+          outputStream.push(output);
+        },
+        onStderr: (data) => {
+          // Check if session still exists
+          const sessionStillExists = sessions.find(s => s.id === sessionId);
+          const containerInfoStillExists = containerSessions.get(sessionId);
+          
+          if (!sessionStillExists || !containerInfoStillExists) {
+            console.error(`Session ${sessionId} no longer exists during GAM execution`);
+            return;
+          }
+          
+          // Send error output to client
+          const errorOutput = data.toString();
+          console.log(`GAM stderr: ${errorOutput}`);
+          outputStream.push(errorOutput);
+        },
+        onClose: (code) => {
+          // Check if session still exists
+          const sessionStillExists = sessions.find(s => s.id === sessionId);
+          const containerInfoStillExists = containerSessions.get(sessionId);
+          
+          if (!sessionStillExists || !containerInfoStillExists) {
+            console.error(`Session ${sessionId} no longer exists during GAM execution`);
+            return;
+          }
+          
+          console.log(`GAM process exited with code ${code}`);
+          
+          if (code !== 0) {
+            outputStream.push(`\nGAM command exited with code ${code}\n`);
+          } else {
+            outputStream.push(`\nGAM command completed successfully\n`);
+          }
+          
+          // Add prompt after command execution
+          setTimeout(() => {
+            outputStream.push('$ ');
+          }, 100);
+        },
+        onError: (err) => {
+          console.error(`Error spawning GAM process: ${err.message}`);
+          outputStream.push(`Error executing GAM command: ${err.message}\n`);
+          
+          // Add prompt after error
+          setTimeout(() => {
+            outputStream.push('$ ');
+          }, 100);
+        }
+      });
+    } catch (err) {
+      console.error(`Exception executing GAM command: ${err.message}`);
+      outputStream.push(`Error executing GAM command: ${err.message}\n`);
+      
+      // Add prompt after error
+      setTimeout(() => {
+        outputStream.push('$ ');
+      }, 100);
+    }
+  }
 };

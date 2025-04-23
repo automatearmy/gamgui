@@ -1,59 +1,62 @@
 /**
- * Secret Manager Integration for gamgui-server
+ * Secret Manager Utility
  * 
- * This file contains functions for integrating Google Secret Manager
- * with the gamgui-server application. It provides functionality to:
- * 
- * 1. Save uploaded credential files to Secret Manager
- * 2. Retrieve secrets from Secret Manager when needed
+ * This utility provides functions for interacting with Google Cloud Secret Manager
+ * to store and retrieve GAM credentials.
  */
+const { SecretManagerServiceClient } = require('@google-cloud/secret-manager');
 
-const {SecretManagerServiceClient} = require('@google-cloud/secret-manager');
+// Initialize the Secret Manager client
 const secretManager = new SecretManagerServiceClient();
 
-// Get project ID from environment variable (set in Cloud Run)
+// Get the project ID from environment variables
 const projectId = process.env.PROJECT_ID || 'gamgui-tf-1';
 
 /**
- * Save content to Secret Manager
- * @param {string} secretId - The ID of the secret (e.g., 'client-secrets', 'oauth2', 'oauth2service')
- * @param {string|Buffer} content - The content to save
- * @returns {Promise<void>}
+ * Save a secret to Secret Manager
+ * @param {string} secretId - The ID of the secret to save
+ * @param {string|Buffer} payload - The secret content
+ * @returns {Promise<object>} - The created secret version
  */
-async function saveToSecretManager(secretId, content) {
-  const parent = `projects/${projectId}`;
-  
+async function saveToSecretManager(secretId, payload) {
   try {
-    // Check if secret exists
-    await secretManager.getSecret({
-      name: `${parent}/secrets/${secretId}`
-    });
-  } catch (error) {
-    // Create secret if it doesn't exist
-    await secretManager.createSecret({
-      parent,
-      secretId,
-      secret: {
-        replication: {
-          userManaged: {
-            replicas: [
-              {
-                location: 'us-central1'
-              }
-            ]
+    const parent = `projects/${projectId}`;
+    
+    // Check if the secret exists
+    try {
+      await secretManager.getSecret({
+        name: `${parent}/secrets/${secretId}`
+      });
+      console.log(`Secret ${secretId} already exists, adding new version`);
+    } catch (error) {
+      // Create the secret if it doesn't exist
+      console.log(`Creating secret ${secretId}...`);
+      await secretManager.createSecret({
+        parent,
+        secretId,
+        secret: {
+          replication: {
+            automatic: {}
           }
         }
+      });
+    }
+    
+    // Add a new version to the secret
+    const [version] = await secretManager.addSecretVersion({
+      parent: `${parent}/secrets/${secretId}`,
+      payload: {
+        data: Buffer.from(payload)
       }
     });
+    
+    console.log(`Added secret version ${version.name}`);
+    
+    return version;
+  } catch (error) {
+    console.error(`Error saving to Secret Manager: ${error}`);
+    throw error;
   }
-  
-  // Add new secret version
-  await secretManager.addSecretVersion({
-    parent: `${parent}/secrets/${secretId}`,
-    payload: {
-      data: Buffer.from(content)
-    }
-  });
 }
 
 /**
@@ -71,7 +74,45 @@ async function getFromSecretManager(secretId) {
   return version.payload.data;
 }
 
+/**
+ * List all secrets in the project
+ * @returns {Promise<Array>} - Array of secret objects
+ */
+async function listSecrets() {
+  const parent = `projects/${projectId}`;
+  
+  try {
+    const [secrets] = await secretManager.listSecrets({
+      parent
+    });
+    
+    // Filter secrets that are related to GAM credentials
+    const credentialSecrets = secrets.filter(secret => {
+      const name = secret.name.split('/').pop();
+      return name.startsWith('gam-') || 
+             name === 'client-secrets' || 
+             name === 'oauth2' || 
+             name === 'oauth2service';
+    });
+    
+    // Format the response
+    return credentialSecrets.map(secret => {
+      const name = secret.name.split('/').pop();
+      return {
+        id: name,
+        name: name,
+        createTime: secret.createTime,
+        labels: secret.labels || {}
+      };
+    });
+  } catch (error) {
+    console.error('Error listing secrets:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   saveToSecretManager,
-  getFromSecretManager
+  getFromSecretManager,
+  listSecrets
 };
