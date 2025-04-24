@@ -19,7 +19,9 @@ const server = http.createServer(app);
 
 // Define allowed origins
 const allowedOrigins = [
+  'https://gamgui-client-vthtec4m3a-uc.a.run.app',
   'https://gamgui-client-2fdozy6y5a-uc.a.run.app',
+  'https://gamgui-client-269905622982.us-central1.run.app',
   'http://localhost:3000',
   'http://localhost:5173'
 ];
@@ -37,8 +39,8 @@ const corsOptions = {
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  methods: 'GET, POST, PUT, DELETE, OPTIONS',
+  allowedHeaders: 'Content-Type, Authorization, X-Requested-With'
 };
 
 // Configure Socket.io with CORS and improved connection settings

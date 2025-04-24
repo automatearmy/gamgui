@@ -4,8 +4,8 @@ steps:
     args: [
       'build',
       '--platform=linux/amd64',
-      '--build-arg', 'VITE_API_URL=https://gamgui-server-2fdozy6y5a-uc.a.run.app/api',
-      '--build-arg', 'VITE_SOCKET_URL=https://gamgui-server-2fdozy6y5a-uc.a.run.app',
+      '--build-arg', 'VITE_API_URL=https://gamgui-server-vthtec4m3a-uc.a.run.app/api',
+      '--build-arg', 'VITE_SOCKET_URL=https://gamgui-server-vthtec4m3a-uc.a.run.app',
       '-t', 'gcr.io/gamgui-registry/gamgui-client-image',
       '.'
     ]

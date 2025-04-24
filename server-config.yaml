@@ -1,0 +1,88 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  annotations:
+    run.googleapis.com/client-name: gcloud
+    run.googleapis.com/client-version: 518.0.0
+    run.googleapis.com/cors-allowed-origins: "*"
+    run.googleapis.com/cors-allowed-methods: "GET,POST,PUT,DELETE,OPTIONS"
+    run.googleapis.com/cors-allowed-headers: "Content-Type,Authorization,X-Requested-With"
+    run.googleapis.com/ingress: all
+    run.googleapis.com/ingress-status: all
+    run.googleapis.com/operation-id: 59df3cac-1459-4396-82c9-51357caf3c4e
+    run.googleapis.com/urls: '["https://gamgui-server-269905622982.us-central1.run.app","https://gamgui-server-vthtec4m3a-uc.a.run.app"]'
+    serving.knative.dev/creator: bruno.reges@automatearmy.com
+    serving.knative.dev/lastModifier: bruno.reges@automatearmy.com
+  creationTimestamp: '2025-04-23T15:49:53.030788Z'
+  generation: 2
+  labels:
+    cloud.googleapis.com/location: us-central1
+  name: gamgui-server
+  namespace: '269905622982'
+  resourceVersion: AAYzduklUhg
+  selfLink: /apis/serving.knative.dev/v1/namespaces/269905622982/services/gamgui-server
+  uid: 4454bb40-7211-40c7-96f7-6fd48e914b82
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/maxScale: '100'
+        run.googleapis.com/client-name: gcloud
+        run.googleapis.com/client-version: 518.0.0
+      labels:
+        client.knative.dev/nonce: tecbglread
+        run.googleapis.com/startupProbeType: Default
+    spec:
+      containerConcurrency: 80
+      containers:
+      - env:
+        - name: GAM_IMAGE
+          value: gcr.io/gamgui-registry/docker-gam7:latest
+        - name: PROJECT_ID
+          value: gamgui-tf-1
+        - name: REVISION_TIMESTAMP
+          value: '20250423154951'
+        - name: GKE_CLUSTER_NAME
+          value: gamgui-cluster
+        - name: GKE_CLUSTER_LOCATION
+          value: us-central1
+        image: gcr.io/gamgui-registry/gamgui-server-image:latest
+        ports:
+        - containerPort: 3001
+          name: http1
+        resources:
+          limits:
+            cpu: '1'
+            memory: 512Mi
+        startupProbe:
+          failureThreshold: 1
+          periodSeconds: 240
+          tcpSocket:
+            port: 3001
+          timeoutSeconds: 240
+      serviceAccountName: gamgui-server-sa@gamgui-registry.iam.gserviceaccount.com
+      timeoutSeconds: 300
+  traffic:
+  - latestRevision: true
+    percent: 100
+status:
+  address:
+    url: https://gamgui-server-vthtec4m3a-uc.a.run.app
+  conditions:
+  - lastTransitionTime: '2025-04-23T19:14:30.958616Z'
+    status: 'True'
+    type: Ready
+  - lastTransitionTime: '2025-04-23T19:14:29.687728Z'
+    status: 'True'
+    type: ConfigurationsReady
+  - lastTransitionTime: '2025-04-23T19:14:30.923368Z'
+    status: 'True'
+    type: RoutesReady
+  latestCreatedRevisionName: gamgui-server-00002-wg9
+  latestReadyRevisionName: gamgui-server-00002-wg9
+  observedGeneration: 2
+  traffic:
+  - latestRevision: true
+    percent: 100
+    revisionName: gamgui-server-00002-wg9
+  url: https://gamgui-server-vthtec4m3a-uc.a.run.app
