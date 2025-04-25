@@ -3,8 +3,8 @@ import { Terminal } from "@/components/ui/terminal";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FileDropZone } from "@/components/ui/file-drop-zone";
-import { endSession, uploadSessionFiles, getSession, type Session } from "@/lib/api";
-import { createTerminalConnection } from "@/lib/socket";
+import { endSession, uploadSessionFiles, getSession, getSessionWebsocketInfo, type Session } from "@/lib/api";
+import { createTerminalConnection, createSessionWebsocket } from "@/lib/socket";
 import { RefreshCw } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { File } from "lucide-react";
@@ -46,7 +46,7 @@ export function SessionDetailPage({ onNavigate, sessionId }: SessionDetailPagePr
       
       // Connect to the terminal socket if not already connected
       if (!socketRef.current) {
-        connectToTerminal(id);
+        await connectToTerminal(id);
       }
       
       setError(null);
@@ -61,29 +61,59 @@ export function SessionDetailPage({ onNavigate, sessionId }: SessionDetailPagePr
     }
   };
   
-  const connectToTerminal = (id: string) => {
-    // Disconnect existing socket if any
-    if (socketRef.current) {
-      socketRef.current.disconnect();
+  const connectToTerminal = async (id: string) => {
+    try {
+      // Disconnect existing socket if any
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+      
+      // Get WebSocket info for the session
+      const websocketInfo = await getSessionWebsocketInfo(id);
+      console.log("WebSocket info:", websocketInfo);
+      
+      if (websocketInfo.error) {
+        throw new Error(websocketInfo.error);
+      }
+      
+      let socket;
+      
+      // If we have WebSocket info and it's a Kubernetes session, use the WebSocket connection
+      if (websocketInfo.kubernetes && websocketInfo.websocketPath) {
+        console.log("Using WebSocket connection for Kubernetes session");
+        socket = await createSessionWebsocket(id);
+      } else {
+        // Otherwise, use the regular terminal connection
+        console.log("Using regular terminal connection");
+        socket = createTerminalConnection(id);
+      }
+      
+      socketRef.current = socket;
+      
+      // Set up event handlers
+      socket.on('terminal-output', (data: string) => {
+        setTerminalOutput(prev => [...prev, data]);
+      });
+      
+      socket.on('output', (data: string) => {
+        setTerminalOutput(prev => [...prev, data]);
+      });
+      
+      socket.on('error', (data: { message: string }) => {
+        setTerminalOutput(prev => [...prev, `Error: ${data.message}`]);
+      });
+      
+      socket.on('terminal-closed', () => {
+        setTerminalOutput(prev => [...prev, "Terminal session closed"]);
+      });
+      
+      return socket;
+    } catch (err) {
+      console.error("Failed to connect to terminal:", err);
+      setTerminalOutput(prev => [...prev, `Error: Error joining session`]);
+      setTerminalOutput(prev => [...prev, `Error: Not connected to a session`]);
+      return null;
     }
-    
-    // Connect to the terminal socket
-    const socket = createTerminalConnection(id);
-    socketRef.current = socket;
-    
-    socket.on('terminal-output', (data) => {
-      setTerminalOutput(prev => [...prev, data]);
-    });
-    
-    socket.on('error', (data) => {
-      setTerminalOutput(prev => [...prev, `Error: ${data.message}`]);
-    });
-    
-    socket.on('terminal-closed', () => {
-      setTerminalOutput(prev => [...prev, "Terminal session closed"]);
-    });
-    
-    return socket;
   };
   
   useEffect(() => {
