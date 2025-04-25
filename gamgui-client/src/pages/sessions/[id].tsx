@@ -43,13 +43,13 @@ export function SessionDetailPage({ onNavigate, sessionId }: SessionDetailPagePr
       }
       
       setSessionDetails(response.session);
-      setError(null);
       
       // Connect to the terminal socket if not already connected
       if (!socketRef.current) {
         connectToTerminal(id);
       }
       
+      setError(null);
       return true;
     } catch (err) {
       console.error("Failed to fetch session details:", err);
@@ -96,7 +96,7 @@ export function SessionDetailPage({ onNavigate, sessionId }: SessionDetailPagePr
     fetchSessionDetails(sessionId);
     
     return () => {
-      // Cleanup socket connection
+      // Cleanup socket connections
       if (socketRef.current) {
         socketRef.current.disconnect();
       }
@@ -109,13 +109,13 @@ export function SessionDetailPage({ onNavigate, sessionId }: SessionDetailPagePr
   };
   
   const handleCommand = (command: string) => {
-    if (!socketRef.current) return;
-    
     // Add the command to the terminal output
     setTerminalOutput(prev => [...prev, `$: > ${command}`]);
     
-    // Send the command to the server
-    socketRef.current.emit('terminal-input', command + '\n');
+    if (socketRef.current) {
+      // Send the command to the terminal socket
+      socketRef.current.emit('terminal-input', command + '\n');
+    }
   };
   
   const handleFilesDropped = async (files: File[]) => {

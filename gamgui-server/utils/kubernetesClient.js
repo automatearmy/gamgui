@@ -2,7 +2,7 @@
  * Kubernetes Client Utility
  * 
  * This utility provides functions for interacting with the Kubernetes API
- * to create and manage pods for GAM sessions.
+ * to create and manage pods and services for GAM sessions.
  */
 const k8s = require('@kubernetes/client-node');
 const fs = require('fs');
@@ -40,6 +40,11 @@ const k8sNetworkingV1Api = kc.makeApiClient(k8s.NetworkingV1Api);
 
 // Get the namespace from environment variables or use default
 const namespace = process.env.K8S_NAMESPACE || 'gamgui';
+
+// Get session templates from environment variables or use defaults
+const sessionServiceTemplate = process.env.SESSION_SERVICE_TEMPLATE || 'gam-service-{{SESSION_ID}}';
+const sessionDeploymentTemplate = process.env.SESSION_DEPLOYMENT_TEMPLATE || 'gam-deployment-{{SESSION_ID}}';
+const websocketPathTemplate = process.env.WEBSOCKET_PATH_TEMPLATE || '/ws/session/{{SESSION_ID}}/';
 
 /**
  * Create a pod for a GAM session
@@ -367,11 +372,108 @@ async function downloadFileFromPod(sessionId, podFilePath, localFilePath) {
   }
 }
 
+/**
+ * Create a service for a specific session
+ * @param {string} sessionId - The session ID
+ * @returns {Promise<object>} - The created service
+ */
+async function createSessionService(sessionId) {
+  try {
+    // Use template to generate service name
+    const serviceName = sessionServiceTemplate.replace('{{SESSION_ID}}', sessionId);
+    
+    // Check if service already exists
+    try {
+      await k8sCoreV1Api.readNamespacedService(serviceName, namespace);
+      console.log(`Service ${serviceName} already exists`);
+      return { name: serviceName };
+    } catch (error) {
+      if (error.response && error.response.statusCode !== 404) {
+        throw error;
+      }
+    }
+    
+    // Create the service
+    const serviceSpec = {
+      apiVersion: 'v1',
+      kind: 'Service',
+      metadata: {
+        name: serviceName,
+        namespace: namespace,
+        labels: {
+          app: 'gamgui',
+          session_id: sessionId
+        }
+      },
+      spec: {
+        selector: {
+          app: 'gamgui',
+          session_id: sessionId
+        },
+        ports: [
+          {
+            port: 80,
+            targetPort: 8080,
+            name: 'http'
+          },
+          {
+            port: 8081,
+            targetPort: 8081,
+            name: 'websocket'
+          }
+        ]
+      }
+    };
+    
+    const response = await k8sCoreV1Api.createNamespacedService(namespace, serviceSpec);
+    console.log(`Created service ${serviceName} for session ${sessionId}`);
+    
+    return response.body;
+  } catch (error) {
+    console.error(`Error creating service for session ${sessionId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Delete a service for a GAM session
+ * @param {string} sessionId - The session ID
+ * @returns {Promise<object>} - The deleted service
+ */
+async function deleteSessionService(sessionId) {
+  try {
+    // Generate the service name based on the session ID
+    const serviceName = sessionServiceTemplate.replace('{{SESSION_ID}}', sessionId);
+    
+    // Delete the service
+    const response = await k8sCoreV1Api.deleteNamespacedService(serviceName, namespace);
+    
+    console.log(`Deleted service ${serviceName} for session ${sessionId}`);
+    
+    return response.body;
+  } catch (error) {
+    console.error(`Error deleting service for session ${sessionId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Get the websocket path for a session
+ * @param {string} sessionId - The session ID
+ * @returns {string} - The websocket path
+ */
+function getSessionWebsocketPath(sessionId) {
+  return websocketPathTemplate.replace('{{SESSION_ID}}', sessionId);
+}
+
 module.exports = {
   createSessionPod,
   deleteSessionPod,
   executeCommandInPod,
   getPodStatus,
   uploadFileToPod,
-  downloadFileFromPod
+  downloadFileFromPod,
+  createSessionService,
+  deleteSessionService,
+  getSessionWebsocketPath
 };

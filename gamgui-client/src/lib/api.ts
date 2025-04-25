@@ -134,6 +134,29 @@ export async function endSession(sessionId: string) {
   return response.json();
 }
 
+export async function getSessionWebsocketInfo(sessionId: string) {
+  try {
+    console.log(`API call: fetching websocket info for session ${sessionId}`);
+    const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}/websocket`);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`API error (${response.status}): ${errorText}`);
+      return { 
+        error: `Failed to fetch websocket info: ${response.status} ${response.statusText}`,
+        statusCode: response.status
+      };
+    }
+    
+    const data = await response.json();
+    console.log('API response for session websocket info:', data);
+    return data;
+  } catch (err) {
+    console.error('API call error:', err);
+    return { error: err instanceof Error ? err.message : 'Network error' };
+  }
+}
+
 export async function uploadSessionFiles(sessionId: string, files: File[]) {
   const formData = new FormData();
   

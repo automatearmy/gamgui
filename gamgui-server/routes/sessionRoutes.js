@@ -1,29 +1,24 @@
 const express = require('express');
-const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs');
 const { images } = require('./imageRoutes');
-const k8s = require('../utils/kubernetesClient');
+const { SessionService, SessionRepository } = require('../services/session');
+const { ContainerFactory } = require('../services/container');
+const config = require('../config/config');
+const logger = require('../utils/logger');
 const router = express.Router();
 
-// Check if Kubernetes is enabled
-const KUBERNETES_ENABLED = process.env.GKE_CLUSTER_NAME && process.env.GKE_CLUSTER_LOCATION;
+// Create services
+const sessionRepository = new SessionRepository();
+const containerService = ContainerFactory.createContainerService(config, logger);
+const sessionService = new SessionService(sessionRepository, containerService);
 
 // Default pre-built image to use if no images are available
 const DEFAULT_IMAGE = {
   id: "default-gam-image",
   name: "Default GAM Image",
-  imageName: "gcr.io/gamgui-registry/docker-gam7:latest"
+  imageName: config.docker.gamImage
 };
-
-// Get GAM image from environment variable if available
-const GAM_IMAGE = process.env.GAM_IMAGE || DEFAULT_IMAGE.imageName;
-
-// In-memory storage for sessions (replace with a database in production)
-const sessions = [];
-
-// Map of active container sessions
-const containerSessions = new Map();
 
 /**
  * @route   POST /api/sessions
@@ -32,7 +27,7 @@ const containerSessions = new Map();
  */
 router.post('/', async (req, res) => {
   try {
-    const { name, imageId, config, credentialsSecret } = req.body;
+    const { name, imageId, config: sessionConfig, credentialsSecret } = req.body;
     
     if (!name) {
       return res.status(400).json({ message: 'Session name is required' });
@@ -47,14 +42,9 @@ router.post('/', async (req, res) => {
     
     // If no image is found or no imageId provided, use the default image
     if (!image) {
-      console.log('Using default GAM image for session');
+      logger.info('Using default GAM image for session');
       image = DEFAULT_IMAGE;
     }
-    
-    // Generate session ID
-    const sessionId = uuidv4();
-    const containerName = `gam-session-${sessionId.substring(0, 8)}`;
-    const containerId = `virtual-container-${sessionId}`;
     
     // Ensure temp-uploads directory exists
     const tempUploadsDir = path.resolve(__dirname, '../temp-uploads');
@@ -62,82 +52,22 @@ router.post('/', async (req, res) => {
       fs.mkdirSync(tempUploadsDir, { recursive: true });
     }
     
-    // Create the session record
-    const newSession = {
-      id: sessionId,
+    // Create the session
+    const result = await sessionService.createSession({
       name,
-      containerId,
-      containerName,
       imageId: imageId || DEFAULT_IMAGE.id,
       imageName: image.imageName,
-      config: config || {},
-      createdAt: new Date().toISOString(),
-      lastModified: new Date().toISOString(),
-      status: 'active'
-    };
-    
-    // Store the session
-    sessions.push(newSession);
-    
-    // Container information
-    let containerInfo;
-    
-    // Check if Kubernetes is enabled
-    if (KUBERNETES_ENABLED) {
-      try {
-        console.log(`Creating Kubernetes pod for session: ${sessionId}`);
-        
-        // Create a pod for the session
-        const pod = await k8s.createSessionPod(sessionId, {
-          cpu: config?.resources?.cpu || '500m',
-          memory: config?.resources?.memory || '512Mi',
-          credentialsSecret: credentialsSecret || 'gam-credentials'
-        });
-        
-        // Store Kubernetes pod information
-        containerInfo = {
-          id: containerId,
-          sessionId,
-          podName: pod.metadata.name,
-          kubernetes: true,
-          stream: null
-        };
-        
-        console.log(`Created Kubernetes pod: ${pod.metadata.name} for session: ${sessionId}`);
-      } catch (k8sError) {
-        console.error(`Error creating Kubernetes pod for session ${sessionId}:`, k8sError);
-        
-        // Fall back to virtual session if Kubernetes pod creation fails
-        console.log(`Falling back to virtual session for: ${sessionId}`);
-        
-        containerInfo = {
-          id: containerId,
-          sessionId,
-          stream: null,
-          virtual: true
-        };
-      }
-    } else {
-      // Create a virtual session
-      console.log(`Creating virtual session with image: ${image.imageName}`);
-      
-      containerInfo = {
-        id: containerId,
-        sessionId,
-        stream: null,
-        virtual: true
-      };
-    }
-    
-    // Store container information
-    containerSessions.set(sessionId, containerInfo);
+      config: sessionConfig || {},
+      credentialsSecret: credentialsSecret || 'gam-credentials'
+    });
     
     return res.status(201).json({
       message: 'Session created successfully',
-      session: newSession
+      session: result.session,
+      websocketInfo: result.websocketInfo
     });
   } catch (error) {
-    console.error('Error creating session:', error);
+    logger.error('Error creating session:', error);
     return res.status(500).json({ 
       message: 'Server error',
       error: error.message
@@ -150,8 +80,17 @@ router.post('/', async (req, res) => {
  * @desc    Get all sessions
  * @access  Public
  */
-router.get('/', (req, res) => {
-  res.json(sessions);
+router.get('/', async (req, res) => {
+  try {
+    const sessions = await sessionService.getSessions();
+    res.json(sessions);
+  } catch (error) {
+    logger.error('Error getting sessions:', error);
+    return res.status(500).json({ 
+      message: 'Server error',
+      error: error.message
+    });
+  }
 });
 
 /**
@@ -159,14 +98,41 @@ router.get('/', (req, res) => {
  * @desc    Get session by ID
  * @access  Public
  */
-router.get('/:id', (req, res) => {
-  const session = sessions.find(s => s.id === req.params.id);
-  
-  if (!session) {
-    return res.status(404).json({ message: 'Session not found' });
+router.get('/:id', async (req, res) => {
+  try {
+    const session = await sessionService.getSession(req.params.id);
+    res.json({ session });
+  } catch (error) {
+    if (error.name === 'NotFoundError') {
+      return res.status(404).json({ message: 'Session not found' });
+    }
+    logger.error('Error getting session:', error);
+    return res.status(500).json({ 
+      message: 'Server error',
+      error: error.message
+    });
   }
-  
-  res.json({ session });
+});
+
+/**
+ * @route   GET /api/sessions/:id/websocket
+ * @desc    Get websocket information for a session
+ * @access  Public
+ */
+router.get('/:id/websocket', async (req, res) => {
+  try {
+    const websocketInfo = await sessionService.getWebsocketInfo(req.params.id);
+    res.json(websocketInfo);
+  } catch (error) {
+    if (error.name === 'NotFoundError') {
+      return res.status(404).json({ message: error.message });
+    }
+    logger.error('Error getting websocket info:', error);
+    return res.status(500).json({ 
+      message: 'Server error',
+      error: error.message
+    });
+  }
 });
 
 /**
@@ -176,36 +142,7 @@ router.get('/:id', (req, res) => {
  */
 router.delete('/:id', async (req, res) => {
   try {
-    const sessionId = req.params.id;
-    const sessionIndex = sessions.findIndex(s => s.id === sessionId);
-    
-    if (sessionIndex === -1) {
-      return res.status(404).json({ message: 'Session not found' });
-    }
-    
-    const session = sessions[sessionIndex];
-    
-    // Get container info from map
-    const containerInfo = containerSessions.get(sessionId);
-    
-    if (containerInfo) {
-      // Check if this is a Kubernetes pod
-      if (containerInfo.kubernetes) {
-        try {
-          console.log(`Deleting Kubernetes pod for session: ${sessionId}`);
-          await k8s.deleteSessionPod(sessionId);
-          console.log(`Deleted Kubernetes pod for session: ${sessionId}`);
-        } catch (k8sError) {
-          console.error(`Error deleting Kubernetes pod for session ${sessionId}:`, k8sError);
-          // Continue with session removal even if pod deletion fails
-        }
-      } else {
-        console.log(`Removing virtual session: ${sessionId}`);
-      }
-      
-      // Remove from container sessions map
-      containerSessions.delete(sessionId);
-    }
+    await sessionService.deleteSession(req.params.id);
     
     // Clean up any uploaded files for this session
     try {
@@ -214,7 +151,7 @@ router.delete('/:id', async (req, res) => {
         // Read all files in the temp-uploads directory
         const files = fs.readdirSync(tempUploadsDir);
         
-        console.log(`Cleaning up ${files.length} uploaded files for session ${sessionId}`);
+        logger.info(`Cleaning up ${files.length} uploaded files for session ${req.params.id}`);
         
         // Delete each file
         for (const file of files) {
@@ -223,23 +160,23 @@ router.delete('/:id', async (req, res) => {
           // Check if it's a file (not a directory)
           if (fs.statSync(filePath).isFile()) {
             fs.unlinkSync(filePath);
-            console.log(`Deleted file: ${file}`);
+            logger.debug(`Deleted file: ${file}`);
           }
         }
       }
     } catch (cleanupError) {
-      console.error(`Error cleaning up files: ${cleanupError.message}`);
+      logger.error(`Error cleaning up files: ${cleanupError.message}`);
       // Continue with session removal even if cleanup fails
     }
-    
-    // Remove session from array
-    sessions.splice(sessionIndex, 1);
     
     return res.status(200).json({
       message: 'Session stopped and removed successfully'
     });
   } catch (error) {
-    console.error('Error removing session:', error);
+    if (error.name === 'NotFoundError') {
+      return res.status(404).json({ message: 'Session not found' });
+    }
+    logger.error('Error removing session:', error);
     return res.status(500).json({ 
       message: 'Server error',
       error: error.message
@@ -247,5 +184,9 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// Export router and containerSessions for WebSocket handling
-module.exports = { router, sessions, containerSessions };
+// Export router and services for use in other modules
+module.exports = { 
+  router,
+  sessionService,
+  sessionRepository
+};

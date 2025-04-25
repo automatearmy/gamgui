@@ -50,15 +50,15 @@ echo "Server Docker image built successfully."
 
 # Tag the image for Google Container Registry
 echo -e "\n=== Tagging image for Google Container Registry ==="
-docker tag gamgui-server-image:latest gcr.io/gamgui-registry/gamgui-server-image:latest
+docker tag gamgui-server-image:latest us-central1.gcr.io/gamgui-registry/gamgui-server-image:latest
 
 # Push the Docker image to the registry
 echo -e "\n=== Pushing server Docker image to registry ==="
-docker push gcr.io/gamgui-registry/gamgui-server-image:latest
+docker push us-central1.gcr.io/gamgui-registry/gamgui-server-image:latest
 
 echo -e "\n=== Build and Push Complete ==="
 echo "The server Docker image has been built and pushed to the registry."
-echo "The image is now available at: gcr.io/gamgui-registry/gamgui-server-image:latest"
+echo "The image is now available at: us-central1.gcr.io/gamgui-registry/gamgui-server-image:latest"
 echo ""
 echo "Next steps:"
 echo "1. Go to the gamgui-terraform repository"
