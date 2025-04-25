@@ -1,14 +1,22 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { SessionsTable, type Session as TableSession } from "@/components/sessions/SessionsTable";
-import { Plus, RefreshCw } from "lucide-react";
-import { getSessions, type Session as ApiSession } from "@/lib/api";
+import { Plus, RefreshCw, Settings } from "lucide-react";
+import { getSessions, checkCredentials, type Session as ApiSession } from "@/lib/api";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 export function SessionsPage({ onNavigate }: { onNavigate?: (path: string) => void }) {
   const [sessions, setSessions] = useState<TableSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [credentialsStatus, setCredentialsStatus] = useState<{
+    complete: boolean;
+    missingFiles: string[];
+  }>({
+    complete: false,
+    missingFiles: [],
+  });
   // Function to fetch all sessions
   const fetchSessions = async () => {
     try {
@@ -45,10 +53,28 @@ export function SessionsPage({ onNavigate }: { onNavigate?: (path: string) => vo
     }
   };
   
-  // Fetch all sessions on component mount
+  // Check credentials status
+  const checkCredentialsStatus = async () => {
+    try {
+      const response = await checkCredentials();
+      
+      // Map the API response to our state structure
+      if (response && response.localFiles) {
+        setCredentialsStatus({
+          complete: response.localFiles.complete,
+          missingFiles: response.localFiles.missingFiles || []
+        });
+      }
+    } catch (error) {
+      console.error("Failed to check credentials status:", error);
+    }
+  };
+  
+  // Fetch all sessions and check credentials on component mount
   useEffect(() => {
     setIsLoading(true);
     fetchSessions();
+    checkCredentialsStatus();
   }, []);
 
   const handleRefresh = () => {
@@ -121,6 +147,32 @@ export function SessionsPage({ onNavigate }: { onNavigate?: (path: string) => vo
             Try again
           </Button>
         </div>
+      )}
+      
+      {/* Credentials warning */}
+      {!credentialsStatus.complete && (
+        <Alert className="mb-4 border-yellow-200 bg-yellow-50">
+          <AlertTitle className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            Missing Credentials
+          </AlertTitle>
+          <AlertDescription className="mt-2">
+            <p className="mb-2">
+              You need to upload all required credentials before creating a session.
+              {credentialsStatus.missingFiles.length > 0 && (
+                <span> Missing files: {credentialsStatus.missingFiles.join(', ')}</span>
+              )}
+            </p>
+            <Button 
+              onClick={() => onNavigate ? onNavigate('/settings') : window.location.href = '/settings'} 
+              variant="outline" 
+              size="sm"
+              className="mt-2"
+            >
+              Go to Settings
+            </Button>
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Sessions Table */}

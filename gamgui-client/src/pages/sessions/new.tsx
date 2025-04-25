@@ -3,7 +3,7 @@ import { Terminal } from "@/components/ui/terminal";
 import { FileDropZone } from "@/components/ui/file-drop-zone";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { createSession, endSession, uploadSessionFiles, getImages } from "@/lib/api";
+import { createSession, endSession, uploadSessionFiles, getImages, checkCredentials } from "@/lib/api";
 import { createTerminalConnection } from "@/lib/socket";
 
 interface NewSessionPageProps {
@@ -26,6 +26,16 @@ export function NewSessionPage({ onNavigate }: NewSessionPageProps = {}) {
     const initSession = async () => {
       try {
         setIsLoading(true);
+        
+        // Check if credentials are available
+        const credentialsResponse = await checkCredentials();
+        
+        // If credentials are not complete, redirect to settings page
+        if (!credentialsResponse.localFiles?.complete) {
+          setError("Missing credentials. Please upload all required credentials in Settings before creating a session.");
+          setIsLoading(false);
+          return;
+        }
         
         // Get available images
         const imagesResponse = await getImages();
@@ -159,13 +169,31 @@ export function NewSessionPage({ onNavigate }: NewSessionPageProps = {}) {
   }
   
   if (error) {
+    // Check if the error is about missing credentials
+    const isMissingCredentialsError = error.includes("Missing credentials");
+    
     return (
       <div className="flex flex-col items-center justify-center h-full">
         <h2 className="text-xl font-semibold text-red-500 mb-4">Error</h2>
-        <p>{error}</p>
-        <Button onClick={() => onNavigate ? onNavigate('/') : window.location.href = '/'} className="mt-4">
-          Return to Sessions
-        </Button>
+        <p className="text-center mb-6">{error}</p>
+        <div className="flex gap-4">
+          {isMissingCredentialsError && (
+            <Button 
+              onClick={() => onNavigate ? onNavigate('/settings') : window.location.href = '/settings'} 
+              className="mt-4"
+              variant="default"
+            >
+              Go to Settings
+            </Button>
+          )}
+          <Button 
+            onClick={() => onNavigate ? onNavigate('/') : window.location.href = '/'} 
+            className="mt-4"
+            variant={isMissingCredentialsError ? "outline" : "default"}
+          >
+            Return to Sessions
+          </Button>
+        </div>
       </div>
     );
   }
