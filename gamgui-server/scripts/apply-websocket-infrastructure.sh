@@ -99,13 +99,11 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: gamgui
-      component: websocket-proxy
+      app: websocket-proxy
   template:
     metadata:
       labels:
-        app: gamgui
-        component: websocket-proxy
+        app: websocket-proxy
     spec:
       containers:
       - name: nginx
@@ -145,8 +143,7 @@ metadata:
     component: websocket-proxy
 spec:
   selector:
-    app: gamgui
-    component: websocket-proxy
+    app: websocket-proxy
   ports:
   - port: 80
     targetPort: 80

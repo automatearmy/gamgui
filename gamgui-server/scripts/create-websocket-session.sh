@@ -140,7 +140,7 @@ spec:
         component: gam-session
         session_id: ${SESSION_ID}
     spec:
-      serviceAccountName: ${NAMESPACE}-gam-service-account
+      serviceAccountName: gam-service-account
       containers:
       - name: gam-container
         image: ${GAM_IMAGE}
