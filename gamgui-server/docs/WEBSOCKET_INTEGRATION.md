@@ -1,194 +1,134 @@
-# WebSocket Integration
+# WebSocket Integration Guide
 
-This document describes how to use the WebSocket integration in the GAMGUI server.
+This document provides a guide on how to integrate the WebSocket infrastructure with the gamgui server.
 
 ## Overview
 
-The WebSocket integration allows you to create dynamic sessions for GAM commands. Each session is a separate pod in Kubernetes, and you can connect to it using WebSockets. This enables real-time communication between the client and the GAM sessions.
+The WebSocket infrastructure allows the server to create and connect to WebSocket sessions in Kubernetes. Each session runs in a separate pod and can be accessed through a WebSocket proxy.
 
-## Architecture
+## Configuration
+
+The WebSocket infrastructure is configured through environment variables in the `.env` file:
+
+```
+# WebSocket configuration
+WEBSOCKET_ENABLED=true
+WEBSOCKET_PROXY_SERVICE_URL=websocket-proxy.gamgui.svc.cluster.local
+WEBSOCKET_SESSION_CONNECTION_TEMPLATE=ws://websocket-proxy.gamgui.svc.cluster.local/ws/session/{{SESSION_ID}}/
+WEBSOCKET_SESSION_PATH_TEMPLATE=/ws/session/{{SESSION_ID}}/
+WEBSOCKET_MAX_SESSIONS=50
+```
+
+- `WEBSOCKET_ENABLED`: Whether WebSocket sessions are enabled
+- `WEBSOCKET_PROXY_SERVICE_URL`: The URL of the WebSocket proxy service
+- `WEBSOCKET_SESSION_CONNECTION_TEMPLATE`: The template for WebSocket session connections
+- `WEBSOCKET_SESSION_PATH_TEMPLATE`: The template for WebSocket session paths
+- `WEBSOCKET_MAX_SESSIONS`: The maximum number of WebSocket sessions
+
+## Infrastructure
 
 The WebSocket infrastructure consists of the following components:
 
-1. **WebSocket Proxy**: A Nginx proxy that routes WebSocket connections to the appropriate GAM session pod.
-2. **GAM Session Pods**: Pods running the GAM container that handle GAM commands.
-3. **Session Manager**: A CronJob that cleans up inactive sessions.
-4. **WebSocket Adapter**: A class that provides methods for creating, connecting to, and managing WebSocket sessions.
+1. **WebSocket Proxy**: A Nginx proxy that routes WebSocket connections to the appropriate session
+2. **Session Template**: A template for creating new sessions
+3. **Default Session**: A default session that is always available
 
-## Setup
+## Scripts
 
-### Prerequisites
+The following scripts are available for managing the WebSocket infrastructure:
 
-- A Kubernetes cluster
-- `kubectl` command-line tool
-- GAM credentials (oauth2.txt, client_secrets.json, oauth2service.json)
+1. `apply-websocket-infrastructure.sh`: Applies the WebSocket infrastructure to Kubernetes
+2. `create-websocket-session.sh`: Creates a new WebSocket session
+3. `test-websocket-session.sh`: Tests a WebSocket session
+4. `test-websocket-proxy.sh`: Tests the WebSocket proxy
 
-### Installation
+## Usage
 
-To deploy the WebSocket infrastructure, run the following script:
+### Applying the WebSocket Infrastructure
+
+To apply the WebSocket infrastructure, run:
 
 ```bash
 ./scripts/apply-websocket-infrastructure.sh
 ```
 
-This script will:
-1. Create the `gamgui` namespace if it doesn't exist
-2. Create the `gam-service-account` service account if it doesn't exist
-3. Create the `gam-credentials` secret if it doesn't exist
-4. Apply the WebSocket infrastructure
-5. Create a default session
-
-### Configuration
-
-The WebSocket integration is configured through environment variables:
-
-- `WEBSOCKET_ENABLED`: Whether WebSocket sessions are enabled (true/false)
-- `WEBSOCKET_PROXY_SERVICE_URL`: The URL of the WebSocket proxy service
-- `WEBSOCKET_SESSION_CONNECTION_TEMPLATE`: The template for WebSocket session connections
-- `WEBSOCKET_SESSION_PATH_TEMPLATE`: The template for WebSocket session paths
-- `WEBSOCKET_MAX_SESSIONS`: The maximum number of concurrent WebSocket sessions
-- `WEBSOCKET_SESSION_TIMEOUT`: The timeout for inactive sessions in milliseconds
-- `WEBSOCKET_CLEANUP_INTERVAL`: The interval for cleaning up inactive sessions in milliseconds
-
-## Usage
+This will create the WebSocket proxy, the session template, and a default session.
 
 ### Creating a Session
 
-To create a new session, use the `create-websocket-session.sh` script:
+To create a new session, run:
 
 ```bash
 ./scripts/create-websocket-session.sh --id <session-id>
 ```
 
-This will create a new GAM session pod with the specified ID.
+This will create a new session with the specified ID.
 
 ### Testing a Session
 
-To test a session, use the `test-websocket-session.sh` script:
+To test a session, run:
 
 ```bash
 ./scripts/test-websocket-session.sh --id <session-id>
 ```
 
-This will create a temporary pod that connects to the session and tests it.
-
-### Testing the WebSocket Proxy
-
-To test the WebSocket proxy, use the `test-websocket-proxy.sh` script:
-
-```bash
-./scripts/test-websocket-proxy.sh
-```
-
-This will create a temporary pod that connects to the WebSocket proxy and tests it.
+This will create a test pod that connects to the session and tests the HTTP connection.
 
 ## Integration with the Server
 
-The server integrates with the WebSocket infrastructure through the `KubernetesWebSocketAdapter` class. This class provides methods for creating, connecting to, and managing WebSocket sessions.
-
-### KubernetesWebSocketAdapter
-
-The `KubernetesWebSocketAdapter` class is initialized in the `ContainerFactory` class and passed to the `KubernetesAdapter` class. The `KubernetesAdapter` class uses the adapter to create and manage WebSocket sessions.
-
-```javascript
-// Create WebSocket adapter if enabled
-let websocketAdapter = null;
-if (websocketEnabled) {
-  websocketAdapter = new KubernetesWebSocketAdapter(config, logger);
-  logger.info('Kubernetes WebSocket adapter created');
-}
-
-// Create Kubernetes adapter with WebSocket adapter
-return new KubernetesAdapter(config, logger, websocketAdapter);
-```
+The server uses the `KubernetesWebSocketAdapter` class to interact with the WebSocket infrastructure. This class provides methods for creating, connecting to, and managing WebSocket sessions.
 
 ### Creating a Session
 
-To create a session, the `KubernetesAdapter` class calls the `createSession` method of the `KubernetesWebSocketAdapter` class:
-
 ```javascript
-// Create WebSocket session
-const sessionInfo = await this.websocketAdapter.createSession(sessionId, {
-  command: options.command || 'info domain',
-  credentialsSecret: options.credentialsSecret || 'gam-credentials'
+const sessionInfo = await kubernetesWebSocketAdapter.createSession(sessionId, {
+  command: 'info domain',
+  credentialsSecret: 'gam-credentials'
 });
 ```
 
 ### Connecting to a Session
 
-To connect to a session, the `KubernetesAdapter` class calls the `connectToSession` method of the `KubernetesWebSocketAdapter` class:
-
 ```javascript
-// Connect to the session
-const ws = await this.websocketAdapter.connectToSession(sessionId);
+const ws = await kubernetesWebSocketAdapter.connectToSession(sessionId);
 ```
 
-### Sending Commands
-
-To send a command to a session, the `KubernetesAdapter` class calls the `sendCommand` method of the `KubernetesWebSocketAdapter` class:
+### Sending a Command
 
 ```javascript
-// Send the command
-await this.websocketAdapter.sendCommand(sessionId, command);
+await kubernetesWebSocketAdapter.sendCommand(sessionId, command);
 ```
 
 ### Closing a Session
 
-To close a session, the `KubernetesAdapter` class calls the `closeSession` method of the `KubernetesWebSocketAdapter` class:
-
 ```javascript
-// Close WebSocket session
-await this.websocketAdapter.closeSession(sessionId);
+await kubernetesWebSocketAdapter.closeSession(sessionId);
 ```
-
-## WebSocket URLs
-
-The WebSocket URLs have the following format:
-
-```
-ws://websocket-proxy.gamgui.svc.cluster.local/ws/session/<session-id>/
-```
-
-For example, to connect to the default session:
-
-```
-ws://websocket-proxy.gamgui.svc.cluster.local/ws/session/default/
-```
-
-## Session Lifecycle
-
-Sessions are automatically cleaned up after 1 hour of inactivity. The last activity time is stored in the `last_activity` annotation of the deployment.
 
 ## Troubleshooting
 
-### Checking Logs
+### Error: Error joining session
 
-To check the logs of a session pod:
+If you encounter the error "Error joining session", check the following:
 
-```bash
-kubectl logs -n gamgui -l session_id=<session-id>
-```
+1. Make sure the WebSocket infrastructure is applied
+2. Make sure the session exists
+3. Make sure the WebSocket proxy is running
+4. Make sure the server is configured to use the WebSocket infrastructure
 
-To check the logs of the WebSocket proxy:
+### Error: WebSocket sessions are disabled
 
-```bash
-kubectl logs -n gamgui -l app=websocket-proxy
-```
+If you encounter the error "WebSocket sessions are disabled", make sure the `WEBSOCKET_ENABLED` environment variable is set to `true`.
 
-### Restarting a Session
+### Error: Failed to connect to session
 
-To restart a session, delete it and create it again:
+If you encounter the error "Failed to connect to session", check the following:
 
-```bash
-kubectl delete deployment -n gamgui gam-session-<session-id>
-kubectl delete service -n gamgui gam-session-<session-id>
-./scripts/create-websocket-session.sh --id <session-id>
-```
+1. Make sure the session exists
+2. Make sure the WebSocket proxy is running
+3. Make sure the session is running
+4. Make sure the WebSocket URL is correct
 
-### Restarting the WebSocket Proxy
+## Conclusion
 
-To restart the WebSocket proxy:
-
-```bash
-kubectl delete deployment -n gamgui websocket-proxy
-kubectl apply -f kubernetes/websocket-infrastructure.yaml
+The WebSocket infrastructure provides a way for the server to create and connect to WebSocket sessions in Kubernetes. By following this guide, you should be able to integrate the WebSocket infrastructure with the server and resolve any issues that may arise.

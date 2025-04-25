@@ -112,15 +112,10 @@ spec:
       echo "Testing WebSocket connection to session ${SESSION_ID}..."
       echo "WebSocket URL: ws://websocket-proxy.${NAMESPACE}.svc.cluster.local/ws/session/${SESSION_ID}/"
       
-      # Install websocat if not already installed
-      if ! command -v websocat &> /dev/null; then
-        echo "Installing websocat..."
-        apk add --no-cache websocat
-      fi
-      
-      # Test the WebSocket connection
-      echo "Sending command: ${COMMAND}"
-      echo "${COMMAND}" | websocat ws://websocket-proxy.${NAMESPACE}.svc.cluster.local/ws/session/${SESSION_ID}/
+      # Test the HTTP connection
+      echo "Testing HTTP connection to session ${SESSION_ID}..."
+      echo "Command: ${COMMAND}"
+      curl -v http://gam-session-${SESSION_ID}:8080/
       
       # Keep the pod running for debugging
       echo "Test completed. Pod will terminate in 30 seconds."
