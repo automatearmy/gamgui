@@ -16,6 +16,11 @@ import { getSocketUrl } from "./api";
 //   'error': (data: { message: string, error?: string }) => void;
 // }
 
+/**
+ * Create a terminal connection to a session
+ * @param sessionId The session ID to connect to
+ * @returns The socket.io connection
+ */
 export function createTerminalConnection(sessionId: string) {
   const socket = io(`${getSocketUrl()}/terminal`);
   
@@ -31,6 +36,31 @@ export function createTerminalConnection(sessionId: string) {
   
   socket.on('disconnect', (reason: string) => {
     console.log('Disconnected from terminal socket:', reason);
+  });
+  
+  return socket;
+}
+
+/**
+ * Create a websocket connection to a session
+ * @param sessionId The session ID to connect to
+ * @returns The socket.io connection
+ */
+export function createSessionWebsocket(sessionId: string) {
+  // Create a websocket connection to the session
+  const socket = io(`${getSocketUrl()}/ws/session/${sessionId}/`);
+  
+  // Set up default event handlers
+  socket.on('connect', () => {
+    console.log(`Connected to session websocket for session ${sessionId}`);
+  });
+  
+  socket.on('connect_error', (error: Error) => {
+    console.error('Session websocket connection error:', error);
+  });
+  
+  socket.on('disconnect', (reason: string) => {
+    console.log(`Disconnected from session websocket: ${reason}`);
   });
   
   return socket;

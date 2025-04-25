@@ -1,198 +1,139 @@
-# GamGUI Server
+# GAMGUI Server
 
-Express API server for the GamGUI application.
+The GAMGUI Server provides a backend for the GAMGUI application, which allows users to interact with GAM (Google Apps Manager) through a web interface.
 
-## Setup
+## Code Structure
 
-1. Install dependencies:
-   ```
-   npm install
-   ```
+The server code has been refactored to follow a modular, service-oriented architecture with clear separation of concerns. The main components are:
 
-2. Create a `.env` file based on the `.env.example`:
-   ```
-   cp .env.example .env
-   ```
+### Services
 
-3. Start the development server:
-   ```
-   npm run dev
-   ```
+Services are organized into logical modules with clear responsibilities:
 
-## Docker Support
+- **Session Service**: Manages user sessions
+- **Container Service**: Provides an abstraction for container operations (Docker and Kubernetes)
+- **Terminal Service**: Handles terminal operations and command execution
+- **WebSocket Service**: Manages WebSocket connections and events
 
-The server includes functionality to build and run Docker images with GAM (Google Admin Management) capabilities using the Dockerode library. To use this functionality:
+### Configuration
 
-1. Make sure Docker is installed and running on your system
-2. Ensure Docker API is accessible (Dockerode connects to the Docker socket)
-3. Place the required GAM credential files in the `gamgui-server/gam-credentials` directory:
-   - `oauth2service.json`
-   - `oauth2.txt`
-   - `client_secrets.json`
+- **config/**: Contains configuration settings for the application
 
-## API Endpoints
+### Utilities
 
-### Images
+- **utils/**: Contains utility functions and classes
+  - **logger.js**: Logging utility
+  - **errorHandler.js**: Error handling utilities
+  - **dockerGam.js**: Utility for executing GAM commands in Docker
+  - **kubernetesClient.js**: Utility for interacting with Kubernetes
 
-- **Create a new Docker image**
-  - POST `/api/images`
-  - This endpoint will:
-    1. Verify the GAM credentials exist in the `gam-credentials` directory
-    2. Build a Docker image using the Dockerfile in the server directory
-    3. Return details about the created image
-  - Request Body:
-    ```json
-    {
-      "name": "Image Name",
-      "data": {}, // Optional additional data
-      "metadata": {
-        "property": "value" // Optional metadata
-      }
-    }
-    ```
-  - Response:
-    ```json
-    {
-      "message": "Image created successfully",
-      "image": {
-        "id": "unique-uuid",
-        "name": "Image Name",
-        "imageName": "gam-image-name-12345678",
-        "data": {},
-        "metadata": {},
-        "dockerBuildOutput": "Docker build output...",
-        "createdAt": "2023-04-07T12:00:00.000Z"
-      }
-    }
-    ```
+### Routes
 
-- **Run a command in a Docker image**
-  - POST `/api/images/:id/run`
-  - Executes a command in the specified Docker container
-  - Request Body:
-    ```json
-    {
-      "command": "gam info domain"
-    }
-    ```
-  - Response:
-    ```json
-    {
-      "message": "Command executed successfully",
-      "output": "Command output...",
-      "exitCode": 0
-    }
-    ```
+- **routes/**: Contains HTTP route handlers
+  - **socketHandler.js**: Main entry point for WebSocket connections
 
-- **Get all images**
-  - GET `/api/images`
+## Architecture
 
-- **Get image by ID**
-  - GET `/api/images/:id`
+The application follows these architectural principles:
 
-### Sessions
+1. **Dependency Injection**: Services accept dependencies through constructors
+2. **Adapter Pattern**: For container implementations (Kubernetes, Docker)
+3. **Repository Pattern**: For session data access
+4. **Factory Pattern**: For creating appropriate service instances
+5. **Observer Pattern**: For WebSocket event handling
+6. **Strategy Pattern**: For command execution strategies
+7. **Single Responsibility Principle**: Each class has one reason to change
 
-- **Create a new session with a Docker container**
-  - POST `/api/sessions`
-  - Creates a new session with a running Docker container based on the specified image
-  - Request Body:
-    ```json
-    {
-      "name": "Session Name",
-      "imageId": "image_id",
-      "config": {
-        "property": "value" // Optional configuration
-      }
-    }
-    ```
-  - Response:
-    ```json
-    {
-      "message": "Session created successfully",
-      "session": {
-        "id": "unique-uuid",
-        "name": "Session Name",
-        "containerId": "docker-container-id",
-        "containerName": "gam-session-12345678",
-        "imageId": "image_id",
-        "imageName": "gam-image-name-12345678",
-        "config": {},
-        "createdAt": "2023-04-07T12:00:00.000Z",
-        "lastModified": "2023-04-07T12:00:00.000Z",
-        "status": "active"
-      }
-    }
-    ```
+## Class Diagram
 
-- **Get all sessions**
-  - GET `/api/sessions`
-
-- **Get session by ID**
-  - GET `/api/sessions/:id`
-
-- **Delete a session**
-  - DELETE `/api/sessions/:id`
-  - Stops and removes the Docker container associated with the session
-
-## WebSocket Integration
-
-The server provides real-time terminal interaction with Docker containers through WebSockets.
-
-### Connecting to a Session Terminal
-
-- **Namespace**: `/terminal`
-- **Connection Steps**:
-  1. Connect to the WebSocket server
-  2. Join a session by emitting a `join-session` event with a session ID
-  3. Send commands via `terminal-input` events
-  4. Receive container output via `terminal-output` events
-
-### WebSocket Events
-
-- **Client to Server**:
-  - `join-session`: Join a container session
-    ```json
-    { "sessionId": "session_id" }
-    ```
-  - `terminal-input`: Send terminal input to the container
-    ```
-    "command string\n"
-    ```
-  - `leave-session`: Disconnect from a session
-    ```json
-    { "sessionId": "session_id" }
-    ```
-
-- **Server to Client**:
-  - `terminal-output`: Container terminal output
-  - `session-joined`: Confirmation that client has joined the session
-  - `terminal-closed`: Notification that the terminal session has ended
-  - `error`: Error information
-
-### Example (Using socket.io-client):
-
-```javascript
-import io from 'socket.io-client';
-
-// Connect to socket
-const socket = io('http://localhost:3001/terminal');
-
-// Join a session
-socket.emit('join-session', { sessionId: 'your-session-id' });
-
-// Handle terminal output
-socket.on('terminal-output', (data) => {
-  console.log('Output:', data);
-});
-
-// Handle errors
-socket.on('error', (data) => {
-  console.error('Error:', data.message);
-});
-
-// Send commands
-socket.emit('terminal-input', 'gam info domain\n');
-
-// Leave session
-socket.emit('leave-session', { sessionId: 'your-session-id' });
 ```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│ WebSocketService│────▶│  SocketManager  │     │  EventHandlers  │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+         │                                              ▲
+         │                                              │
+         ▼                                              │
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│ SessionService  │────▶│SessionRepository│     │ TerminalService │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+         │                                              ▲
+         │                                              │
+         ▼                                              │
+┌─────────────────┐                            ┌─────────────────┐
+│ContainerService │◀───┐                       │ CommandService  │
+└─────────────────┘    │                       └─────────────────┘
+         ▲             │                              ▲
+         │             │                              │
+┌────────┴────────┐    │                     ┌────────┴────────┐
+│KubernetesAdapter│    │                     │VirtualFileSystem│
+└─────────────────┘    │                     └─────────────────┘
+                       │
+                       │
+               ┌───────┴───────┐
+               │ DockerAdapter │
+               └───────────────┘
+```
+
+## WebSocket Communication
+
+The server supports two types of WebSocket connections:
+
+1. **Terminal Namespace** (`/terminal`): For terminal connections
+   - Events: `join-session`, `leave-session`, `terminal-input`, `terminal-output`
+
+2. **Session Namespace** (`/ws/session/:sessionId/`): For session-specific connections
+   - Events: `input`, `output`, `connected`, `error`
+
+## Container Support
+
+The server supports two types of containers:
+
+1. **Docker**: Uses Docker containers for GAM commands
+2. **Kubernetes**: Uses Kubernetes pods for GAM commands
+
+The appropriate container implementation is selected based on configuration.
+
+## Error Handling
+
+The application uses a consistent error handling approach:
+
+1. **Custom Error Classes**: For different types of errors
+2. **Error Propagation**: Errors are propagated up the call stack
+3. **Error Logging**: Errors are logged with context
+4. **Client Notification**: Clients are notified of errors via WebSocket events
+
+## Logging
+
+The application uses a consistent logging approach:
+
+1. **Log Levels**: Debug, Info, Warning, Error
+2. **Context**: Logs include context information
+3. **Timestamps**: Logs include timestamps
+
+## Configuration
+
+The application is configured via environment variables and a configuration file:
+
+1. **Environment Variables**: For sensitive information
+2. **Configuration File**: For application settings
+
+## Usage
+
+To start the server:
+
+```bash
+npm start
+```
+
+To run in development mode:
+
+```bash
+npm run dev
+```
+
+## Dependencies
+
+- **Socket.IO**: For WebSocket communication
+- **Express**: For HTTP routing
+- **@kubernetes/client-node**: For Kubernetes integration
+- **uuid**: For generating unique IDs

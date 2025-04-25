@@ -37,7 +37,7 @@ spec:
       containers:
       - env:
         - name: GAM_IMAGE
-          value: gcr.io/gamgui-registry/docker-gam7:latest
+          value: us-central1.gcr.io/gamgui-registry/docker-gam7:latest
         - name: PROJECT_ID
           value: gamgui-tf-1
         - name: REVISION_TIMESTAMP
@@ -46,7 +46,7 @@ spec:
           value: gamgui-cluster
         - name: GKE_CLUSTER_LOCATION
           value: us-central1
-        image: gcr.io/gamgui-registry/gamgui-server-image:latest
+        image: us-central1.gcr.io/gamgui-registry/gamgui-server-image:latest
         ports:
         - containerPort: 3001
           name: http1
