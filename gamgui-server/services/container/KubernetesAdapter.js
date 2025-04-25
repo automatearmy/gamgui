@@ -162,6 +162,101 @@ class KubernetesAdapter extends ContainerService {
   }
 
   /**
+   * Execute a GAM command in a container
+   * @param {string} sessionId - The session ID
+   * @param {string} command - The GAM command to execute (without 'gam' prefix)
+   * @param {object} options - Options for execution
+   * @param {function} options.onStdout - Callback for stdout data
+   * @param {function} options.onStderr - Callback for stderr data
+   * @param {function} options.onClose - Callback for process close
+   * @param {function} options.onError - Callback for process error
+   * @returns {Promise<object>} - The command result
+   * @throws {ContainerError} - If the command execution fails
+   */
+  executeGamCommand(sessionId, command, options = {}) {
+    try {
+      // Extract options with defaults
+      const onStdout = options.onStdout || ((data) => this.logger.debug(`GAM stdout: ${data.toString()}`));
+      const onStderr = options.onStderr || ((data) => this.logger.debug(`GAM stderr: ${data.toString()}`));
+      const onClose = options.onClose || ((code) => this.logger.info(`GAM process exited with code ${code}`));
+      const onError = options.onError || ((err) => this.logger.error(`GAM process error: ${err.message}`));
+
+      // Check if WebSocket adapter is available and enabled
+      if (this.websocketAdapter && this.websocketAdapter.isEnabled() && this.websocketAdapter.hasSession(sessionId)) {
+        this.logger.info(`Using WebSocket to execute GAM command for session ${sessionId}: ${command}`);
+        
+        try {
+          // Connect to the session if not already connected
+          const sessionInfo = this.websocketAdapter.getSession(sessionId);
+          let ws;
+          
+          if (sessionInfo.status !== 'connected') {
+            ws = this.websocketAdapter.connectToSession(sessionId);
+          }
+          
+          // Send the command
+          this.websocketAdapter.sendCommand(sessionId, `gam ${command}`);
+          
+          // For WebSocket sessions, we don't get a direct response
+          // The response will be sent to the client via the WebSocket connection
+          return { websocket: true };
+        } catch (error) {
+          this.logger.error(`Error executing GAM command via WebSocket for session ${sessionId}:`, error);
+          onError(error);
+          // Fall back to regular Kubernetes execution
+        }
+      }
+      
+      // Generate the pod name based on the session ID
+      const podName = `gam-session-${sessionId}`;
+      
+      this.logger.debug(`Executing GAM command in pod ${podName}: ${command}`);
+      
+      // Create an exec instance
+      const exec = new k8s.Exec(this.kc);
+      
+      // Execute the command
+      const commandArray = ['/bin/bash', '-c', `/gam/gam7/gam ${command}`];
+      
+      exec.exec(
+        this.namespace,
+        podName,
+        'gam-container',
+        commandArray,
+        {
+          stdout: (data) => {
+            onStdout(data);
+          }
+        },
+        {
+          stderr: (data) => {
+            onStderr(data);
+          }
+        },
+        process.stdin,
+        true,
+        (status) => {
+          if (status.status === 'Success') {
+            onClose(0);
+          } else {
+            onClose(1);
+          }
+        }
+      );
+      
+      return { kubernetes: true };
+    } catch (error) {
+      this.logger.error(`Error executing GAM command in pod for session ${sessionId}:`, error);
+      options.onError(error);
+      throw new ContainerError(`Error executing GAM command: ${error.message}`, {
+        cause: error,
+        sessionId,
+        command
+      });
+    }
+  }
+
+  /**
    * Create a container for a session
    * @param {string} sessionId - The session ID
    * @param {object} options - Container options
