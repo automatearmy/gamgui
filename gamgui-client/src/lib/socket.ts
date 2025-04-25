@@ -46,22 +46,37 @@ export function createTerminalConnection(sessionId: string) {
  * @param sessionId The session ID to connect to
  * @returns The socket.io connection
  */
-export function createSessionWebsocket(sessionId: string) {
-  // Create a websocket connection to the session
-  const socket = io(`${getSocketUrl()}/ws/session/${sessionId}/`);
-  
-  // Set up default event handlers
-  socket.on('connect', () => {
-    console.log(`Connected to session websocket for session ${sessionId}`);
-  });
-  
-  socket.on('connect_error', (error: Error) => {
-    console.error('Session websocket connection error:', error);
-  });
-  
-  socket.on('disconnect', (reason: string) => {
-    console.log(`Disconnected from session websocket: ${reason}`);
-  });
-  
-  return socket;
+export async function createSessionWebsocket(sessionId: string) {
+  try {
+    // Get the websocket info for the session
+    const response = await fetch(`${getSocketUrl()}/api/sessions/${sessionId}/websocket`);
+    const websocketInfo = await response.json();
+    
+    console.log('WebSocket info:', websocketInfo);
+    
+    if (websocketInfo.error) {
+      throw new Error(websocketInfo.error);
+    }
+    
+    // Create a websocket connection to the session
+    const socket = io(`${getSocketUrl()}/ws/session/${sessionId}/`);
+    
+    // Set up default event handlers
+    socket.on('connect', () => {
+      console.log(`Connected to session websocket for session ${sessionId}`);
+    });
+    
+    socket.on('connect_error', (error: Error) => {
+      console.error('Session websocket connection error:', error);
+    });
+    
+    socket.on('disconnect', (reason: string) => {
+      console.log(`Disconnected from session websocket: ${reason}`);
+    });
+    
+    return socket;
+  } catch (error) {
+    console.error('Error creating session websocket:', error);
+    throw error;
+  }
 }

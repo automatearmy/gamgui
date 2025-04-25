@@ -1,270 +1,148 @@
-# Websocket Sessions for GAM
+# WebSocket Sessions
 
-This document describes how to use the websocket session feature in the GAM application.
+This document explains how to solve the "Error joining session" problem that occurs when the client tries to connect to a session in Kubernetes.
 
-## Overview
+## Problem
 
-The application has been enhanced to support websocket connections to GAM sessions. This allows real-time interaction with GAM commands through a websocket connection, which is particularly useful for building interactive web applications that need to communicate with GAM in real-time.
+When the client tries to connect to a session in Kubernetes, it receives the error "Error joining session" and "Error: Not connected to a session". This happens because the client is trying to connect directly to the server, but the server is in Cloud Run and doesn't have direct access to the Kubernetes pods.
 
-## How It Works
+## Solution
 
-When a new session is created:
+The solution is to use a WebSocket proxy in Kubernetes to route WebSocket connections from the client to the Kubernetes pods. The client connects to the Cloud Run server, which in turn connects to the WebSocket proxy in Kubernetes, which routes the connection to the correct pod.
 
-1. A dedicated Kubernetes deployment is created with a unique session ID
-2. A session-specific service is created to route traffic to the pod
-3. An ingress rule is added to expose the websocket endpoint
-4. The websocket connection is proxied to the GAM container
+### Components
 
-The websocket connection is available at the path `/ws/session/{SESSION_ID}/` on the ingress host.
+1. **WebSocket Proxy**: An Nginx proxy that routes WebSocket connections to Kubernetes pods.
+2. **Session Template**: A template for creating new sessions in Kubernetes.
+3. **Default Session**: A default session that is always available.
+4. **Server Configuration**: Configuration of the server to use the WebSocket proxy.
+5. **Client Configuration**: Configuration of the client to use the WebSocket proxy.
 
-## Server-Side Implementation
+### Server Configuration
 
-### Kubernetes Resources
+The server needs to be configured with the following environment variables:
 
-The Terraform configuration creates the following Kubernetes resources for each session:
-
-1. **Deployment**: A deployment with the session ID in the name and labels
-2. **Service**: A service that routes traffic to the deployment
-3. **Ingress Rule**: An ingress rule that exposes the websocket endpoint
-
-### Server API
-
-The server API has been enhanced with the following endpoints:
-
-1. **POST /api/sessions**: Creates a new session and returns websocket information
-2. **GET /api/sessions/:id/websocket**: Gets websocket information for a session
-
-### Websocket Server
-
-The server uses Socket.io to handle websocket connections. The following namespaces are available:
-
-1. **/terminal**: The existing namespace for terminal connections
-2. **/ws/session/:sessionId/**: A new namespace for session-specific websocket connections
-
-## Client-Side Implementation
-
-### API Functions
-
-The client API has been enhanced with the following functions:
-
-1. **createSession**: Creates a new session and returns websocket information
-2. **getSessionWebsocketInfo**: Gets websocket information for a session
-
-### Websocket Client
-
-The client uses Socket.io to connect to the websocket server. The following functions are available:
-
-1. **createTerminalConnection**: Creates a connection to the terminal namespace
-2. **createSessionWebsocket**: Creates a connection to a session-specific namespace
-
-## Usage
-
-### Creating a New Session
-
-```javascript
-import { createSession, getSessionWebsocketInfo } from './api';
-import { createSessionWebsocket } from './socket';
-
-// Create a new session
-const response = await createSession('My Session', 'default-gam-image');
-const { session, websocketInfo } = response;
-
-// Connect to the session
-const socket = createSessionWebsocket(session.id);
-
-// Listen for messages
-socket.on('output', (data) => {
-  console.log('Received output:', data);
-});
-
-// Send commands
-socket.emit('input', 'gam info domain');
+```
+WEBSOCKET_ENABLED=true
+WEBSOCKET_PROXY_SERVICE_URL=websocket-proxy.gamgui.svc.cluster.local
+WEBSOCKET_SESSION_CONNECTION_TEMPLATE=ws://websocket-proxy.gamgui.svc.cluster.local/ws/session/{{SESSION_ID}}/
+WEBSOCKET_SESSION_PATH_TEMPLATE=/ws/session/{{SESSION_ID}}/
+WEBSOCKET_MAX_SESSIONS=50
 ```
 
-### Getting Websocket Information for an Existing Session
+### Client Configuration
 
-```javascript
-import { getSessionWebsocketInfo } from './api';
-import { createSessionWebsocket } from './socket';
+The client needs to be modified to use the WebSocket information returned by the server. The following changes were made:
 
-// Get websocket information for a session
-const websocketInfo = await getSessionWebsocketInfo('session-id');
+1. Added `getSessionWebsocketInfo` to get WebSocket information from the server.
+2. Modified `createSessionWebsocket` to use the WebSocket information.
+3. Modified `connectToTerminal` to use the WebSocket connection if available.
 
-// Connect to the session
-const socket = createSessionWebsocket('session-id');
+### Infrastructure
 
-// Listen for messages
-socket.on('output', (data) => {
-  console.log('Received output:', data);
-});
+The WebSocket infrastructure consists of the following components:
 
-// Send commands
-socket.emit('input', 'gam info domain');
-```
+1. **WebSocket Proxy**: An Nginx proxy that routes WebSocket connections to the appropriate session.
+2. **Session Template**: A template for creating new sessions.
+3. **Default Session**: A default session that is always available.
 
-## Websocket Events
+### Scripts
 
-### Client to Server
+The following scripts are available for managing the WebSocket infrastructure:
 
-1. **input**: Send a command to the session
+1. `apply-websocket-infrastructure.sh`: Applies the WebSocket infrastructure to Kubernetes.
+2. `create-websocket-session.sh`: Creates a new WebSocket session.
+3. `test-websocket-session.sh`: Tests a WebSocket session.
+4. `test-websocket-proxy.sh`: Tests the WebSocket proxy.
 
-```javascript
-socket.emit('input', 'gam info domain');
-```
+## Implementation
 
-### Server to Client
+### Server Side
 
-1. **output**: Receive output from the session
+1. Added WebSocket environment variables to the server's `.env` file.
+2. Created a WebSocket proxy in Kubernetes.
+3. Created a template for dynamic sessions.
+4. Created a default session.
 
-```javascript
-socket.on('output', (data) => {
-  console.log('Received output:', data);
-});
-```
+### Client Side
 
-2. **connected**: Receive a connection confirmation
+1. Modified the client to get WebSocket information from the server.
+2. Modified the client to use the WebSocket connection if available.
+3. Added error handling for WebSocket connections.
 
-```javascript
-socket.on('connected', (data) => {
-  console.log('Connected to session:', data.sessionId);
-});
-```
+## Testing
 
-3. **error**: Receive an error message
+To test the solution:
 
-```javascript
-socket.on('error', (data) => {
-  console.error('Error:', data.message);
-});
-```
+1. Apply the WebSocket infrastructure:
+   ```bash
+   cd gamgui-terraform
+   ./apply-websocket-kubernetes.sh
+   ```
 
-## Example: Creating a Simple Terminal
+2. Create a default session:
+   ```bash
+   cd gamgui-terraform
+   ./scripts/create-websocket-session.sh --id default
+   ```
 
-```javascript
-import React, { useEffect, useState } from 'react';
-import { createSession } from './api';
-import { createSessionWebsocket } from './socket';
+3. Test the session:
+   ```bash
+   cd gamgui-terraform
+   ./scripts/test-websocket-session.sh --id default
+   ```
 
-function Terminal() {
-  const [sessionId, setSessionId] = useState(null);
-  const [socket, setSocket] = useState(null);
-  const [output, setOutput] = useState('');
-  const [input, setInput] = useState('');
+4. Start the server:
+   ```bash
+   cd gamgui-app/gamgui-server
+   npm start
+   ```
 
-  useEffect(() => {
-    async function createNewSession() {
-      const response = await createSession('My Session', 'default-gam-image');
-      const { session } = response;
-      setSessionId(session.id);
+5. Start the client:
+   ```bash
+   cd gamgui-app/gamgui-client
+   npm run dev
+   ```
 
-      const newSocket = createSessionWebsocket(session.id);
-      setSocket(newSocket);
-
-      newSocket.on('output', (data) => {
-        setOutput((prev) => prev + data);
-      });
-
-      newSocket.on('connected', (data) => {
-        console.log('Connected to session:', data.sessionId);
-      });
-
-      newSocket.on('error', (data) => {
-        console.error('Error:', data.message);
-      });
-    }
-
-    createNewSession();
-
-    return () => {
-      if (socket) {
-        socket.disconnect();
-      }
-    };
-  }, []);
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (socket && input) {
-      socket.emit('input', input);
-      setInput('');
-    }
-  };
-
-  return (
-    <div>
-      <div
-        style={{
-          height: '400px',
-          overflow: 'auto',
-          backgroundColor: '#000',
-          color: '#fff',
-          padding: '10px',
-          fontFamily: 'monospace',
-          whiteSpace: 'pre-wrap',
-        }}
-      >
-        {output}
-      </div>
-      <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          style={{ width: '100%', padding: '5px' }}
-        />
-      </form>
-    </div>
-  );
-}
-
-export default Terminal;
-```
-
-## Security Considerations
-
-1. **Authentication**: The websocket endpoint should be protected with authentication to prevent unauthorized access.
-2. **Rate Limiting**: Implement rate limiting to prevent abuse of the websocket API.
-3. **Session Isolation**: Each session is isolated in its own pod to prevent interference between sessions.
-4. **Resource Limits**: Set appropriate resource limits to prevent a single session from consuming too many resources.
-5. **Session Cleanup**: Inactive sessions are automatically cleaned up to prevent resource leaks.
+6. Open the client in a browser and create a new session.
 
 ## Troubleshooting
 
-### Common Issues
+### Error: Error joining session
 
-1. **Connection Refused**: Make sure the ingress is properly configured and the service is running.
-2. **Connection Closed**: Check the pod logs for errors.
-3. **Session Not Found**: Make sure the session ID is correct and the session is still active.
+If you still see the "Error joining session" error, check the following:
 
-### Debugging
-
-To debug a websocket session:
-
-1. Check the pod logs:
+1. Make sure the WebSocket proxy is running:
    ```bash
-   kubectl logs -n gamgui -l session_id=my-session-123
+   kubectl get deployment websocket-proxy -n gamgui
    ```
 
-2. Check the service:
+2. Make sure the session exists:
    ```bash
-   kubectl describe service gam-service-my-session-123 -n gamgui
+   kubectl get deployment gam-session-<session-id> -n gamgui
    ```
 
-3. Check the ingress:
+3. Make sure the server is configured with the correct WebSocket environment variables.
+
+4. Check the server logs for any errors:
    ```bash
-   kubectl describe ingress gam-ingress -n gamgui
+   kubectl logs deployment/gamgui-server -n gamgui
    ```
 
-4. Test the websocket connection:
+5. Check the client console for any errors.
+
+### Error: WebSocket connection failed
+
+If the WebSocket connection fails, check the following:
+
+1. Make sure the WebSocket proxy is running.
+2. Make sure the session exists.
+3. Make sure the WebSocket proxy is configured correctly.
+4. Check the WebSocket proxy logs:
    ```bash
-   # Using wscat (install with: npm install -g wscat)
-   wscat -c wss://gamgui.example.com/ws/session/my-session-123/
+   kubectl logs deployment/websocket-proxy -n gamgui
    ```
 
-## Future Improvements
+## Conclusion
 
-1. **Session Authentication**: Add support for authenticating websocket sessions.
-2. **Session Metrics**: Collect metrics on session usage and performance.
-3. **Session Logs**: Provide access to session logs through the websocket connection.
-4. **Session Events**: Send events to the client when the session state changes.
-5. **Session Reconnection**: Add support for reconnecting to a session if the connection is lost.
+By using a WebSocket proxy in Kubernetes, we can solve the "Error joining session" problem that occurs when the client tries to connect to a session in Kubernetes. The client connects to the Cloud Run server, which in turn connects to the WebSocket proxy in Kubernetes, which routes the connection to the correct pod.
