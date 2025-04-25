@@ -1,16 +1,16 @@
 steps:
   # Build the container image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '--platform=linux/amd64', '-t', 'us-central1.gcr.io/gamgui-registry/gamgui-server-image', '.']
+    args: ['build', '--platform=linux/amd64', '-t', 'gcr.io/gamgui-registry/gamgui-server-image', '.']
     dir: gamgui-server
     
-  # Push the container image to Artifact Registry
+  # Push the container image to Container Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'us-central1.gcr.io/gamgui-registry/gamgui-server-image']
+    args: ['push', 'gcr.io/gamgui-registry/gamgui-server-image']
 
-# Images to be stored in Artifact Registry
+# Images to be stored in Container Registry
 images:
-  - 'us-central1.gcr.io/gamgui-registry/gamgui-server-image'
+  - 'gcr.io/gamgui-registry/gamgui-server-image'
 
 options:
   logStreamingOption: STREAM_ON

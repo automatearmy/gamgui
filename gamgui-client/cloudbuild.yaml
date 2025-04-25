@@ -6,18 +6,18 @@ steps:
       '--platform=linux/amd64',
       '--build-arg', 'VITE_API_URL=https://gamgui-server-vthtec4m3a-uc.a.run.app/api',
       '--build-arg', 'VITE_SOCKET_URL=https://gamgui-server-vthtec4m3a-uc.a.run.app',
-      '-t', 'us-central1.gcr.io/gamgui-registry/gamgui-client-image',
+      '-t', 'gcr.io/gamgui-registry/gamgui-client-image',
       '.'
     ]
     dir: gamgui-client
     
-  # Push the container image to Artifact Registry
+  # Push the container image to Container Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'us-central1.gcr.io/gamgui-registry/gamgui-client-image']
+    args: ['push', 'gcr.io/gamgui-registry/gamgui-client-image']
 
-# Images to be stored in Artifact Registry
+# Images to be stored in Container Registry
 images:
-  - 'us-central1.gcr.io/gamgui-registry/gamgui-client-image'
+  - 'gcr.io/gamgui-registry/gamgui-client-image'
 
 options:
   logStreamingOption: STREAM_ON
