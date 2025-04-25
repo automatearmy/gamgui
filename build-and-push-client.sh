@@ -67,12 +67,12 @@ docker build \
   --platform=linux/amd64 \
   --build-arg VITE_API_URL="${SERVER_URL}/api" \
   --build-arg VITE_SOCKET_URL="${SERVER_URL}" \
-  -t us-central1.gcr.io/gamgui-registry/gamgui-client-image:latest \
+  -t gcr.io/gamgui-registry/gamgui-client-image:latest \
   ./gamgui-client
 
 # Push the Docker image to the registry
 echo -e "\n=== Pushing Docker image to registry ==="
-docker push us-central1.gcr.io/gamgui-registry/gamgui-client-image:latest
+docker push gcr.io/gamgui-registry/gamgui-client-image:latest
 
 echo -e "\n=== Build and Push Complete ==="
 echo "The client Docker image has been built with the correct server URL and pushed to the registry."
