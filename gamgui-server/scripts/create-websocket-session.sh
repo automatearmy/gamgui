@@ -77,6 +77,16 @@ if ! command -v kubectl &> /dev/null; then
   exit 1
 fi
 
+# Configure kubectl to access the GKE cluster
+echo -e "${YELLOW}Configuring kubectl to access the GKE cluster...${NC}"
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+if [ -f "${SCRIPT_DIR}/configure-kubectl.sh" ]; then
+  source "${SCRIPT_DIR}/configure-kubectl.sh"
+else
+  echo -e "${RED}Error: configure-kubectl.sh script not found${NC}"
+  exit 1
+fi
+
 # Check if the namespace exists
 if ! kubectl get namespace $NAMESPACE &> /dev/null; then
   echo -e "${YELLOW}Creating namespace ${NAMESPACE}...${NC}"
