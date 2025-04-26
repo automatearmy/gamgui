@@ -17,10 +17,11 @@ RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/s
     mv kubectl /usr/local/bin/
 
 # Install Google Cloud SDK for authentication with GKE
-RUN curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-latest-linux-x86_64.tar.gz && \
-    tar -xf google-cloud-cli-latest-linux-x86_64.tar.gz && \
-    ./google-cloud-sdk/install.sh --quiet && \
-    rm google-cloud-cli-latest-linux-x86_64.tar.gz
+# Use a specific version and verify the download
+RUN wget -O google-cloud-sdk.tar.gz https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-458.0.0-linux-x86_64.tar.gz && \
+    tar -xzf google-cloud-sdk.tar.gz && \
+    ./google-cloud-sdk/install.sh --quiet --usage-reporting=false --path-update=true && \
+    rm google-cloud-sdk.tar.gz
 
 # Add gcloud to PATH
 ENV PATH="/google-cloud-sdk/bin:${PATH}"
