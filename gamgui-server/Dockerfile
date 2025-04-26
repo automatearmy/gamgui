@@ -11,6 +11,20 @@ RUN apk add --no-cache \
     wget \
     xz
 
+# Install kubectl
+RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && \
+    chmod +x kubectl && \
+    mv kubectl /usr/local/bin/
+
+# Install Google Cloud SDK for authentication with GKE
+RUN curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-latest-linux-x86_64.tar.gz && \
+    tar -xf google-cloud-cli-latest-linux-x86_64.tar.gz && \
+    ./google-cloud-sdk/install.sh --quiet && \
+    rm google-cloud-cli-latest-linux-x86_64.tar.gz
+
+# Add gcloud to PATH
+ENV PATH="/google-cloud-sdk/bin:${PATH}"
+
 # Set working directory
 WORKDIR /app
 
@@ -28,6 +42,9 @@ RUN npm ci
 
 # Copy the rest of the application code
 COPY . .
+
+# Make scripts executable
+RUN chmod +x scripts/*.sh
 
 # Expose the server port
 EXPOSE 3001

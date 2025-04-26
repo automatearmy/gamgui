@@ -49,34 +49,97 @@ export function createTerminalConnection(sessionId: string) {
 export async function createSessionWebsocket(sessionId: string) {
   try {
     // Get the websocket info for the session
+    console.log(`Fetching WebSocket info for session ${sessionId}...`);
     const response = await fetch(`${getSocketUrl()}/api/sessions/${sessionId}/websocket`);
-    const websocketInfo = await response.json();
     
-    console.log('WebSocket info:', websocketInfo);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`WebSocket info API error (${response.status}): ${errorText}`);
+      throw new Error(`Failed to fetch WebSocket info: ${response.status} ${response.statusText}`);
+    }
+    
+    const websocketInfo = await response.json();
+    console.log('WebSocket info received:', websocketInfo);
     
     if (websocketInfo.error) {
+      console.error('WebSocket info contains error:', websocketInfo.error);
       throw new Error(websocketInfo.error);
     }
     
-    // Create a websocket connection to the session
-    const socket = io(`${getSocketUrl()}/ws/session/${sessionId}/`);
+    // Validate WebSocket info
+    if (!websocketInfo.kubernetes) {
+      console.warn('Session is not a Kubernetes session, falling back to regular terminal connection');
+      throw new Error('Session is not a Kubernetes session');
+    }
     
-    // Set up default event handlers
+    if (!websocketInfo.websocketPath) {
+      console.error('WebSocket info missing websocketPath');
+      throw new Error('WebSocket path not provided by server');
+    }
+    
+    // Construct the WebSocket URL
+    // Use the base socket URL with the websocket path from the server
+    const socketUrl = getSocketUrl();
+    const wsUrl = `${socketUrl}/ws/session/${sessionId}/`;
+    
+    console.log(`Connecting to WebSocket at ${wsUrl}`);
+    console.log(`WebSocket path from server: ${websocketInfo.websocketPath}`);
+    
+    // Create socket.io options with retry configuration
+    const socketOptions = {
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
+      forceNew: true
+    };
+    
+    // Create a websocket connection to the session
+    const socket = io(wsUrl, socketOptions);
+    
+    // Set up enhanced event handlers with more detailed logging
     socket.on('connect', () => {
-      console.log(`Connected to session websocket for session ${sessionId}`);
+      console.log(`✅ Connected to session websocket for session ${sessionId}`);
+      console.log(`Socket ID: ${socket.id}`);
     });
     
     socket.on('connect_error', (error: Error) => {
-      console.error('Session websocket connection error:', error);
+      console.error(`❌ Session websocket connection error for session ${sessionId}:`, error);
+      console.error('Connection details:', {
+        url: wsUrl,
+        sessionId,
+        socketId: socket.id,
+        transportType: socket.io.engine?.transport?.name
+      });
+    });
+    
+    socket.on('error', (error: Error) => {
+      console.error(`❌ Session websocket error for session ${sessionId}:`, error);
     });
     
     socket.on('disconnect', (reason: string) => {
-      console.log(`Disconnected from session websocket: ${reason}`);
+      console.log(`⚠️ Disconnected from session websocket for session ${sessionId}: ${reason}`);
+    });
+    
+    socket.on('reconnect_attempt', (attemptNumber: number) => {
+      console.log(`🔄 Attempting to reconnect to session ${sessionId} (attempt ${attemptNumber})`);
+    });
+    
+    socket.on('reconnect', (attemptNumber: number) => {
+      console.log(`✅ Reconnected to session ${sessionId} after ${attemptNumber} attempts`);
+    });
+    
+    socket.on('reconnect_error', (error: Error) => {
+      console.error(`❌ Failed to reconnect to session ${sessionId}:`, error);
+    });
+    
+    socket.on('reconnect_failed', () => {
+      console.error(`❌ Failed to reconnect to session ${sessionId} after all attempts`);
     });
     
     return socket;
   } catch (error) {
-    console.error('Error creating session websocket:', error);
+    console.error(`❌ Error creating session websocket for session ${sessionId}:`, error);
     throw error;
   }
 }
