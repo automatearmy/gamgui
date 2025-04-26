@@ -65,32 +65,64 @@ export function SessionDetailPage({ onNavigate, sessionId }: SessionDetailPagePr
     try {
       // Disconnect existing socket if any
       if (socketRef.current) {
+        console.log(`Disconnecting existing socket for session ${id}`);
         socketRef.current.disconnect();
       }
       
+      // Add connection status to terminal output
+      setTerminalOutput(prev => [...prev, `Connecting to session ${id}...`]);
+      
       // Get WebSocket info for the session
+      console.log(`Fetching WebSocket info for session ${id}`);
       const websocketInfo = await getSessionWebsocketInfo(id);
-      console.log("WebSocket info:", websocketInfo);
+      console.log("WebSocket info received:", websocketInfo);
       
       if (websocketInfo.error) {
-        throw new Error(websocketInfo.error);
+        const errorMsg = `Server error: ${websocketInfo.error}`;
+        console.error(errorMsg);
+        setTerminalOutput(prev => [...prev, `Error: ${errorMsg}`]);
+        throw new Error(errorMsg);
       }
       
       let socket;
+      let connectionType = "unknown";
       
       // If we have WebSocket info and it's a Kubernetes session, use the WebSocket connection
       if (websocketInfo.kubernetes && websocketInfo.websocketPath) {
-        console.log("Using WebSocket connection for Kubernetes session");
-        socket = await createSessionWebsocket(id);
+        connectionType = "websocket";
+        console.log(`Using WebSocket connection for Kubernetes session ${id}`);
+        setTerminalOutput(prev => [...prev, `Establishing WebSocket connection...`]);
+        
+        try {
+          socket = await createSessionWebsocket(id);
+          console.log(`WebSocket connection established for session ${id}`);
+        } catch (wsError) {
+          const wsErrorMsg = wsError instanceof Error ? wsError.message : String(wsError);
+          console.error(`WebSocket connection failed: ${wsErrorMsg}`);
+          setTerminalOutput(prev => [...prev, `WebSocket connection failed: ${wsErrorMsg}`]);
+          
+          // Fall back to regular terminal connection
+          console.log("Falling back to regular terminal connection");
+          setTerminalOutput(prev => [...prev, `Falling back to regular terminal connection...`]);
+          connectionType = "terminal";
+          socket = createTerminalConnection(id);
+        }
       } else {
         // Otherwise, use the regular terminal connection
-        console.log("Using regular terminal connection");
+        connectionType = "terminal";
+        console.log(`Using regular terminal connection for session ${id}`);
+        setTerminalOutput(prev => [...prev, `Using regular terminal connection...`]);
         socket = createTerminalConnection(id);
       }
       
       socketRef.current = socket;
       
-      // Set up event handlers
+      // Set up event handlers with improved error reporting
+      socket.on('connect', () => {
+        console.log(`Socket connected for session ${id}`);
+        setTerminalOutput(prev => [...prev, `Connected to session ${id} (${connectionType} mode)`]);
+      });
+      
       socket.on('terminal-output', (data: string) => {
         setTerminalOutput(prev => [...prev, data]);
       });
@@ -100,18 +132,44 @@ export function SessionDetailPage({ onNavigate, sessionId }: SessionDetailPagePr
       });
       
       socket.on('error', (data: { message: string }) => {
-        setTerminalOutput(prev => [...prev, `Error: ${data.message}`]);
+        const errorMsg = `Server error: ${data.message}`;
+        console.error(errorMsg);
+        setTerminalOutput(prev => [...prev, `Error: ${errorMsg}`]);
       });
       
       socket.on('terminal-closed', () => {
+        console.log(`Terminal session ${id} closed`);
         setTerminalOutput(prev => [...prev, "Terminal session closed"]);
+      });
+      
+      socket.on('connect_error', (error: Error) => {
+        const errorMsg = `Connection error: ${error.message}`;
+        console.error(errorMsg, error);
+        setTerminalOutput(prev => [...prev, `Error: ${errorMsg}`]);
+      });
+      
+      socket.on('disconnect', (reason: string) => {
+        console.log(`Socket disconnected for session ${id}: ${reason}`);
+        setTerminalOutput(prev => [...prev, `Disconnected: ${reason}`]);
+        
+        // If the disconnect was not intentional, try to reconnect
+        if (reason !== 'io client disconnect') {
+          setTerminalOutput(prev => [...prev, `Attempting to reconnect...`]);
+        }
       });
       
       return socket;
     } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
       console.error("Failed to connect to terminal:", err);
-      setTerminalOutput(prev => [...prev, `Error: Error joining session`]);
-      setTerminalOutput(prev => [...prev, `Error: Not connected to a session`]);
+      
+      // Provide more detailed error message to the user
+      setTerminalOutput(prev => [...prev, `Error: Failed to join session - ${errorMsg}`]);
+      setTerminalOutput(prev => [...prev, `Troubleshooting tips:`]);
+      setTerminalOutput(prev => [...prev, `1. Check if the session exists and is running`]);
+      setTerminalOutput(prev => [...prev, `2. Verify that WebSocket proxy is accessible`]);
+      setTerminalOutput(prev => [...prev, `3. Try refreshing the page or creating a new session`]);
+      
       return null;
     }
   };
