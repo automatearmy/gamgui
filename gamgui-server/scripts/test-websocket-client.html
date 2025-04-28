@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Test Client</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .terminal {
+            background-color: #000;
+            color: #fff;
+            padding: 10px;
+            font-family: monospace;
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+        .input-container {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        input {
+            flex: 1;
+            padding: 8px;
+            font-family: monospace;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .config {
+            background-color: #f0f0f0;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+        .status {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .connected {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .disconnected {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+        .connecting {
+            background-color: #fcf8e3;
+            color: #8a6d3b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WebSocket Test Client</h1>
+        
+        <div class="config">
+            <h2>Configuration</h2>
+            <div>
+                <label for="serverUrl">Server URL:</label>
+                <input type="text" id="serverUrl" value="http://localhost:3001" style="width: 300px;">
+            </div>
+            <div>
+                <label for="sessionId">Session ID:</label>
+                <input type="text" id="sessionId" value="default" style="width: 300px;">
+            </div>
+            <div>
+                <button id="getWebsocketInfo">Get WebSocket Info</button>
+                <button id="connect">Connect</button>
+                <button id="disconnect">Disconnect</button>
+            </div>
+        </div>
+        
+        <div id="status" class="status disconnected">
+            Disconnected
+        </div>
+        
+        <div id="terminal" class="terminal"></div>
+        
+        <div class="input-container">
+            <input type="text" id="command" placeholder="Enter command...">
+            <button id="send">Send</button>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const serverUrlInput = document.getElementById('serverUrl');
+        const sessionIdInput = document.getElementById('sessionId');
+        const getWebsocketInfoButton = document.getElementById('getWebsocketInfo');
+        const connectButton = document.getElementById('connect');
+        const disconnectButton = document.getElementById('disconnect');
+        const statusDiv = document.getElementById('status');
+        const terminalDiv = document.getElementById('terminal');
+        const commandInput = document.getElementById('command');
+        const sendButton = document.getElementById('send');
+
+        // WebSocket variables
+        let socket = null;
+        let websocketInfo = null;
+
+        // Helper functions
+        function log(message, isError = false) {
+            const line = document.createElement('div');
+            line.textContent = message;
+            if (isError) {
+                line.style.color = '#ff6b6b';
+            }
+            terminalDiv.appendChild(line);
+            terminalDiv.scrollTop = terminalDiv.scrollHeight;
+        }
+
+        function updateStatus(status) {
+            statusDiv.textContent = status;
+            statusDiv.className = 'status';
+            
+            if (status.includes('Connected')) {
+                statusDiv.classList.add('connected');
+            } else if (status.includes('Disconnected') || status.includes('Error')) {
+                statusDiv.classList.add('disconnected');
+            } else {
+                statusDiv.classList.add('connecting');
+            }
+        }
+
+        // Event handlers
+        getWebsocketInfoButton.addEventListener('click', async () => {
+            try {
+                const serverUrl = serverUrlInput.value;
+                const sessionId = sessionIdInput.value;
+                
+                updateStatus('Getting WebSocket info...');
+                log(`Getting WebSocket info for session ${sessionId}...`);
+                
+                const response = await fetch(`${serverUrl}/api/sessions/${sessionId}/websocket`);
+                websocketInfo = await response.json();
+                
+                log(`WebSocket info: ${JSON.stringify(websocketInfo, null, 2)}`);
+                
+                if (websocketInfo.error) {
+                    updateStatus(`Error: ${websocketInfo.error}`);
+                    log(`Error: ${websocketInfo.error}`, true);
+                } else {
+                    updateStatus('WebSocket info received');
+                    log('WebSocket info received');
+                }
+            } catch (error) {
+                updateStatus(`Error: ${error.message}`);
+                log(`Error: ${error.message}`, true);
+            }
+        });
+
+        connectButton.addEventListener('click', () => {
+            try {
+                const serverUrl = serverUrlInput.value;
+                const sessionId = sessionIdInput.value;
+                
+                if (socket) {
+                    log('Already connected. Disconnect first.', true);
+                    return;
+                }
+                
+                updateStatus('Connecting...');
+                log(`Connecting to session ${sessionId}...`);
+                
+                // If we have websocketInfo, use it
+                if (websocketInfo && websocketInfo.websocketPath) {
+                    log(`Using WebSocket path: ${websocketInfo.websocketPath}`);
+                    
+                    // Create WebSocket URL
+                    const wsUrl = `ws://${new URL(serverUrl).host}/ws/session/${sessionId}/`;
+                    log(`Connecting to WebSocket URL: ${wsUrl}`);
+                    
+                    socket = new WebSocket(wsUrl);
+                } else {
+                    // Fallback to direct connection
+                    const wsUrl = `ws://${new URL(serverUrl).host}/socket.io/?sessionId=${sessionId}`;
+                    log(`Connecting to fallback WebSocket URL: ${wsUrl}`);
+                    
+                    socket = new WebSocket(wsUrl);
+                }
+                
+                socket.onopen = () => {
+                    updateStatus('Connected');
+                    log('Connected to WebSocket');
+                };
+                
+                socket.onmessage = (event) => {
+                    log(`Received: ${event.data}`);
+                };
+                
+                socket.onerror = (error) => {
+                    updateStatus(`Error: ${error.message || 'WebSocket error'}`);
+                    log(`WebSocket error: ${error.message || 'Unknown error'}`, true);
+                };
+                
+                socket.onclose = (event) => {
+                    updateStatus('Disconnected');
+                    log(`Disconnected: ${event.reason || 'Connection closed'}`);
+                    socket = null;
+                };
+            } catch (error) {
+                updateStatus(`Error: ${error.message}`);
+                log(`Error: ${error.message}`, true);
+            }
+        });
+
+        disconnectButton.addEventListener('click', () => {
+            if (socket) {
+                socket.close();
+                socket = null;
+                updateStatus('Disconnected');
+                log('Disconnected from WebSocket');
+            } else {
+                log('Not connected', true);
+            }
+        });
+
+        sendButton.addEventListener('click', () => {
+            const command = commandInput.value;
+            
+            if (!socket) {
+                log('Not connected. Connect first.', true);
+                return;
+            }
+            
+            if (!command) {
+                log('Please enter a command', true);
+                return;
+            }
+            
+            log(`Sending: ${command}`);
+            socket.send(command);
+            commandInput.value = '';
+        });
+
+        commandInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                sendButton.click();
+            }
+        });
+
+        // Initialize
+        updateStatus('Disconnected');
+        log('WebSocket Test Client initialized');
+        log('1. Enter the server URL and session ID');
+        log('2. Click "Get WebSocket Info" to get WebSocket information');
+        log('3. Click "Connect" to connect to the WebSocket');
+        log('4. Enter a command and click "Send" to send it');
+    </script>
+</body>
+</html>

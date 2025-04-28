@@ -71,13 +71,16 @@ fi
 
 # Build the client
 echo -e "${YELLOW}Building client...${NC}"
-cd gamgui-client
+cd $(dirname "$0")/gamgui-client
 npm install
 npm run build
 
 # Build the Docker image
 echo -e "${YELLOW}Building Docker image...${NC}"
-docker build -t ${IMAGE_NAME} .
+docker build --platform linux/amd64 \
+  --build-arg VITE_API_URL=https://gamgui-server-vthtec4m3a-uc.a.run.app/api \
+  --build-arg VITE_SOCKET_URL=https://gamgui-server-vthtec4m3a-uc.a.run.app \
+  -t ${IMAGE_NAME} .
 
 # Push the Docker image
 echo -e "${YELLOW}Pushing Docker image...${NC}"

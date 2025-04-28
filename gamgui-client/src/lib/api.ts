@@ -43,7 +43,10 @@ export async function createImage(name: string) {
 }
 
 export async function checkCredentials() {
-  const response = await fetch(`${API_BASE_URL}/credentials/check`);
+  const fullUrl = `${API_BASE_URL}/credentials/check`;
+  console.log('API call: checking credentials at URL:', fullUrl);
+  console.log('API_BASE_URL value:', API_BASE_URL);
+  const response = await fetch(fullUrl);
   return response.json();
 }
 
@@ -70,8 +73,10 @@ export interface Session {
 
 export async function getSessions() {
   try {
-    console.log('API call: fetching all sessions');
-    const response = await fetch(`${API_BASE_URL}/sessions`);
+    const fullUrl = `${API_BASE_URL}/sessions`;
+    console.log('API call: fetching all sessions from URL:', fullUrl);
+    console.log('API_BASE_URL value:', API_BASE_URL);
+    const response = await fetch(fullUrl);
     
     if (!response.ok) {
       const errorText = await response.text();

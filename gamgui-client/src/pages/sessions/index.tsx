@@ -82,6 +82,7 @@ export function SessionsPage({ onNavigate }: { onNavigate?: (path: string) => vo
   };
 
   const handleNewSession = () => {
+    console.log("handleNewSession called"); // Add this log
     if (onNavigate) {
       onNavigate("/sessions/new");
     } else {

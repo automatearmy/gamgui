@@ -51,6 +51,55 @@ class KubernetesWebSocketAdapter {
   }
 
   /**
+   * Check if a session exists in Kubernetes and register it
+   * @param {string} sessionId - The session ID
+   * @param {Object} options - Session options
+   * @param {string} options.command - The GAM command to execute
+   * @returns {Promise<Object|null>} - Session information or null if not found
+   */
+  async checkExistingSession(sessionId, options = {}) {
+    try {
+      // Check if the deployment exists in Kubernetes
+      const checkCmd = `kubectl get deployment gam-session-${sessionId} -n ${this.namespace}`;
+      this.logger.info(`Checking if session exists in Kubernetes: ${checkCmd}`);
+      
+      try {
+        await execAsync(checkCmd);
+        
+        // Deployment exists, register it
+        this.logger.info(`Found existing Kubernetes session: ${sessionId}`);
+        
+        // Generate WebSocket URL
+        const command = options.command || 'info domain';
+        const websocketUrl = this.sessionConnectionTemplate.replace('{{SESSION_ID}}', sessionId);
+        const websocketPath = this.sessionPathTemplate.replace('{{SESSION_ID}}', sessionId);
+
+        // Store the session information
+        const sessionInfo = {
+          id: sessionId,
+          command,
+          createdAt: new Date(),
+          lastActivity: new Date(),
+          websocketUrl,
+          websocketPath,
+          status: 'created',
+          kubernetes: true
+        };
+        
+        this.sessions.set(sessionId, sessionInfo);
+        return sessionInfo;
+      } catch (error) {
+        // Deployment doesn't exist
+        this.logger.info(`No existing Kubernetes session found for ${sessionId}`);
+        return null;
+      }
+    } catch (error) {
+      this.logger.error(`Error checking existing session: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
    * Create a new WebSocket session
    * @param {string} sessionId - The session ID
    * @param {Object} options - Session options
@@ -66,10 +115,17 @@ class KubernetesWebSocketAdapter {
     }
 
     try {
-      // Check if the session already exists
+      // Check if the session already exists in memory
       if (this.sessions.has(sessionId)) {
-        this.logger.info(`Session ${sessionId} already exists`);
+        this.logger.info(`Session ${sessionId} already exists in memory`);
         return this.sessions.get(sessionId);
+      }
+
+      // Check if the session exists in Kubernetes
+      const existingSession = await this.checkExistingSession(sessionId, options);
+      if (existingSession) {
+        this.logger.info(`Session ${sessionId} already exists in Kubernetes`);
+        return existingSession;
       }
 
       // Check if we've reached the maximum number of sessions
@@ -80,7 +136,7 @@ class KubernetesWebSocketAdapter {
 
       // Create the session using the script
       const command = options.command || 'info domain';
-      const createSessionCmd = `${this.config.paths.scripts}/create-websocket-session.sh --id ${sessionId} --command "${command}"`;
+      const createSessionCmd = `${this.config.paths.scripts}/create-websocket-session-wrapper.sh --id ${sessionId} --command "${command}"`;
       
       this.logger.info(`Creating session: ${createSessionCmd}`);
       const { stdout, stderr } = await execAsync(createSessionCmd);
@@ -128,10 +184,16 @@ class KubernetesWebSocketAdapter {
     }
 
     try {
-      // Check if the session exists
+      // Check if the session exists in memory
       if (!this.sessions.has(sessionId)) {
-        this.logger.warn(`Session ${sessionId} not found`);
-        throw new ContainerError(`Session ${sessionId} not found`);
+        // Check if the session exists in Kubernetes
+        this.logger.info(`Session ${sessionId} not found in memory, checking Kubernetes...`);
+        const existingSession = await this.checkExistingSession(sessionId);
+        if (!existingSession) {
+          this.logger.warn(`Session ${sessionId} not found in Kubernetes either`);
+          throw new ContainerError(`Session ${sessionId} not found`);
+        }
+        this.logger.info(`Found session ${sessionId} in Kubernetes and registered it`);
       }
 
       const sessionInfo = this.sessions.get(sessionId);
@@ -201,10 +263,19 @@ class KubernetesWebSocketAdapter {
     }
 
     try {
-      // Check if the session exists
+      // Check if the session exists in memory
       if (!this.sessions.has(sessionId)) {
-        this.logger.warn(`Session ${sessionId} not found`);
-        throw new ContainerError(`Session ${sessionId} not found`);
+        // Check if the session exists in Kubernetes
+        this.logger.info(`Session ${sessionId} not found in memory, checking Kubernetes...`);
+        const existingSession = await this.checkExistingSession(sessionId);
+        if (!existingSession) {
+          this.logger.warn(`Session ${sessionId} not found in Kubernetes either`);
+          throw new ContainerError(`Session ${sessionId} not found`);
+        }
+        this.logger.info(`Found session ${sessionId} in Kubernetes and registered it`);
+        
+        // Connect to the session
+        await this.connectToSession(sessionId);
       }
 
       const sessionInfo = this.sessions.get(sessionId);
@@ -241,10 +312,16 @@ class KubernetesWebSocketAdapter {
     }
 
     try {
-      // Check if the session exists
+      // Check if the session exists in memory
       if (!this.sessions.has(sessionId)) {
-        this.logger.warn(`Session ${sessionId} not found`);
-        throw new ContainerError(`Session ${sessionId} not found`);
+        // Check if the session exists in Kubernetes
+        this.logger.info(`Session ${sessionId} not found in memory, checking Kubernetes...`);
+        const existingSession = await this.checkExistingSession(sessionId);
+        if (!existingSession) {
+          this.logger.warn(`Session ${sessionId} not found in Kubernetes either`);
+          throw new ContainerError(`Session ${sessionId} not found`);
+        }
+        this.logger.info(`Found session ${sessionId} in Kubernetes and registered it`);
       }
 
       const sessionInfo = this.sessions.get(sessionId);
@@ -275,39 +352,106 @@ class KubernetesWebSocketAdapter {
 
   /**
    * Get all sessions
-   * @returns {Array<Object>} - All sessions
+   * @param {boolean} checkKubernetes - Whether to check Kubernetes for sessions not in memory
+   * @returns {Promise<Array<Object>>} - All sessions
    */
-  getAllSessions() {
-    return Array.from(this.sessions.values()).map(session => {
+  async getAllSessions(checkKubernetes = true) {
+    // Get sessions from memory
+    const memorySessions = Array.from(this.sessions.values()).map(session => {
       // Don't include the WebSocket object in the response
       const { ws, ...sessionInfo } = session;
       return sessionInfo;
     });
+    
+    // If checkKubernetes is true, check for sessions in Kubernetes that are not in memory
+    if (checkKubernetes && this.enabled) {
+      try {
+        // Get all deployments with the gam-session label
+        const listCmd = `kubectl get deployments -n ${this.namespace} -l component=gam-session -o jsonpath='{.items[*].metadata.name}'`;
+        this.logger.info(`Listing all sessions in Kubernetes: ${listCmd}`);
+        
+        const { stdout } = await execAsync(listCmd);
+        if (stdout) {
+          const deploymentNames = stdout.split(' ');
+          
+          // For each deployment, check if it's already in memory
+          for (const deploymentName of deploymentNames) {
+            // Extract session ID from deployment name (remove 'gam-session-' prefix)
+            const sessionId = deploymentName.replace('gam-session-', '');
+            
+            // If the session is not in memory, register it
+            if (!this.sessions.has(sessionId)) {
+              this.logger.info(`Found session ${sessionId} in Kubernetes that is not in memory, registering it...`);
+              await this.checkExistingSession(sessionId);
+            }
+          }
+          
+          // Get the updated list of sessions from memory
+          return Array.from(this.sessions.values()).map(session => {
+            // Don't include the WebSocket object in the response
+            const { ws, ...sessionInfo } = session;
+            return sessionInfo;
+          });
+        }
+      } catch (error) {
+        this.logger.error(`Error listing sessions in Kubernetes: ${error.message}`);
+      }
+    }
+    
+    return memorySessions;
   }
 
   /**
    * Get a session by ID
    * @param {string} sessionId - The session ID
-   * @returns {Object|null} - The session or null if not found
+   * @param {boolean} checkKubernetes - Whether to check Kubernetes if the session is not found in memory
+   * @returns {Promise<Object|null>} - The session or null if not found
    */
-  getSession(sessionId) {
-    if (!this.sessions.has(sessionId)) {
-      return null;
+  async getSession(sessionId, checkKubernetes = true) {
+    // Check if the session exists in memory
+    if (this.sessions.has(sessionId)) {
+      const session = this.sessions.get(sessionId);
+      // Don't include the WebSocket object in the response
+      const { ws, ...sessionInfo } = session;
+      return sessionInfo;
     }
-
-    const session = this.sessions.get(sessionId);
-    // Don't include the WebSocket object in the response
-    const { ws, ...sessionInfo } = session;
-    return sessionInfo;
+    
+    // If checkKubernetes is true and the session is not in memory, check if it exists in Kubernetes
+    if (checkKubernetes && this.enabled) {
+      this.logger.info(`Session ${sessionId} not found in memory, checking Kubernetes...`);
+      const existingSession = await this.checkExistingSession(sessionId);
+      if (existingSession) {
+        this.logger.info(`Found session ${sessionId} in Kubernetes and registered it`);
+        return existingSession;
+      }
+    }
+    
+    return null;
   }
 
   /**
    * Check if a session exists
    * @param {string} sessionId - The session ID
-   * @returns {boolean} - Whether the session exists
+   * @param {boolean} checkKubernetes - Whether to check Kubernetes if the session is not found in memory
+   * @returns {Promise<boolean>} - Whether the session exists
    */
-  hasSession(sessionId) {
-    return this.sessions.has(sessionId);
+  async hasSession(sessionId, checkKubernetes = true) {
+    // Check if the session exists in memory
+    if (this.sessions.has(sessionId)) {
+      return true;
+    }
+    
+    // If checkKubernetes is true and the session is not in memory, check if it exists in Kubernetes
+    if (checkKubernetes && this.enabled) {
+      this.logger.info(`Session ${sessionId} not found in memory, checking Kubernetes...`);
+      const existingSession = await this.checkExistingSession(sessionId);
+      if (existingSession) {
+        this.logger.info(`Found session ${sessionId} in Kubernetes and registered it`);
+        return true;
+      }
+    }
+    
+    return false;
   }
 
   /**
