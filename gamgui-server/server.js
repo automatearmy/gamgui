@@ -74,6 +74,12 @@ app.get('/', (req, res) => {
   res.json({ message: 'Welcome to GamGUI API' });
 });
 
+// Version endpoint
+app.get('/api/version', (req, res) => {
+  // Simple timestamp-based version for now
+  res.json({ version: '2025-04-28T18:51:00-03:00' }); 
+});
+
 // Pass Socket.io instance to session routes for WebSocket handling
 require('./routes/socketHandler')(io);
 

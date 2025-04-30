@@ -485,15 +485,21 @@ class TerminalService {
    */
   async _handleGamCommand(sessionId, command, parts, outputStream, isKubernetesPod) {
     const gamCommand = parts.slice(1).join(' ');
+    const gamArgs = parts.slice(1).join(' '); // Get arguments after 'gam'
     
     try {
-      // Execute GAM command
-      await this.commandService.executeGamCommand(sessionId, gamCommand, outputStream);
+      this.logger.info(`Handling GAM command: ${gamArgs} for session ${sessionId}`);
+      // Explicitly call the correct service method
+      await this.commandService.executeGamCommand(sessionId, gamArgs, outputStream);
+      // Note: executeGamCommand in CommandService already adds the prompt on completion/error
     } catch (error) {
-      this.logger.error(`Error executing GAM command for session ${sessionId}:`, error);
-      outputStream.push(`Error executing GAM command: ${error.message}\n`);
-      this._addPrompt(outputStream);
+      this.logger.error(`Error executing GAM command in _handleGamCommand for session ${sessionId}:`, error);
+      // Ensure error message is pushed to the output stream
+      outputStream.push(`Error: ${error.message}\n`);
+      // Add prompt after error
+      this._addPrompt(outputStream); 
     }
+    // We don't add the prompt here because executeGamCommand handles it
   }
 }
 

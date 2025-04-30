@@ -191,3 +191,8 @@ export async function getCredentialSecrets() {
 export function getSocketUrl() {
   return SOCKET_URL;
 }
+
+// Helper to get the API base URL
+export function getApiBaseUrl() {
+  return API_BASE_URL;
+}

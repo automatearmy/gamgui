@@ -91,17 +91,32 @@ class SessionService {
       logger.info(`Created container for session: ${sessionId}`);
     } catch (error) {
       logger.error(`Error creating container for session ${sessionId}:`, error);
+      // IMPORTANT: Do not save fallback virtual info if a container was attempted.
+      // Let the session creation fail cleanly or attempt cleanup if needed.
+      // We re-throw the error to indicate session creation failed.
+      // Cleanup potentially created resources might be needed here or in ContainerService.
       
-      // Fall back to virtual session if container creation fails
+      // Attempt to delete the session record we created earlier
+      try {
+        await this.sessionRepository.delete(sessionId);
+        logger.warn(`Rolled back session record creation for ${sessionId} due to container error.`);
+      } catch (deleteError) {
+        logger.error(`Failed to rollback session record for ${sessionId}:`, deleteError);
+      }
+      
+      // Re-throw the original container creation error
+      throw error; 
+      
+      /* // Original fallback logic (removed):
       containerInfo = {
         id: containerId,
         sessionId,
         virtual: true,
         stream: null
       };
-      
       this.sessionRepository.saveContainerInfo(sessionId, containerInfo);
       logger.info(`Created virtual session: ${sessionId}`);
+      */
     }
 
     // Return session and websocket info
@@ -170,12 +185,27 @@ class SessionService {
       containerInfo.websocketPath = this.containerService.getWebsocketPath(sessionId);
       this.sessionRepository.saveContainerInfo(sessionId, containerInfo);
     }
+    
+    // Construct the full external WebSocket URL using the template from env vars
+    let fullWebsocketUrl = null;
+    const urlTemplate = process.env.EXTERNAL_WEBSOCKET_URL_TEMPLATE;
+    
+    if (urlTemplate && containerInfo.websocketPath) {
+      // Replace the placeholder with the actual session ID
+      fullWebsocketUrl = urlTemplate.replace('{{SESSION_ID}}', sessionId);
+      logger.info(`Generated external WebSocket URL for session ${sessionId}: ${fullWebsocketUrl}`);
+    } else {
+       logger.warn(`Could not generate external WebSocket URL for session ${sessionId}. Template: ${urlTemplate}, Path: ${containerInfo.websocketPath}`);
+    }
 
     return {
       sessionId,
-      websocketPath: containerInfo.websocketPath || null,
+      websocketUrl: fullWebsocketUrl, // Return the full URL
+      // Keep path and serviceName for potential internal use or debugging
+      websocketPath: containerInfo.websocketPath || null, 
       serviceName: containerInfo.serviceName || null,
-      kubernetes: containerInfo.kubernetes || false
+      kubernetes: containerInfo.kubernetes || false,
+      websocket: containerInfo.websocket || false // Pass the websocket flag if available
     };
   }
 

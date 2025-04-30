@@ -3,22 +3,24 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: [
       'build',
-      '--platform=linux/amd64',
-      '--build-arg', 'VITE_API_URL=https://gamgui-server-vthtec4m3a-uc.a.run.app/api',
+      '--platform=linux/amd64', # Ensure compatibility with Cloud Run
+      # Pass build arguments for Vite environment variables
+      # IMPORTANT: Replace these with dynamic values or secrets in a real setup
+      '--build-arg', 'VITE_API_URL=https://gamgui-server-vthtec4m3a-uc.a.run.app/api', 
       '--build-arg', 'VITE_SOCKET_URL=https://gamgui-server-vthtec4m3a-uc.a.run.app',
-      '-t', 'gcr.io/gamgui-registry/gamgui-client-image',
-      '.'
+      '-t', 'gcr.io/gamgui-registry/gamgui-client-image:latest', # Target image name
+      '.' # Build context is the gamgui-client directory
     ]
-    dir: gamgui-client
-    
-  # Push the container image to Container Registry
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/gamgui-registry/gamgui-client-image']
+    # Set the directory for the build context relative to the workspace root
+    dir: 'gamgui-app/gamgui-client' 
 
-# Images to be stored in Container Registry
+  # Push the container image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/gamgui-registry/gamgui-client-image:latest']
+
+# Images to be stored in Artifact Registry
 images:
-  - 'gcr.io/gamgui-registry/gamgui-client-image'
+  - 'gcr.io/gamgui-registry/gamgui-client-image:latest'
 
 options:
-  logStreamingOption: STREAM_ON
   logging: CLOUD_LOGGING_ONLY

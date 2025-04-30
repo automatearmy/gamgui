@@ -12,6 +12,7 @@ interface SidebarProps {
   };
   onNavigate?: (path: string) => void;
   currentPath?: string;
+  serverVersion?: string | null; // Add serverVersion prop
 }
 
 interface NavItemProps {
@@ -59,7 +60,13 @@ function NavSection({ title, children }: { title: string; children: React.ReactN
   );
 }
 
-export function Sidebar({ className, userProfileProps, onNavigate, currentPath = "/" }: SidebarProps) {
+export function Sidebar({ 
+  className, 
+  userProfileProps, 
+  onNavigate, 
+  currentPath = "/", 
+  serverVersion // Destructure serverVersion
+}: SidebarProps) {
   const handleNavigation = (path: string) => {
     if (onNavigate) {
       onNavigate(path);
@@ -110,7 +117,13 @@ export function Sidebar({ className, userProfileProps, onNavigate, currentPath =
           {navigationContent}
         </div>
 
-        <div className="border-t border-sidebar-border">
+        <div className="mt-auto border-t border-sidebar-border p-2"> {/* Added mt-auto and padding */}
+          {/* Display Server Version */}
+          {serverVersion && (
+            <div className="px-2 py-1 text-xs text-sidebar-foreground/60 text-center truncate" title={serverVersion}>
+              Server: {serverVersion === 'error' ? 'Error fetching' : serverVersion}
+            </div>
+          )}
           <UserProfile
             name={userProfileProps.name}
             role={userProfileProps.role}

@@ -2,11 +2,35 @@ import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/sidebar";
 import { SessionsPage } from "@/pages/sessions";
 import { SettingsPage } from "@/pages/settings";
+import { getApiBaseUrl } from "@/lib/api"; // Import API helper
 import { NewSessionPage } from "@/pages/sessions/new";
 import { SessionDetailPage } from "@/pages/sessions/[id]";
 
 function App() {
   const [currentPath, setCurrentPath] = useState<string>(window.location.pathname);
+  const [serverVersion, setServerVersion] = useState<string | null>(null);
+
+  // Fetch server version on mount
+  useEffect(() => {
+    const fetchVersion = async () => {
+      try {
+        const apiUrl = `${getApiBaseUrl()}/version`;
+        console.log("Fetching server version from:", apiUrl);
+        const response = await fetch(apiUrl);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log("Server version response:", data);
+        setServerVersion(data.version || 'unknown');
+      } catch (error) {
+        console.error("Failed to fetch server version:", error);
+        setServerVersion('error');
+      }
+    };
+
+    fetchVersion();
+  }, []);
 
   // Update path when URL changes
   useEffect(() => {
@@ -56,6 +80,7 @@ function App() {
         }}
         onNavigate={navigate}
         currentPath={currentPath}
+        serverVersion={serverVersion} // Pass version to Sidebar
       />
       
       {/* Main content */}

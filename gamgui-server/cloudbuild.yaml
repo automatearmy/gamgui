@@ -1,17 +1,21 @@
 steps:
-  # Build the container image
+  # Build the Docker image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '--platform=linux/amd64', '-t', 'gcr.io/gamgui-registry/gamgui-server-image', '.']
-    dir: gamgui-server
-    
-  # Push the container image to Container Registry
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/gamgui-registry/gamgui-server-image']
+    args: [
+        'build',
+        '--platform=linux/amd64', # Ensure compatibility with Cloud Run
+        '-t',
+        'gcr.io/gamgui-registry/gamgui-server-image:latest', # Correct gcr.io path
+        '.' # Build context is the gamgui-server directory
+      ]
+    # Removed dir directive as we submit from this directory
 
-# Images to be stored in Container Registry
+  # Push the Docker image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/gamgui-registry/gamgui-server-image:latest'] # Correct gcr.io path
+
 images:
-  - 'gcr.io/gamgui-registry/gamgui-server-image'
+  - 'gcr.io/gamgui-registry/gamgui-server-image:latest' # Correct gcr.io path
 
 options:
-  logStreamingOption: STREAM_ON
   logging: CLOUD_LOGGING_ONLY

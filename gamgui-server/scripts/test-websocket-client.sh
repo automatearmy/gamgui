@@ -75,25 +75,20 @@ if ! command -v node &> /dev/null; then
   exit 1
 fi
 
-# Check if the required Node.js packages are installed
-if ! command -v npm &> /dev/null; then
-  echo -e "${RED}Error: npm is not installed${NC}"
-  echo -e "${YELLOW}Please install npm to use this script:${NC}"
-  echo -e "${GREEN}https://www.npmjs.com/get-npm${NC}"
+# Check if the required Node.js packages are installed locally
+# We assume this script runs from gamgui-app/gamgui-server where node_modules exists
+if [ ! -d "$(dirname "$0")/../node_modules/ws" ] || [ ! -d "$(dirname "$0")/../node_modules/commander" ]; then
+  echo -e "${RED}Error: Required Node.js packages (ws, commander) not found locally.${NC}"
+  echo -e "${YELLOW}Please run 'npm install' in the gamgui-app/gamgui-server directory.${NC}"
   exit 1
 fi
+
 
 # Check if the WebSocket client script exists
 if [ ! -f "$(dirname "$0")/test-websocket-client.js" ]; then
-  echo -e "${RED}Error: WebSocket client script not found${NC}"
+  echo -e "${RED}Error: WebSocket client script (test-websocket-client.js) not found${NC}"
   echo -e "${YELLOW}Please make sure the script is in the same directory as this script${NC}"
   exit 1
-fi
-
-# Install required Node.js packages if they don't exist
-if ! npm list -g ws &> /dev/null || ! npm list -g commander &> /dev/null; then
-  echo -e "${YELLOW}Installing required Node.js packages...${NC}"
-  npm install -g ws commander
 fi
 
 # Build the command

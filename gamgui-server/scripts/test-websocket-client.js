@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * WebSocket Client Test Script
- * 
+ *
  * This script tests the WebSocket connection to a GAM session.
  * It connects to the WebSocket server and sends commands.
  */
@@ -48,7 +48,13 @@ ws.on('open', () => {
 });
 
 ws.on('message', (data) => {
-  console.log(`\nReceived: ${data}`);
+  // Attempt to parse JSON, otherwise log as string
+  try {
+    const jsonData = JSON.parse(data.toString());
+    console.log('\nReceived JSON:', JSON.stringify(jsonData, null, 2));
+  } catch (e) {
+    console.log(`\nReceived: ${data.toString()}`);
+  }
   rl.prompt();
 });
 
@@ -58,25 +64,25 @@ ws.on('error', (error) => {
 });
 
 ws.on('close', (code, reason) => {
-  console.log(`WebSocket connection closed: ${code} ${reason}`);
+  console.log(`WebSocket connection closed: ${code} ${reason ? reason.toString() : 'No reason provided'}`);
   process.exit(0);
 });
 
 // Handle user input
 rl.on('line', (line) => {
   const command = line.trim();
-  
+
   if (command === 'exit') {
     console.log('Closing WebSocket connection...');
     ws.close();
     rl.close();
     return;
   }
-  
+
   if (options.verbose) {
     console.log(`Sending: ${command}`);
   }
-  
+
   ws.send(command);
 }).on('close', () => {
   console.log('Exiting...');

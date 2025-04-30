@@ -74,14 +74,12 @@ export async function createSessionWebsocket(sessionId: string) {
     
     if (!websocketInfo.websocketPath) {
       console.error('WebSocket info missing websocketPath');
-      throw new Error('WebSocket path not provided by server');
+      throw new Error('WebSocket URL not provided by server');
     }
     
-    // Construct the WebSocket URL
-    // Use the base socket URL with the websocket path from the server
-    const socketUrl = getSocketUrl();
-    const wsUrl = `${socketUrl}/ws/session/${sessionId}/`;
-    
+    // Use the full WebSocket URL provided by the server API response
+    const wsUrl = websocketInfo.websocketUrl;
+     
     console.log(`Connecting to WebSocket at ${wsUrl}`);
     console.log(`WebSocket path from server: ${websocketInfo.websocketPath}`);
     

@@ -1,6 +1,12 @@
 # Use Node 18 Alpine as the base image
 FROM node:18-alpine
 
+# Install build tools needed for some npm packages
+RUN apk add --no-cache --virtual .gyp \
+    python3 \
+    make \
+    g++
+
 # Set working directory
 WORKDIR /app
 
@@ -17,7 +23,9 @@ ENV NODE_ENV=production
 COPY package.json package-lock.json ./
 
 # Install dependencies (including dev dependencies for build)
-RUN npm ci --include=dev
+# Use --ignore-scripts to prevent potential issues during install
+# and run rebuild scripts separately if needed (though often not for frontends)
+RUN npm ci --include=dev --ignore-scripts
 
 # Copy the rest of the application code
 COPY . .
@@ -33,3 +41,6 @@ EXPOSE 3000
 
 # Start the serve command to serve files from the dist directory
 CMD ["serve", "-s", "dist", "-l", "3000"]
+
+# Optional: Clean up build tools if image size is critical
+# RUN apk del .gyp
