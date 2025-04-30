@@ -9,9 +9,13 @@ dotenv.config();
 
 // Import routes
 const { router: imageRoutes } = require('./routes/imageRoutes');
-const { router: sessionRoutes } = require('./routes/sessionRoutes');
+// Import sessionRoutes factory function
+const { createSessionRouter } = require('./routes/sessionRoutes');
 const { router: credentialRoutes } = require('./routes/credentialRoutes');
-const { router: fileRoutes } = require('./routes/fileRoutes');
+// Import fileRoutes factory function
+const { createFileRouter } = require('./routes/fileRoutes');
+const initializeSocketHandler = require('./routes/socketHandler');
+const logger = require('./utils/logger'); // Assuming logger is available
 
 // Initialize express app
 const app = express();
@@ -64,10 +68,19 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 // Routes
+// Initialize Socket.IO and dependent services
+const services = initializeSocketHandler(io);
+const { sessionService } = services; // Extract sessionService
+
+// Create routers that depend on services
+const sessionRouter = createSessionRouter(sessionService); // Pass sessionService
+const fileRouter = createFileRouter(sessionService); // Pass sessionService
+
+// Routes
 app.use('/api/images', imageRoutes);
-app.use('/api/sessions', sessionRoutes);
+app.use('/api/sessions', sessionRouter); // Use the created session router
 app.use('/api/credentials', credentialRoutes);
-app.use('/api/sessions', fileRoutes); // File routes are nested under sessions
+app.use('/api/sessions', fileRouter); // Use the created file router, nested under sessions
 
 // Default route
 app.get('/', (req, res) => {
@@ -80,10 +93,7 @@ app.get('/api/version', (req, res) => {
   res.json({ version: '2025-04-28T18:51:00-03:00' }); 
 });
 
-// Pass Socket.io instance to session routes for WebSocket handling
-require('./routes/socketHandler')(io);
-
 // Start server
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  logger.info(`Server running on port ${PORT}`);
 });

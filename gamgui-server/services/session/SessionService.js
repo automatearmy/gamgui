@@ -2,8 +2,13 @@
  * Service for managing sessions
  */
 const { v4: uuidv4 } = require('uuid');
+const { Storage } = require('@google-cloud/storage');
 const { NotFoundError, BadRequestError } = require('../../utils/errorHandler');
 const logger = require('../../utils/logger');
+
+// TODO: Consider moving bucket prefix and project ID to config/env vars
+const GCS_BUCKET_PREFIX = 'gamgui-session-files-';
+const GCS_PROJECT_ID = process.env.GCS_PROJECT_ID || process.env.PROJECT_ID; // Use specific GCS project ID if available
 
 /**
  * Service for managing sessions
@@ -17,6 +22,12 @@ class SessionService {
   constructor(sessionRepository, containerService) {
     this.sessionRepository = sessionRepository;
     this.containerService = containerService;
+    if (!GCS_PROJECT_ID) {
+      logger.warn('GCS_PROJECT_ID environment variable is not set. GCS features will be disabled.');
+      this.storage = null;
+    } else {
+      this.storage = new Storage({ projectId: GCS_PROJECT_ID });
+    }
   }
 
   /**
@@ -56,6 +67,18 @@ class SessionService {
       throw new BadRequestError('Session name is required');
     }
 
+    // Check the number of active sessions
+    const sessions = await this.sessionRepository.findAll();
+    const activeSessions = sessions.filter(s => s.status === 'active');
+    
+    // Get the maximum number of sessions from environment variable or use default
+    const maxSessions = parseInt(process.env.MAX_SESSIONS || '20', 10);
+    
+    if (activeSessions.length >= maxSessions) {
+      logger.warn(`Maximum number of active sessions (${maxSessions}) reached. Current count: ${activeSessions.length}`);
+      throw new BadRequestError(`Maximum number of active sessions (${maxSessions}) reached. Please delete some sessions before creating new ones.`);
+    }
+
     // Generate session ID
     const sessionId = uuidv4();
     const containerName = `gam-session-${sessionId.substring(0, 8)}`;
@@ -73,9 +96,45 @@ class SessionService {
       status: 'active'
     };
 
-    // Save the session
-    this.sessionRepository.save(newSession);
-    logger.info(`Created session: ${sessionId}`);
+    // --- GCS Bucket Creation ---
+    let gcsBucketName = null;
+    if (this.storage) {
+      gcsBucketName = `${GCS_BUCKET_PREFIX}${sessionId}`;
+      try {
+        logger.info(`Creating GCS bucket: ${gcsBucketName} in project ${GCS_PROJECT_ID}`);
+        await this.storage.createBucket(gcsBucketName, {
+          location: process.env.GCS_BUCKET_LOCATION || 'US-CENTRAL1', // Make location configurable
+          storageClass: 'STANDARD', // Or configure as needed
+          lifecycle: { // Optional: Auto-delete objects/bucket after some time
+             rule: [{
+               action: { type: 'Delete' },
+               condition: { age: 7 } // Delete objects older than 7 days
+             }]
+          }
+        });
+        logger.info(`Successfully created GCS bucket: ${gcsBucketName}`);
+        // Add bucket name to session data
+        newSession.gcsBucketName = gcsBucketName;
+      } catch (gcsError) {
+        logger.error(`Failed to create GCS bucket ${gcsBucketName}:`, gcsError);
+        // Rollback session record creation if bucket creation fails
+        try {
+          await this.sessionRepository.delete(sessionId);
+          logger.warn(`Rolled back session record creation for ${sessionId} due to GCS bucket error.`);
+        } catch (deleteError) {
+          logger.error(`Failed to rollback session record for ${sessionId}:`, deleteError);
+        }
+        // Re-throw the error to prevent further session setup
+        throw new Error(`Failed to create GCS bucket: ${gcsError.message}`);
+      }
+    } else {
+       logger.warn(`GCS storage client not initialized. Skipping bucket creation for session ${sessionId}.`);
+    }
+    // --- End GCS Bucket Creation ---
+
+    // Save the session (now potentially includes gcsBucketName)
+    await this.sessionRepository.save(newSession);
+    logger.info(`Created session: ${sessionId} ${gcsBucketName ? `with GCS bucket ${gcsBucketName}` : ''}`);
 
     // Create container for the session
     let containerInfo;
@@ -104,9 +163,23 @@ class SessionService {
         logger.error(`Failed to rollback session record for ${sessionId}:`, deleteError);
       }
       
+      // --- Rollback GCS Bucket on Container Error ---
+      if (gcsBucketName && this.storage) {
+        logger.warn(`Attempting to delete GCS bucket ${gcsBucketName} due to container creation error for session ${sessionId}.`);
+        try {
+          // Force delete bucket and contents
+          await this.storage.bucket(gcsBucketName).delete({ force: true });
+          logger.info(`Successfully deleted GCS bucket ${gcsBucketName} during rollback.`);
+        } catch (gcsDeleteError) {
+          logger.error(`Failed to delete GCS bucket ${gcsBucketName} during rollback:`, gcsDeleteError);
+          // Log error but continue throwing the original container error
+        }
+      }
+      // --- End Rollback GCS Bucket ---
+
       // Re-throw the original container creation error
-      throw error; 
-      
+      throw error;
+
       /* // Original fallback logic (removed):
       containerInfo = {
         id: containerId,
@@ -158,9 +231,37 @@ class SessionService {
       this.sessionRepository.deleteContainerInfo(sessionId);
     }
 
-    // Delete session
+    // --- GCS Bucket Deletion ---
+    if (session.gcsBucketName && this.storage) {
+      const bucketName = session.gcsBucketName;
+      logger.info(`Attempting to delete GCS bucket: ${bucketName} for session ${sessionId}`);
+      try {
+        // Optional: Empty the bucket first if force delete isn't desired or reliable
+        // await this.storage.bucket(bucketName).deleteFiles({ force: true });
+        // logger.info(`Emptied GCS bucket: ${bucketName}`);
+
+        // Delete the bucket - use force: true to delete non-empty buckets
+        await this.storage.bucket(bucketName).delete({ force: true });
+        logger.info(`Successfully deleted GCS bucket: ${bucketName}`);
+      } catch (gcsError) {
+        // Log error but continue with session deletion
+        logger.error(`Failed to delete GCS bucket ${bucketName} for session ${sessionId}:`, gcsError);
+        if (gcsError.code === 404) {
+           logger.warn(`Bucket ${bucketName} not found, likely already deleted.`);
+        } else {
+           // Log other errors more prominently
+           logger.error(`Error deleting bucket ${bucketName}: ${gcsError.message}`);
+        }
+      }
+    } else if (this.storage) {
+       logger.warn(`Session ${sessionId} has no associated GCS bucket name (gcsBucketName missing) or storage client not initialized. Skipping GCS deletion.`);
+    }
+    // --- End GCS Bucket Deletion ---
+
+
+    // Delete session record from repository
     this.sessionRepository.delete(sessionId);
-    logger.info(`Deleted session: ${sessionId}`);
+    logger.info(`Deleted session record: ${sessionId}`);
   }
 
   /**

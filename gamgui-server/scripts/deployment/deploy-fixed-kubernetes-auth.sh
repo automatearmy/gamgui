@@ -111,6 +111,14 @@ if [[ $? -ne 0 ]]; then
   exit 1
 fi
 
+# Configurar variáveis de ambiente para o Cloud Run
+MAX_SESSIONS=${MAX_SESSIONS:-20}
+MAX_SESSION_AGE_HOURS=${MAX_SESSION_AGE_HOURS:-24}
+
+echo -e "${YELLOW}Configuração de sessões:${NC}"
+echo "MAX_SESSIONS: ${MAX_SESSIONS}"
+echo "MAX_SESSION_AGE_HOURS: ${MAX_SESSION_AGE_HOURS}"
+
 # Implantar o servidor no Cloud Run
 echo -e "${YELLOW}Implantando o servidor no Cloud Run...${NC}"
 gcloud run deploy ${SERVICE_NAME} \
@@ -119,7 +127,7 @@ gcloud run deploy ${SERVICE_NAME} \
   --region ${REGION} \
   --project ${PROJECT_ID} \
   --allow-unauthenticated \
-  --update-env-vars "CLOUD_RUN_REVISION=true,GKE_CLUSTER_NAME=${GKE_CLUSTER_NAME},GKE_CLUSTER_LOCATION=${GKE_CLUSTER_LOCATION},PROJECT_ID=${PROJECT_ID},K8S_NAMESPACE=${K8S_NAMESPACE},WEBSOCKET_ENABLED=true,WEBSOCKET_PROXY_SERVICE_URL=websocket-proxy.gamgui.svc.cluster.local,WEBSOCKET_SESSION_CONNECTION_TEMPLATE=ws://websocket-proxy.gamgui.svc.cluster.local/ws/session/{{SESSION_ID}}/,WEBSOCKET_SESSION_PATH_TEMPLATE=/ws/session/{{SESSION_ID}}/,WEBSOCKET_MAX_SESSIONS=50,EXTERNAL_WEBSOCKET_URL_TEMPLATE=wss://api.gamgui.example.com/ws/session/{{SESSION_ID}}/" \
+  --update-env-vars "CLOUD_RUN_REVISION=true,GKE_CLUSTER_NAME=${GKE_CLUSTER_NAME},GKE_CLUSTER_LOCATION=${GKE_CLUSTER_LOCATION},PROJECT_ID=${PROJECT_ID},K8S_NAMESPACE=${K8S_NAMESPACE},WEBSOCKET_ENABLED=true,WEBSOCKET_PROXY_SERVICE_URL=websocket-proxy.gamgui.svc.cluster.local,WEBSOCKET_SESSION_CONNECTION_TEMPLATE=ws://websocket-proxy.gamgui.svc.cluster.local/ws/session/{{SESSION_ID}}/,WEBSOCKET_SESSION_PATH_TEMPLATE=/ws/session/{{SESSION_ID}}/,WEBSOCKET_MAX_SESSIONS=50,EXTERNAL_WEBSOCKET_URL_TEMPLATE=wss://api.gamgui.example.com/ws/session/{{SESSION_ID}}/,MAX_SESSIONS=${MAX_SESSIONS},MAX_SESSION_AGE_HOURS=${MAX_SESSION_AGE_HOURS}" \
   --memory 512Mi \
   --cpu 1 \
   --port 3001
