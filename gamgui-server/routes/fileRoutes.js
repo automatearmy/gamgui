@@ -20,12 +20,13 @@ const createFileRouter = (sessionService) => {
 
 /**
    * @route   POST /api/sessions/:id/files
-   * @desc    Upload files to the session's GCS bucket
+   * @desc    Upload files to the session's GCS bucket, optionally checking userId ownership
    * @access  Public
    */
   router.post('/:id/files', upload.array('files'), async (req, res) => {
     const sessionId = req.params.id;
     const files = req.files;
+    const userId = req.query.userId; // Get userId from query parameters
 
     if (!files || files.length === 0) {
       return res.status(400).json({ message: 'No files uploaded' });
@@ -39,6 +40,14 @@ const createFileRouter = (sessionService) => {
       if (!session) {
         // getSession throws NotFoundError, but double-check
         return res.status(404).json({ message: 'Session not found' });
+      }
+      
+      // If userId is provided, check if the user owns this session
+      if (userId && session.userId && session.userId !== userId) {
+        logger.warn(`User ${userId} attempted to upload files to session ${sessionId} owned by ${session.userId}`);
+        return res.status(403).json({ 
+          message: 'Access denied: You do not have permission to upload files to this session' 
+        });
       }
 
       if (!session.gcsBucketName) {

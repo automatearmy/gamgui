@@ -6,6 +6,19 @@ import { getSessions, checkCredentials, type Session as ApiSession } from "@/lib
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 export function SessionsPage({ onNavigate }: { onNavigate?: (path: string) => void }) {
+  // Use a consistent userId across sessions
+  const [userId] = useState(() => {
+    // Check if userId already exists in localStorage
+    const storedUserId = localStorage.getItem('gamgui-user-id');
+    if (storedUserId) {
+      return storedUserId;
+    }
+    
+    // Generate a new userId and store it in localStorage
+    const newUserId = `user-${Math.random().toString(36).substring(2, 10)}`;
+    localStorage.setItem('gamgui-user-id', newUserId);
+    return newUserId;
+  });
   const [sessions, setSessions] = useState<TableSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +34,7 @@ export function SessionsPage({ onNavigate }: { onNavigate?: (path: string) => vo
   const fetchSessions = async () => {
     try {
       setIsRefreshing(true);
-      const response = await getSessions();
+      const response = await getSessions(userId);
       
       console.log("API Response:", response);
       
@@ -34,7 +47,7 @@ export function SessionsPage({ onNavigate }: { onNavigate?: (path: string) => vo
         ? response.sessions.map((session: ApiSession) => ({
             id: session.id,
             label: session.name,
-            user: "User", // Could be extracted from session data if available
+            user: session.userId || "User", // Use userId from session if available
             date: new Date(session.createdAt).toLocaleDateString(),
             isHighlighted: session.status === "running",
           }))
@@ -56,7 +69,7 @@ export function SessionsPage({ onNavigate }: { onNavigate?: (path: string) => vo
   // Check credentials status
   const checkCredentialsStatus = async () => {
     try {
-      const response = await checkCredentials();
+      const response = await checkCredentials(userId);
       
       // Map the API response to our state structure
       if (response && response.localFiles) {
@@ -75,7 +88,7 @@ export function SessionsPage({ onNavigate }: { onNavigate?: (path: string) => vo
     setIsLoading(true);
     fetchSessions();
     checkCredentialsStatus();
-  }, []);
+  }, [userId]); // Add userId as a dependency
 
   const handleRefresh = () => {
     fetchSessions();

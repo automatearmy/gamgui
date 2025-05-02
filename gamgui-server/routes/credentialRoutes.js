@@ -3,7 +3,7 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const router = express.Router();
-const { saveToSecretManager, getFromSecretManager, listSecrets } = require('../utils/secretManager');
+const { saveToSecretManager, getFromSecretManager, listSecrets, deleteFromSecretManager } = require('../utils/secretManager');
 
 // Set up multer for file uploads
 const storage = multer.diskStorage({
@@ -37,15 +37,17 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 /**
- * @route   POST /api/credentials
+ * @route   POST /api/credentials/:userId?
  * @desc    Upload credential files and save to Secret Manager
  * @access  Public
  */
-router.post('/', upload.fields([
+router.post('/:userId?', upload.fields([
   { name: 'client_secrets', maxCount: 1 },
   { name: 'oauth2', maxCount: 1 },
   { name: 'oauth2service', maxCount: 1 }
 ]), async (req, res) => {
+  // Get userId from params if provided
+  const { userId } = req.params;
   try {
     const files = req.files;
     
@@ -59,19 +61,19 @@ router.post('/', upload.fields([
     
     if (files.client_secrets) {
       const content = fs.readFileSync(files.client_secrets[0].path, 'utf8');
-      secretManagerPromises.push(saveToSecretManager('client-secrets', content));
+      secretManagerPromises.push(saveToSecretManager('client-secrets', content, userId));
       secretManagerUploaded.push('client-secrets');
     }
     
     if (files.oauth2) {
       const content = fs.readFileSync(files.oauth2[0].path, 'utf8');
-      secretManagerPromises.push(saveToSecretManager('oauth2', content));
+      secretManagerPromises.push(saveToSecretManager('oauth2', content, userId));
       secretManagerUploaded.push('oauth2');
     }
     
     if (files.oauth2service) {
       const content = fs.readFileSync(files.oauth2service[0].path, 'utf8');
-      secretManagerPromises.push(saveToSecretManager('oauth2service', content));
+      secretManagerPromises.push(saveToSecretManager('oauth2service', content, userId));
       secretManagerUploaded.push('oauth2service');
     }
     
@@ -104,11 +106,13 @@ router.post('/', upload.fields([
 });
 
 /**
- * @route   GET /api/credentials/check
+ * @route   GET /api/credentials/check/:userId?
  * @desc    Check if all required credential files exist (locally and in Secret Manager)
  * @access  Public
  */
-router.get('/check', async (req, res) => {
+router.get('/check/:userId?', async (req, res) => {
+  // Get userId from params if provided
+  const { userId } = req.params;
   try {
     const credentialsPath = path.join(__dirname, '../gam-credentials');
     const requiredFiles = ['oauth2service.json', 'oauth2.txt', 'client_secrets.json'];
@@ -128,7 +132,7 @@ router.get('/check', async (req, res) => {
     try {
       const checkPromises = secretIds.map(async (secretId) => {
         try {
-          await getFromSecretManager(secretId);
+          await getFromSecretManager(secretId, userId);
           return { secretId, exists: true };
         } catch (error) {
           return { secretId, exists: false };
@@ -164,19 +168,47 @@ router.get('/check', async (req, res) => {
 });
 
 /**
- * @route   DELETE /api/credentials
- * @desc    Delete all credential files
+ * @route   DELETE /api/credentials/:userId?
+ * @desc    Delete credential files for a specific user
  * @access  Public
  */
-router.delete('/', (req, res) => {
+router.delete('/:userId?', async (req, res) => {
+  // Get userId from params if provided
+  const { userId } = req.params;
   try {
     const credentialsPath = path.join(__dirname, '../gam-credentials');
     const requiredFiles = ['oauth2service.json', 'oauth2.txt', 'client_secrets.json'];
+    const secretIds = ['oauth2service', 'oauth2', 'client-secrets'];
     
+    // Delete from Secret Manager if userId is provided
+    if (userId) {
+      const secretManagerPromises = [];
+      const deletedSecrets = [];
+      
+      for (const secretId of secretIds) {
+        try {
+          secretManagerPromises.push(deleteFromSecretManager(secretId, userId));
+          deletedSecrets.push(secretId);
+        } catch (error) {
+          console.error(`Error deleting secret ${secretId} for user ${userId}:`, error);
+        }
+      }
+      
+      // Wait for all Secret Manager operations to complete
+      await Promise.all(secretManagerPromises);
+      
+      return res.status(200).json({
+        message: 'User credentials deleted successfully from Secret Manager',
+        userId,
+        deletedSecrets
+      });
+    }
+    
+    // If no userId, delete local files
     // Check if directory exists
     if (!fs.existsSync(credentialsPath)) {
       return res.status(200).json({ 
-        message: 'No credentials to delete'
+        message: 'No local credentials to delete'
       });
     }
     
@@ -191,7 +223,7 @@ router.delete('/', (req, res) => {
     });
     
     return res.status(200).json({
-      message: 'Credentials deleted successfully',
+      message: 'Local credentials deleted successfully',
       deletedFiles
     });
   } catch (error) {
@@ -204,16 +236,20 @@ router.delete('/', (req, res) => {
 });
 
 /**
- * @route   GET /api/credentials/secrets
- * @desc    Get a list of all credential secrets from Secret Manager
+ * @route   GET /api/credentials/secrets/:userId?
+ * @desc    Get a list of all credential secrets from Secret Manager for a specific user
  * @access  Public
  */
-router.get('/secrets', async (req, res) => {
+router.get('/secrets/:userId?', async (req, res) => {
+  // Get userId from params if provided
+  const { userId } = req.params;
+  
   try {
-    const secrets = await listSecrets();
+    const secrets = await listSecrets(userId);
     
     return res.status(200).json({
-      secrets
+      secrets,
+      userId: userId || null
     });
   } catch (error) {
     console.error('Error listing credential secrets:', error);

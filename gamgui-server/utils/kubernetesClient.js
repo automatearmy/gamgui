@@ -487,6 +487,64 @@ function getSessionWebsocketPath(sessionId) {
   return websocketPathTemplate.replace('{{SESSION_ID}}', sessionId);
 }
 
+/**
+ * Create a Kubernetes secret for user credentials
+ * @param {string} userId - The user ID
+ * @param {object} credentials - The user credentials
+ * @param {string} credentials.oauth2 - The OAuth2 token
+ * @param {string} credentials.oauth2service - The OAuth2 service account key
+ * @param {string} credentials.clientSecrets - The client secrets
+ * @returns {Promise<object>} - The created secret
+ */
+async function createUserCredentialsSecret(userId, credentials) {
+  try {
+    // Generate the secret name based on the user ID
+    const secretName = `user-${userId}-credentials`;
+
+    // Check if secret already exists
+    try {
+      await k8sCoreV1Api.readNamespacedSecret(secretName, namespace);
+      console.log(`Secret ${secretName} already exists, deleting it first`);
+      
+      // Delete the existing secret
+      await k8sCoreV1Api.deleteNamespacedSecret(secretName, namespace);
+    } catch (error) {
+      if (error.response && error.response.statusCode !== 404) {
+        console.warn(`Error checking for existing secret: ${error.message}`);
+      }
+    }
+
+    // Create the secret
+    const secretSpec = {
+      apiVersion: 'v1',
+      kind: 'Secret',
+      metadata: {
+        name: secretName,
+        namespace: namespace,
+        labels: {
+          app: 'gamgui',
+          user_id: userId,
+          component: 'credentials'
+        }
+      },
+      type: 'Opaque',
+      data: {
+        'oauth2.txt': Buffer.from(credentials.oauth2).toString('base64'),
+        'oauth2service.json': Buffer.from(credentials.oauth2service).toString('base64'),
+        'client_secrets.json': Buffer.from(credentials.clientSecrets).toString('base64')
+      }
+    };
+
+    const response = await k8sCoreV1Api.createNamespacedSecret(namespace, secretSpec);
+    console.log(`Created secret ${secretName} for user ${userId}`);
+
+    return response.body;
+  } catch (error) {
+    console.error(`Error creating secret for user ${userId}:`, error);
+    throw error;
+  }
+}
+
 module.exports = {
   createSessionPod,
   deleteSessionPod,
@@ -496,5 +554,6 @@ module.exports = {
   downloadFileFromPod,
   createSessionService,
   deleteSessionService,
-  getSessionWebsocketPath
+  getSessionWebsocketPath,
+  createUserCredentialsSecret
 };

@@ -10,13 +10,15 @@ RUN apk add --no-cache --virtual .gyp \
 # Set working directory
 WORKDIR /app
 
-# Define build arguments for API and Socket URLs
+# Define build arguments for API, Socket URLs and Google OAuth Client ID
 ARG VITE_API_URL
 ARG VITE_SOCKET_URL
+ARG VITE_GOOGLE_CLIENT_ID
 
 # Set environment variables for the build process
 ENV VITE_API_URL=${VITE_API_URL}
 ENV VITE_SOCKET_URL=${VITE_SOCKET_URL}
+ENV VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
 ENV NODE_ENV=production
 
 # Copy package files for dependency installation

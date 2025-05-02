@@ -18,6 +18,18 @@ export function SessionDetailPage({ onNavigate, sessionId }: SessionDetailPagePr
   const [terminalOutput, setTerminalOutput] = useState<string[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [email] = useState("user@edu.edu");
+  const [userId] = useState(() => {
+    // Check if userId already exists in localStorage
+    const storedUserId = localStorage.getItem('gamgui-user-id');
+    if (storedUserId) {
+      return storedUserId;
+    }
+    
+    // Generate a new userId and store it in localStorage
+    const newUserId = `user-${Math.random().toString(36).substring(2, 10)}`;
+    localStorage.setItem('gamgui-user-id', newUserId);
+    return newUserId;
+  });
   const [date] = useState(new Date().toLocaleDateString());
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -31,7 +43,7 @@ export function SessionDetailPage({ onNavigate, sessionId }: SessionDetailPagePr
       setIsRefreshing(true);
       
       console.log(`Fetching session details for ID: ${id}`);
-      const response = await getSession(id);
+      const response = await getSession(id, userId);
       console.log("Session API response:", response);
       
       if (response.error) {
@@ -74,7 +86,7 @@ export function SessionDetailPage({ onNavigate, sessionId }: SessionDetailPagePr
       
       // Get WebSocket info for the session
       console.log(`Fetching WebSocket info for session ${id}`);
-      const websocketInfo = await getSessionWebsocketInfo(id);
+      const websocketInfo = await getSessionWebsocketInfo(id, userId);
       console.log("WebSocket info received:", websocketInfo);
       
       if (websocketInfo.error) {
@@ -213,8 +225,8 @@ export function SessionDetailPage({ onNavigate, sessionId }: SessionDetailPagePr
       // Add the files to the uploaded files list
       setUploadedFiles(prev => [...prev, ...files]);
       
-      // Upload the files to the server
-      await uploadSessionFiles(sessionId, files);
+      // Upload the files to the server with userId
+      await uploadSessionFiles(sessionId, files, userId);
       
       // Notify in terminal
       setTerminalOutput(prev => [
@@ -234,7 +246,7 @@ export function SessionDetailPage({ onNavigate, sessionId }: SessionDetailPagePr
     if (!sessionId) return;
     
     try {
-      await endSession(sessionId);
+      await endSession(sessionId, userId);
       if (onNavigate) {
         onNavigate('/');
       } else {

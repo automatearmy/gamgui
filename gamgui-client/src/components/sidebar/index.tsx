@@ -6,9 +6,9 @@ import { Settings, LayoutDashboard } from "lucide-react";
 
 interface SidebarProps {
   className?: string;
-  userProfileProps: {
-    name: string;
-    role: string;
+  userProfileProps?: {
+    name?: string;
+    role?: string;
   };
   onNavigate?: (path: string) => void;
   currentPath?: string;
@@ -60,11 +60,11 @@ function NavSection({ title, children }: { title: string; children: React.ReactN
   );
 }
 
-export function Sidebar({ 
-  className, 
-  userProfileProps, 
-  onNavigate, 
-  currentPath = "/", 
+export function Sidebar({
+  className,
+  userProfileProps = {},
+  onNavigate,
+  currentPath = "/",
   serverVersion // Destructure serverVersion
 }: SidebarProps) {
   const handleNavigation = (path: string) => {
@@ -76,20 +76,25 @@ export function Sidebar({
     }
   };
 
+  // Handle logout by navigating to login page
+  const handleLogout = () => {
+    handleNavigation('/login');
+  };
+
   // Navigation content to be used in both desktop and mobile sidebars
   const navigationContent = (
     <>
       <NavSection title="Main">
-        <NavItem 
-          path="/sessions" 
-          icon={<LayoutDashboard className="h-4 w-4" />} 
+        <NavItem
+          path="/sessions"
+          icon={<LayoutDashboard className="h-4 w-4" />}
           isActive={currentPath === "/" || currentPath === "/sessions"}
           onClick={handleNavigation}
         >
           Sessions
         </NavItem>
-        <NavItem 
-          path="/settings" 
+        <NavItem
+          path="/settings"
           icon={<Settings className="h-4 w-4" />}
           isActive={currentPath === "/settings"}
           onClick={handleNavigation}
@@ -127,12 +132,13 @@ export function Sidebar({
           <UserProfile
             name={userProfileProps.name}
             role={userProfileProps.role}
+            onLogout={handleLogout}
           />
         </div>
       </aside>
 
       {/* Mobile sidebar */}
-      <MobileSidebar 
+      <MobileSidebar
         userProfileProps={userProfileProps}
         onNavigate={onNavigate}
         currentPath={currentPath}

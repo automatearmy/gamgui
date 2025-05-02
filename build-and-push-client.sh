@@ -55,6 +55,20 @@ fi
 
 echo "Using server URL: $SERVER_URL"
 
+# Get the Google OAuth Client ID
+echo -e "\n=== Getting Google OAuth Client ID ==="
+echo "Please enter the Google OAuth Client ID:"
+echo "Default: 1007518649235-tkosj5ufu9t53ikkulgva45v6nfagono.apps.googleusercontent.com"
+read GOOGLE_CLIENT_ID
+
+# Use default if empty
+if [ -z "$GOOGLE_CLIENT_ID" ]; then
+    GOOGLE_CLIENT_ID="1007518649235-tkosj5ufu9t53ikkulgva45v6nfagono.apps.googleusercontent.com"
+    echo "Using default Google OAuth Client ID"
+else
+    echo "Using provided Google OAuth Client ID"
+fi
+
 # Configure Docker to use gcloud as a credential helper
 echo -e "\n=== Configuring Docker authentication ==="
 gcloud auth configure-docker
@@ -62,11 +76,13 @@ gcloud auth configure-docker
 # Build the Docker image locally
 echo -e "\n=== Building Docker image locally ==="
 echo "Building image with server URL: $SERVER_URL"
+echo "Building image with Google OAuth Client ID: $GOOGLE_CLIENT_ID"
 
 docker build \
   --platform=linux/amd64 \
   --build-arg VITE_API_URL="${SERVER_URL}/api" \
   --build-arg VITE_SOCKET_URL="${SERVER_URL}" \
+  --build-arg VITE_GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID}" \
   -t gcr.io/gamgui-registry/gamgui-client-image:latest \
   ./gamgui-client
 
@@ -75,7 +91,7 @@ echo -e "\n=== Pushing Docker image to registry ==="
 docker push gcr.io/gamgui-registry/gamgui-client-image:latest
 
 echo -e "\n=== Build and Push Complete ==="
-echo "The client Docker image has been built with the correct server URL and pushed to the registry."
+echo "The client Docker image has been built with the correct server URL and Google OAuth Client ID, and pushed to the registry."
 echo "Next steps:"
 echo "1. Go to the gamgui-terraform repository"
 echo "2. Run 'terraform apply' to update the Cloud Run services"

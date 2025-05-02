@@ -93,7 +93,8 @@ class SessionService {
       imageId: sessionData.imageId || 'default-gam-image',
       imageName: sessionData.imageName || 'Default GAM Image',
       config: sessionData.config || {},
-      status: 'active'
+      status: 'active',
+      userId: sessionData.userId || null // Store userId in the session
     };
 
     // --- GCS Bucket Creation ---
