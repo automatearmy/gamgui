@@ -9,8 +9,8 @@ dotenv.config();
 
 // Import routes
 const { router: imageRoutes } = require('./routes/imageRoutes');
-// Import sessionRoutes factory function
-const { createSessionRouter } = require('./routes/sessionRoutes');
+// Import sessionRoutes
+const { router: sessionRouter } = require('./routes/sessionRoutes');
 const { router: credentialRoutes } = require('./routes/credentialRoutes');
 // Import fileRoutes factory function
 const { createFileRouter } = require('./routes/fileRoutes');
@@ -73,7 +73,6 @@ const services = initializeSocketHandler(io);
 const { sessionService } = services; // Extract sessionService
 
 // Create routers that depend on services
-const sessionRouter = createSessionRouter(sessionService); // Pass sessionService
 const fileRouter = createFileRouter(sessionService); // Pass sessionService
 
 // Routes

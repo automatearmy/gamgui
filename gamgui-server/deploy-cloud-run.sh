@@ -7,7 +7,7 @@ set -e
 PROJECT_ID=${PROJECT_ID:-"gamgui-registry"}
 REGION=${REGION:-"us-central1"}
 SERVICE_NAME=${SERVICE_NAME:-"gamgui-server"}
-IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}:latest"
+IMAGE_NAME="gcr.io/${PROJECT_ID}/gamgui-server-image:latest"
 
 # Colors for output
 GREEN='\033[0;32m'

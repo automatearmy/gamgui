@@ -521,7 +521,7 @@ GAMCFG
           // --- GCS FUSE Sidecar Container ---
           {
             name: 'gcsfuse-sidecar',
-            image: 'gcr.io/cloud-storage-fuse-test/gcsfuse-ubuntu:latest', // Use appropriate image
+            image: 'gcr.io/gamgui-registry/gcsfuse:latest', // Using our own GCS FUSE image
             securityContext: {
               // GCS FUSE often requires privileged access or specific capabilities
               privileged: true,
