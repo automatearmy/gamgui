@@ -2,7 +2,7 @@
  * Factory for creating container services
  * Uses the factory pattern to create the appropriate container service based on configuration
  */
-const KubernetesAdapter = require('./KubernetesAdapter');
+const KubernetesAdapter = require('./adapters/KubernetesAdapter-cloud-run');
 const DockerAdapter = require('./DockerAdapter');
 const KubernetesWebSocketAdapter = require('./KubernetesWebSocketAdapter');
 
@@ -27,8 +27,8 @@ class ContainerFactory {
       logger.info('Kubernetes WebSocket adapter created');
     }
     
-    // Check if running in Cloud Run by looking for specific environment variables
-    const isCloudRun = Boolean(process.env.K8S_REVISION || process.env.CLOUD_RUN_REVISION);
+    // Check if running in Cloud Run by looking for the standard K_REVISION env var
+    const isCloudRun = Boolean(process.env.K_REVISION); // Use standard K_REVISION
     
     if (isCloudRun) {
       // When running in Cloud Run, always use Kubernetes adapter

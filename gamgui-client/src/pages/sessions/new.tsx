@@ -15,6 +15,18 @@ export function NewSessionPage({ onNavigate }: NewSessionPageProps = {}) {
   const [terminalOutput, setTerminalOutput] = useState<string[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [email] = useState("user@edu.edu");
+  const [userId] = useState(() => {
+    // Check if userId already exists in localStorage
+    const storedUserId = localStorage.getItem('gamgui-user-id');
+    if (storedUserId) {
+      return storedUserId;
+    }
+    
+    // Generate a new userId and store it in localStorage
+    const newUserId = `user-${Math.random().toString(36).substring(2, 10)}`;
+    localStorage.setItem('gamgui-user-id', newUserId);
+    return newUserId;
+  });
   const [date] = useState(new Date().toLocaleDateString());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +40,7 @@ export function NewSessionPage({ onNavigate }: NewSessionPageProps = {}) {
         setIsLoading(true);
         
         // Check if credentials are available
-        const credentialsResponse = await checkCredentials();
+        const credentialsResponse = await checkCredentials(userId);
         
         // If credentials are not complete, redirect to settings page
         if (!credentialsResponse.localFiles?.complete) {
@@ -46,8 +58,8 @@ export function NewSessionPage({ onNavigate }: NewSessionPageProps = {}) {
           imageId = imagesResponse[0].id;
         }
         
-        // Create a new session
-        const response = await createSession("New Session", imageId);
+        // Create a new session with userId
+        const response = await createSession("New Session", imageId, {}, undefined, userId);
         
         if (response.error) {
           throw new Error(response.error);
@@ -88,7 +100,7 @@ export function NewSessionPage({ onNavigate }: NewSessionPageProps = {}) {
         socketRef.current.disconnect();
       }
     };
-  }, [onNavigate]);
+  }, [onNavigate, userId]);
   
   // Connect to the terminal socket when sessionId is available
   useEffect(() => {

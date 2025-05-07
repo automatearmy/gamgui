@@ -18,6 +18,19 @@ import { Info, Trash2 } from "lucide-react";
 
 
 export function SettingsPage() {
+  // Generate a random userId that will be consistent for this user across sessions
+  const [userId] = useState(() => {
+    // Check if userId already exists in localStorage
+    const storedUserId = localStorage.getItem('gamgui-user-id');
+    if (storedUserId) {
+      return storedUserId;
+    }
+    
+    // Generate a new userId and store it in localStorage
+    const newUserId = `user-${Math.random().toString(36).substring(2, 10)}`;
+    localStorage.setItem('gamgui-user-id', newUserId);
+    return newUserId;
+  });
   const [authFiles, setAuthFiles] = useState<AuthFiles>({
     clientSecrets: null,
     oauth2: null,
@@ -53,7 +66,7 @@ export function SettingsPage() {
   useEffect(() => {
     const fetchCredentialsStatus = async () => {
       try {
-        const response = await checkCredentials();
+        const response = await checkCredentials(userId);
         // Map the API response to our state structure
         if (response && response.localFiles) {
           setCredentialsStatus({
@@ -78,7 +91,7 @@ export function SettingsPage() {
     };
 
     fetchCredentialsStatus();
-  }, []);
+  }, [userId]); // Add userId as a dependency
 
   const handleFileChange = (fileType: keyof AuthFiles) => async (file: File | null) => {
     // Update local state with the new file
@@ -106,11 +119,11 @@ export function SettingsPage() {
         // Set only the changed file
         filesToUpload[fileType] = file;
         
-        // Upload only the changed file using the API function
-        await uploadCredentials(filesToUpload);
+        // Upload only the changed file using the API function with userId
+        await uploadCredentials(filesToUpload, userId);
         
-        // Refresh credentials status
-        const statusResponse = await checkCredentials();
+        // Refresh credentials status with userId
+        const statusResponse = await checkCredentials(userId);
         
         // Update credentials status
         if (statusResponse && statusResponse.localFiles) {
@@ -142,8 +155,8 @@ export function SettingsPage() {
     try {
       setDeleteStatus({ loading: true, success: false, error: null });
       
-      // Call API to delete credentials on server
-      await deleteCredentials();
+      // Call API to delete credentials on server with userId
+      await deleteCredentials(userId);
       
       // Reset local state
       setAuthFiles({
@@ -152,8 +165,8 @@ export function SettingsPage() {
         oauth2service: null,
       });
       
-      // Refresh credentials status
-      const response = await checkCredentials();
+      // Refresh credentials status with userId
+      const response = await checkCredentials(userId);
       // Map the API response to our state structure
       if (response && response.localFiles) {
         setCredentialsStatus({

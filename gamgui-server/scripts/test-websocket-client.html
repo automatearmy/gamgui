@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Test Client</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            /* Make container take full height */
+            min-height: 90vh; 
+        }
+        .terminal {
+            background-color: #1e1e1e; /* Darker background */
+            color: #d4d4d4; /* Lighter text */
+            padding: 15px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace; /* Monospace font */
+            flex-grow: 1; /* Allow terminal to grow */
+            overflow-y: auto;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border: 1px solid #333; /* Subtle border */
+            min-height: 300px; /* Ensure minimum height */
+        }
+        .input-container {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        input[type="text"] { /* Style text inputs */
+            flex: 1;
+            padding: 10px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-right: 5px; /* Add space before button */
+        }
+        button {
+            padding: 10px 18px; /* Slightly larger padding */
+            background-color: #007bff; /* Blue color */
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.2s ease; /* Smooth hover effect */
+        }
+        button:hover {
+            background-color: #0056b3; /* Darker blue on hover */
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .config {
+            background-color: #f8f9fa; /* Lighter background */
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            border: 1px solid #dee2e6; /* Light border */
+        }
+        .config h2 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+         .config div {
+            margin-bottom: 10px; /* Space between config items */
+            display: flex;
+            align-items: center; /* Align items vertically */
+        }
+         .config label {
+            margin-right: 10px;
+            min-width: 100px; /* Ensure labels align */
+            text-align: right;
+        }
+        .config input[type="text"] {
+             width: auto; /* Let input take available space */
+             flex-grow: 1; /* Allow input to grow */
+             max-width: 400px; /* Limit max width */
+        }
+         .config .button-group {
+             margin-top: 10px;
+             justify-content: flex-start; /* Align buttons left */
+             gap: 10px; /* Space between buttons */
+         }
+
+        .status {
+            margin-bottom: 15px;
+            padding: 12px;
+            border-radius: 5px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .connected {
+            background-color: #d4edda; /* Light green */
+            color: #155724; /* Dark green */
+            border: 1px solid #c3e6cb;
+        }
+        .disconnected {
+            background-color: #f8d7da; /* Light red */
+            color: #721c24; /* Dark red */
+            border: 1px solid #f5c6cb;
+        }
+        .connecting {
+            background-color: #fff3cd; /* Light yellow */
+            color: #856404; /* Dark yellow */
+            border: 1px solid #ffeeba;
+        }
+        .error {
+             background-color: #f8d7da; /* Light red */
+            color: #721c24; /* Dark red */
+            border: 1px solid #f5c6cb;
+        }
+        .terminal div { /* Style each log line */
+            white-space: pre-wrap; /* Wrap long lines */
+            word-break: break-all; /* Break long words */
+            padding: 2px 0; /* Add slight vertical spacing */
+        }
+        .terminal .error-log {
+             color: #f8d7da; /* Light red for errors */
+        }
+         .terminal .info-log {
+             color: #bee5eb; /* Light blue for info */
+        }
+         .terminal .sent-log {
+             color: #90ee90; /* Light green for sent messages */
+        }
+         .terminal .received-log {
+             color: #d4d4d4; /* Default light text for received */
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WebSocket Test Client</h1>
+
+        <div class="config">
+            <h2>Configuration</h2>
+            <div>
+                <label for="serverUrl">Server URL:</label>
+                <input type="text" id="serverUrl" value="http://localhost:3001">
+            </div>
+            <div>
+                <label for="sessionId">Session ID:</label>
+                <input type="text" id="sessionId" value="default">
+            </div>
+            <div class="button-group">
+                <button id="getWebsocketInfo">Get WS Info</button>
+                <button id="connect" disabled>Connect</button>
+                <button id="disconnect" disabled>Disconnect</button>
+            </div>
+             <div id="wsUrlDisplay" style="margin-top: 10px; font-family: monospace; font-size: 0.9em; word-break: break-all;"></div>
+        </div>
+
+        <div id="status" class="status disconnected">
+            Disconnected
+        </div>
+
+        <div id="terminal" class="terminal"></div>
+
+        <div class="input-container">
+            <input type="text" id="command" placeholder="Enter command..." disabled>
+            <button id="send" disabled>Send</button>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const serverUrlInput = document.getElementById('serverUrl');
+        const sessionIdInput = document.getElementById('sessionId');
+        const getWebsocketInfoButton = document.getElementById('getWebsocketInfo');
+        const connectButton = document.getElementById('connect');
+        const disconnectButton = document.getElementById('disconnect');
+        const statusDiv = document.getElementById('status');
+        const terminalDiv = document.getElementById('terminal');
+        const commandInput = document.getElementById('command');
+        const sendButton = document.getElementById('send');
+        const wsUrlDisplay = document.getElementById('wsUrlDisplay');
+
+
+        // WebSocket variables
+        let socket = null;
+        let websocketInfo = null; // Store { websocketUrl: 'ws://...' }
+
+        // Helper functions
+        function log(message, type = 'received') { // type: received, sent, info, error
+            const line = document.createElement('div');
+            const timestamp = new Date().toLocaleTimeString();
+            line.textContent = `[${timestamp}] ${message}`;
+            line.classList.add(`${type}-log`);
+             if (type === 'error') line.classList.add('error-log');
+            terminalDiv.appendChild(line);
+            // Scroll to bottom smoothly
+            terminalDiv.scrollTo({ top: terminalDiv.scrollHeight, behavior: 'smooth' });
+        }
+
+         function updateStatus(status, type = 'info') { // type: info, connected, disconnected, error, connecting
+            statusDiv.textContent = status;
+            statusDiv.className = `status ${type}`; // Use type directly for class
+        }
+
+        function setUIState(isConnected) {
+            connectButton.disabled = isConnected || !websocketInfo; // Disable connect if connected or no WS info
+            disconnectButton.disabled = !isConnected;
+            sendButton.disabled = !isConnected;
+            commandInput.disabled = !isConnected;
+            getWebsocketInfoButton.disabled = isConnected; // Disable getting info while connected
+            serverUrlInput.disabled = isConnected;
+            sessionIdInput.disabled = isConnected;
+        }
+
+
+        // Event handlers
+        getWebsocketInfoButton.addEventListener('click', async () => {
+            const serverUrl = serverUrlInput.value.trim();
+            const sessionId = sessionIdInput.value.trim();
+
+            if (!serverUrl || !sessionId) {
+                log('Server URL and Session ID are required.', 'error');
+                updateStatus('Error: Missing URL or Session ID', 'error');
+                return;
+            }
+
+            updateStatus('Getting WebSocket info...', 'connecting');
+            log(`Getting WebSocket info for session ${sessionId}...`, 'info');
+            wsUrlDisplay.textContent = ''; // Clear previous URL
+            websocketInfo = null; // Reset websocket info
+            setUIState(false); // Disable connect button initially
+
+
+            try {
+                const apiUrl = `${serverUrl}/api/sessions/${sessionId}/websocket`;
+                log(`Fetching: ${apiUrl}`, 'info');
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+
+                log(`API Response: ${JSON.stringify(data, null, 2)}`, 'info');
+
+                if (!response.ok || data.error) {
+                    const errorMsg = data.error || `HTTP error ${response.status}`;
+                    throw new Error(errorMsg);
+                }
+
+                if (!data.websocketUrl) {
+                     throw new Error('API did not return a websocketUrl.');
+                }
+
+                websocketInfo = data; // Store the whole response, expecting websocketUrl
+                updateStatus('WebSocket info received. Ready to connect.', 'info');
+                log(`Ready to connect to: ${websocketInfo.websocketUrl}`, 'info');
+                wsUrlDisplay.textContent = `Target WS URL: ${websocketInfo.websocketUrl}`;
+                setUIState(false); // Enable connect button
+
+
+            } catch (error) {
+                updateStatus(`Error getting WS info: ${error.message}`, 'error');
+                log(`Error getting WS info: ${error.message}`, 'error');
+                websocketInfo = null;
+                setUIState(false); // Keep connect disabled
+            }
+        });
+
+        connectButton.addEventListener('click', () => {
+            if (socket) {
+                log('Already connected. Disconnect first.', 'error');
+                return;
+            }
+            if (!websocketInfo || !websocketInfo.websocketUrl) {
+                log('WebSocket URL not available. Click "Get WS Info" first.', 'error');
+                updateStatus('Error: Missing WebSocket URL', 'error');
+                return;
+            }
+
+
+            const targetWsUrl = websocketInfo.websocketUrl;
+            updateStatus('Connecting...', 'connecting');
+            log(`Connecting to ${targetWsUrl}...`, 'info');
+
+            try {
+                socket = new WebSocket(targetWsUrl);
+
+                socket.onopen = () => {
+                    updateStatus('Connected', 'connected');
+                    log('WebSocket connection established.', 'info');
+                    setUIState(true);
+                };
+
+                socket.onmessage = (event) => {
+                    // Attempt to parse JSON, otherwise log as string
+                    try {
+                        const jsonData = JSON.parse(event.data.toString());
+                        log(`Received JSON: ${JSON.stringify(jsonData, null, 2)}`, 'received');
+                    } catch (e) {
+                        log(`Received: ${event.data.toString()}`, 'received');
+                    }
+                };
+
+                socket.onerror = (event) => {
+                    // Modern browsers provide an Event object, not just an error message
+                    const errorMsg = event.message || 'WebSocket error occurred';
+                    updateStatus(`Error: ${errorMsg}`, 'error');
+                    log(`WebSocket error: ${errorMsg}`, 'error');
+                     // Attempt to close gracefully if possible, might already be closed
+                    if (socket && socket.readyState !== WebSocket.CLOSED) {
+                        socket.close();
+                    }
+                    socket = null; // Ensure socket is nullified on error
+                    setUIState(false);
+                };
+
+                socket.onclose = (event) => {
+                    const reason = event.reason || `Code ${event.code}`;
+                    updateStatus(`Disconnected: ${reason}`, 'disconnected');
+                    log(`WebSocket connection closed: ${reason}`, 'info');
+                    socket = null;
+                    websocketInfo = null; // Reset ws info on disconnect
+                    wsUrlDisplay.textContent = '';
+                    setUIState(false);
+                };
+            } catch (error) {
+                updateStatus(`Connection Error: ${error.message}`, 'error');
+                log(`Failed to initiate WebSocket connection: ${error.message}`, 'error');
+                socket = null;
+                setUIState(false);
+            }
+        });
+
+        disconnectButton.addEventListener('click', () => {
+            if (socket) {
+                log('Disconnecting...', 'info');
+                socket.close(1000, "User disconnected"); // Close with normal code
+                // State update happens in onclose handler
+            } else {
+                log('Not connected.', 'error');
+            }
+        });
+
+        sendButton.addEventListener('click', () => {
+            const command = commandInput.value.trim();
+
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                log('Not connected or connection not open.', 'error');
+                return;
+            }
+
+            if (!command) {
+                log('Please enter a command.', 'error');
+                return;
+            }
+
+            log(`Sending: ${command}`, 'sent');
+            socket.send(command);
+            commandInput.value = ''; // Clear input after sending
+        });
+
+        commandInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                sendButton.click();
+            }
+        });
+
+        // Initialize UI state
+        setUIState(false);
+        updateStatus('Disconnected', 'disconnected');
+        log('WebSocket Test Client initialized.', 'info');
+        log('1. Enter Server URL (API base) and Session ID.', 'info');
+        log('2. Click "Get WS Info" to fetch the target WebSocket URL.', 'info');
+        log('3. Click "Connect" (if URL received).', 'info');
+        log('4. Enter commands and click "Send".', 'info');
+
+    </script>
+</body>
+</html>

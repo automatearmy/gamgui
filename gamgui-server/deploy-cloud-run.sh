@@ -7,7 +7,7 @@ set -e
 PROJECT_ID=${PROJECT_ID:-"gamgui-registry"}
 REGION=${REGION:-"us-central1"}
 SERVICE_NAME=${SERVICE_NAME:-"gamgui-server"}
-IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}:latest"
+IMAGE_NAME="gcr.io/${PROJECT_ID}/gamgui-server-image:latest"
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -21,9 +21,9 @@ echo "Region: ${REGION}"
 echo "Service Name: ${SERVICE_NAME}"
 echo "Image Name: ${IMAGE_NAME}"
 
-# Build the Docker image
-echo -e "${YELLOW}Building Docker image...${NC}"
-docker build -t ${IMAGE_NAME} .
+# Build the Docker image with platform specified for Cloud Run
+echo -e "${YELLOW}Building Docker image for platform linux/amd64...${NC}"
+docker build --platform=linux/amd64 -t ${IMAGE_NAME} .
 
 # Push the image to Container Registry
 echo -e "${YELLOW}Pushing image to Container Registry...${NC}"
@@ -37,7 +37,7 @@ gcloud run deploy ${SERVICE_NAME} \
   --region ${REGION} \
   --project ${PROJECT_ID} \
   --allow-unauthenticated \
-  --update-env-vars "CLOUD_RUN_REVISION=true" \
+  --update-env-vars "CLOUD_RUN_REVISION=true,WEBSOCKET_ENABLED=true,WEBSOCKET_PROXY_SERVICE_URL=websocket-proxy.gamgui.svc.cluster.local,WEBSOCKET_SESSION_CONNECTION_TEMPLATE=ws://websocket-proxy.gamgui.svc.cluster.local/ws/session/{{SESSION_ID}}/,WEBSOCKET_SESSION_PATH_TEMPLATE=/ws/session/{{SESSION_ID}}/,WEBSOCKET_MAX_SESSIONS=50,EXTERNAL_WEBSOCKET_URL_TEMPLATE=wss://api.gamgui.example.com/ws/session/{{SESSION_ID}}/" \
   --memory 512Mi \
   --cpu 1 \
   --port 3001

@@ -7,23 +7,32 @@ import { Button } from "@/components/ui/button";
 
 interface MobileSidebarProps {
   children: React.ReactNode;
-  userProfileProps: {
-    name: string;
-    role: string;
+  userProfileProps?: {
+    name?: string;
+    role?: string;
   };
   onNavigate?: (path: string) => void;
   currentPath?: string;
 }
 
-export function MobileSidebar({ 
-  children, 
-  userProfileProps,
-  // These props are received but not used in this component
-  // They're kept to maintain compatibility with the parent component
-  onNavigate: _onNavigate,
+export function MobileSidebar({
+  children,
+  userProfileProps = {},
+  onNavigate,
   currentPath: _currentPath
 }: MobileSidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
+
+  // Handle logout by navigating to login page
+  const handleLogout = () => {
+    setIsOpen(false); // Close the sidebar
+    if (onNavigate) {
+      onNavigate('/login');
+    } else {
+      // Fallback to traditional navigation if onNavigate is not provided
+      window.location.href = '/login';
+    }
+  };
 
   return (
     <>
@@ -77,6 +86,7 @@ export function MobileSidebar({
           <UserProfile
             name={userProfileProps.name}
             role={userProfileProps.role}
+            onLogout={handleLogout}
           />
         </div>
       </div>

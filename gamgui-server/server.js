@@ -9,9 +9,17 @@ dotenv.config();
 
 // Import routes
 const { router: imageRoutes } = require('./routes/imageRoutes');
-const { router: sessionRoutes } = require('./routes/sessionRoutes');
+// Import sessionRoutes
+const { router: sessionRouter } = require('./routes/sessionRoutes');
 const { router: credentialRoutes } = require('./routes/credentialRoutes');
-const { router: fileRoutes } = require('./routes/fileRoutes');
+const { router: authRoutes } = require('./routes/authRoutes');
+// Import fileRoutes factory function
+const { createFileRouter } = require('./routes/fileRoutes');
+const initializeSocketHandler = require('./routes/socketHandler');
+const logger = require('./utils/logger'); // Assuming logger is available
+
+// Import auth middleware
+const { authMiddleware } = require('./middleware/auth');
 
 // Initialize express app
 const app = express();
@@ -63,21 +71,54 @@ const PORT = process.env.PORT || 3001;
 app.use(cors(corsOptions));
 app.use(express.json());
 
+// User authentication middleware (IAP or OAuth)
+app.use((req, res, next) => {
+  // Check for IAP headers first
+  const iapJwt = req.headers['x-goog-iap-jwt-assertion'];
+  if (iapJwt) {
+    // Extract user information from IAP headers
+    const email = req.headers['x-goog-authenticated-user-email'];
+    if (email) {
+      // Remove the prefix "accounts.google.com:" from the email
+      req.user = {
+        email: email.replace('accounts.google.com:', ''),
+        id: email.replace('accounts.google.com:', ''), // Use email as ID for simplicity
+      };
+      logger.info(`IAP authenticated user: ${req.user.email}`);
+    }
+  }
+  next();
+});
+
 // Routes
-app.use('/api/images', imageRoutes);
-app.use('/api/sessions', sessionRoutes);
-app.use('/api/credentials', credentialRoutes);
-app.use('/api/sessions', fileRoutes); // File routes are nested under sessions
+// Initialize Socket.IO and dependent services
+const services = initializeSocketHandler(io);
+const { sessionService } = services; // Extract sessionService
+
+// Create routers that depend on services
+const fileRouter = createFileRouter(sessionService); // Pass sessionService
+
+// Public routes
+app.use('/api/auth', authRoutes); // Auth routes don't need authentication
 
 // Default route
 app.get('/', (req, res) => {
   res.json({ message: 'Welcome to GamGUI API' });
 });
 
-// Pass Socket.io instance to session routes for WebSocket handling
-require('./routes/socketHandler')(io);
+// Version endpoint
+app.get('/api/version', (req, res) => {
+  // Simple timestamp-based version for now
+  res.json({ version: '2025-05-02T18:35:00-03:00' });
+});
+
+// Protected routes (require authentication)
+app.use('/api/images', authMiddleware, imageRoutes);
+app.use('/api/sessions', authMiddleware, sessionRouter);
+app.use('/api/credentials', authMiddleware, credentialRoutes);
+app.use('/api/sessions', authMiddleware, fileRouter);
 
 // Start server
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  logger.info(`Server running on port ${PORT}`);
 });

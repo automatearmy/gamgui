@@ -6,12 +6,13 @@ import { Settings, LayoutDashboard } from "lucide-react";
 
 interface SidebarProps {
   className?: string;
-  userProfileProps: {
-    name: string;
-    role: string;
+  userProfileProps?: {
+    name?: string;
+    role?: string;
   };
   onNavigate?: (path: string) => void;
   currentPath?: string;
+  serverVersion?: string | null; // Add serverVersion prop
 }
 
 interface NavItemProps {
@@ -59,7 +60,13 @@ function NavSection({ title, children }: { title: string; children: React.ReactN
   );
 }
 
-export function Sidebar({ className, userProfileProps, onNavigate, currentPath = "/" }: SidebarProps) {
+export function Sidebar({
+  className,
+  userProfileProps = {},
+  onNavigate,
+  currentPath = "/",
+  serverVersion // Destructure serverVersion
+}: SidebarProps) {
   const handleNavigation = (path: string) => {
     if (onNavigate) {
       onNavigate(path);
@@ -69,20 +76,25 @@ export function Sidebar({ className, userProfileProps, onNavigate, currentPath =
     }
   };
 
+  // Handle logout by navigating to login page
+  const handleLogout = () => {
+    handleNavigation('/login');
+  };
+
   // Navigation content to be used in both desktop and mobile sidebars
   const navigationContent = (
     <>
       <NavSection title="Main">
-        <NavItem 
-          path="/sessions" 
-          icon={<LayoutDashboard className="h-4 w-4" />} 
+        <NavItem
+          path="/sessions"
+          icon={<LayoutDashboard className="h-4 w-4" />}
           isActive={currentPath === "/" || currentPath === "/sessions"}
           onClick={handleNavigation}
         >
           Sessions
         </NavItem>
-        <NavItem 
-          path="/settings" 
+        <NavItem
+          path="/settings"
           icon={<Settings className="h-4 w-4" />}
           isActive={currentPath === "/settings"}
           onClick={handleNavigation}
@@ -110,16 +122,23 @@ export function Sidebar({ className, userProfileProps, onNavigate, currentPath =
           {navigationContent}
         </div>
 
-        <div className="border-t border-sidebar-border">
+        <div className="mt-auto border-t border-sidebar-border p-2"> {/* Added mt-auto and padding */}
+          {/* Display Server Version */}
+          {serverVersion && (
+            <div className="px-2 py-1 text-xs text-sidebar-foreground/60 text-center truncate" title={serverVersion}>
+              Server: {serverVersion === 'error' ? 'Error fetching' : serverVersion}
+            </div>
+          )}
           <UserProfile
             name={userProfileProps.name}
             role={userProfileProps.role}
+            onLogout={handleLogout}
           />
         </div>
       </aside>
 
       {/* Mobile sidebar */}
-      <MobileSidebar 
+      <MobileSidebar
         userProfileProps={userProfileProps}
         onNavigate={onNavigate}
         currentPath={currentPath}

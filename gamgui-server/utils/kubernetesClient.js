@@ -1,6 +1,6 @@
 /**
- * Kubernetes Client Utility
- * 
+* Kubernetes Client Utility
+ *
  * This utility provides functions for interacting with the Kubernetes API
  * to create and manage pods and services for GAM sessions.
  */
@@ -16,19 +16,19 @@ try {
   kc.loadFromDefault();
 } catch (error) {
   console.log('Could not load kubeconfig from default location, trying environment variables');
-  
+
   // If that fails, try to use environment variables
   const clusterName = process.env.GKE_CLUSTER_NAME;
   const clusterLocation = process.env.GKE_CLUSTER_LOCATION;
-  
+
   if (!clusterName || !clusterLocation) {
     throw new Error('GKE_CLUSTER_NAME and GKE_CLUSTER_LOCATION environment variables must be set');
   }
-  
+
   // Use gcloud to get credentials
   const { execSync } = require('child_process');
   execSync(`gcloud container clusters get-credentials ${clusterName} --region ${clusterLocation} --project ${process.env.PROJECT_ID}`);
-  
+
   // Now try to load again
   kc.loadFromDefault();
 }
@@ -59,7 +59,7 @@ async function createSessionPod(sessionId, options = {}) {
   try {
     // Generate a unique name for the pod based on the session ID
     const podName = `gam-session-${sessionId}`;
-    
+
     // Get the pod template from the config map
     const podTemplate = {
       apiVersion: 'v1',
@@ -109,16 +109,12 @@ async function createSessionPod(sessionId, options = {}) {
             volumeMounts: [
               {
                 name: 'gam-credentials',
-                mountPath: '/root/.gam'
+                mountPath: '/root/.gam/credentials',
+                readOnly: true
               },
               {
                 name: 'gam-uploads',
                 mountPath: '/gam/uploads'
-              },
-              {
-                name: 'gam-config',
-                mountPath: '/root/.gam/gam.cfg',
-                subPath: 'gam.cfg'
               }
             ]
           }
@@ -133,22 +129,47 @@ async function createSessionPod(sessionId, options = {}) {
           {
             name: 'gam-uploads',
             emptyDir: {}
-          },
-          {
-            name: 'gam-config',
-            configMap: {
-              name: 'gam-config'
-            }
           }
         ]
       }
     };
-    
+
+    // Add init container to create gam.cfg
+    podTemplate.spec.containers[0].command = ['/bin/bash', '-c'];
+    podTemplate.spec.containers[0].args = [
+      `# Create GAM config directory
+      mkdir -p /root/.gam
+
+      # Create a new gam.cfg file with correct paths
+      cat > /root/.gam/gam.cfg << GAMCFG
+      [DEFAULT]
+      customer_id = my_customer
+      domain = automatearmy.com
+      oauth2_txt = /root/.gam/oauth2.txt
+      oauth2service_json = /root/.gam/oauth2service.json
+      client_secrets_json = /root/.gam/client_secrets.json
+      GAMCFG
+
+      # Copy credentials to the expected location
+      cp /root/.gam/credentials/oauth2.txt /root/.gam/oauth2.txt
+      cp /root/.gam/credentials/oauth2service.json /root/.gam/oauth2service.json
+      cp /root/.gam/credentials/client_secrets.json /root/.gam/client_secrets.json
+
+      # Make sure permissions are correct
+      chmod 600 /root/.gam/oauth2.txt
+      chmod 600 /root/.gam/oauth2service.json
+      chmod 600 /root/.gam/client_secrets.json
+
+      # Keep the container running
+      while true; do sleep 30; done
+      `
+    ];
+
     // Create the pod
     const response = await k8sCoreV1Api.createNamespacedPod(namespace, podTemplate);
-    
+
     console.log(`Created pod ${podName} for session ${sessionId}`);
-    
+
     return response.body;
   } catch (error) {
     console.error(`Error creating pod for session ${sessionId}:`, error);
@@ -165,12 +186,12 @@ async function deleteSessionPod(sessionId) {
   try {
     // Generate the pod name based on the session ID
     const podName = `gam-session-${sessionId}`;
-    
+
     // Delete the pod
     const response = await k8sCoreV1Api.deleteNamespacedPod(podName, namespace);
-    
+
     console.log(`Deleted pod ${podName} for session ${sessionId}`);
-    
+
     return response.body;
   } catch (error) {
     console.error(`Error deleting pod for session ${sessionId}:`, error);
@@ -188,17 +209,17 @@ async function executeCommandInPod(sessionId, command) {
   try {
     // Generate the pod name based on the session ID
     const podName = `gam-session-${sessionId}`;
-    
+
     // Create an exec instance
     const exec = new k8s.Exec(kc);
-    
+
     // Execute the command
     return new Promise((resolve, reject) => {
       let stdout = '';
       let stderr = '';
-      
+
       const commandArray = ['/bin/bash', '-c', command];
-      
+
       exec.exec(
         namespace,
         podName,
@@ -232,10 +253,10 @@ async function getPodStatus(sessionId) {
   try {
     // Generate the pod name based on the session ID
     const podName = `gam-session-${sessionId}`;
-    
+
     // Get the pod
     const response = await k8sCoreV1Api.readNamespacedPod(podName, namespace);
-    
+
     return response.body.status;
   } catch (error) {
     console.error(`Error getting pod status for session ${sessionId}:`, error);
@@ -254,17 +275,17 @@ async function uploadFileToPod(sessionId, localFilePath, podFilePath) {
   try {
     // Generate the pod name based on the session ID
     const podName = `gam-session-${sessionId}`;
-    
+
     // Read the file
     const fileContent = fs.readFileSync(localFilePath);
-    
+
     // Create an exec instance
     const exec = new k8s.Exec(kc);
-    
+
     // Create the directory if it doesn't exist
     await new Promise((resolve, reject) => {
       const command = [`mkdir -p $(dirname ${podFilePath})`];
-      
+
       exec.exec(
         namespace,
         podName,
@@ -283,11 +304,11 @@ async function uploadFileToPod(sessionId, localFilePath, podFilePath) {
         }
       );
     });
-    
+
     // Write the file
     await new Promise((resolve, reject) => {
       const command = [`cat > ${podFilePath}`];
-      
+
       exec.exec(
         namespace,
         podName,
@@ -305,12 +326,12 @@ async function uploadFileToPod(sessionId, localFilePath, podFilePath) {
           }
         }
       );
-      
+
       // Write the file content to stdin
       process.stdin.write(fileContent);
       process.stdin.end();
     });
-    
+
     console.log(`Uploaded file ${localFilePath} to ${podFilePath} in pod ${podName}`);
   } catch (error) {
     console.error(`Error uploading file to pod for session ${sessionId}:`, error);
@@ -329,16 +350,16 @@ async function downloadFileFromPod(sessionId, podFilePath, localFilePath) {
   try {
     // Generate the pod name based on the session ID
     const podName = `gam-session-${sessionId}`;
-    
+
     // Create an exec instance
     const exec = new k8s.Exec(kc);
-    
+
     // Read the file
     const fileContent = await new Promise((resolve, reject) => {
       let content = '';
-      
+
       const command = [`cat ${podFilePath}`];
-      
+
       exec.exec(
         namespace,
         podName,
@@ -361,10 +382,10 @@ async function downloadFileFromPod(sessionId, podFilePath, localFilePath) {
         }
       );
     });
-    
+
     // Write the file
     fs.writeFileSync(localFilePath, fileContent);
-    
+
     console.log(`Downloaded file ${podFilePath} from pod ${podName} to ${localFilePath}`);
   } catch (error) {
     console.error(`Error downloading file from pod for session ${sessionId}:`, error);
@@ -381,7 +402,7 @@ async function createSessionService(sessionId) {
   try {
     // Use template to generate service name
     const serviceName = sessionServiceTemplate.replace('{{SESSION_ID}}', sessionId);
-    
+
     // Check if service already exists
     try {
       await k8sCoreV1Api.readNamespacedService(serviceName, namespace);
@@ -392,7 +413,7 @@ async function createSessionService(sessionId) {
         throw error;
       }
     }
-    
+
     // Create the service
     const serviceSpec = {
       apiVersion: 'v1',
@@ -424,10 +445,10 @@ async function createSessionService(sessionId) {
         ]
       }
     };
-    
+
     const response = await k8sCoreV1Api.createNamespacedService(namespace, serviceSpec);
     console.log(`Created service ${serviceName} for session ${sessionId}`);
-    
+
     return response.body;
   } catch (error) {
     console.error(`Error creating service for session ${sessionId}:`, error);
@@ -444,12 +465,12 @@ async function deleteSessionService(sessionId) {
   try {
     // Generate the service name based on the session ID
     const serviceName = sessionServiceTemplate.replace('{{SESSION_ID}}', sessionId);
-    
+
     // Delete the service
     const response = await k8sCoreV1Api.deleteNamespacedService(serviceName, namespace);
-    
+
     console.log(`Deleted service ${serviceName} for session ${sessionId}`);
-    
+
     return response.body;
   } catch (error) {
     console.error(`Error deleting service for session ${sessionId}:`, error);
@@ -466,6 +487,64 @@ function getSessionWebsocketPath(sessionId) {
   return websocketPathTemplate.replace('{{SESSION_ID}}', sessionId);
 }
 
+/**
+ * Create a Kubernetes secret for user credentials
+ * @param {string} userId - The user ID
+ * @param {object} credentials - The user credentials
+ * @param {string} credentials.oauth2 - The OAuth2 token
+ * @param {string} credentials.oauth2service - The OAuth2 service account key
+ * @param {string} credentials.clientSecrets - The client secrets
+ * @returns {Promise<object>} - The created secret
+ */
+async function createUserCredentialsSecret(userId, credentials) {
+  try {
+    // Generate the secret name based on the user ID
+    const secretName = `user-${userId}-credentials`;
+
+    // Check if secret already exists
+    try {
+      await k8sCoreV1Api.readNamespacedSecret(secretName, namespace);
+      console.log(`Secret ${secretName} already exists, deleting it first`);
+      
+      // Delete the existing secret
+      await k8sCoreV1Api.deleteNamespacedSecret(secretName, namespace);
+    } catch (error) {
+      if (error.response && error.response.statusCode !== 404) {
+        console.warn(`Error checking for existing secret: ${error.message}`);
+      }
+    }
+
+    // Create the secret
+    const secretSpec = {
+      apiVersion: 'v1',
+      kind: 'Secret',
+      metadata: {
+        name: secretName,
+        namespace: namespace,
+        labels: {
+          app: 'gamgui',
+          user_id: userId,
+          component: 'credentials'
+        }
+      },
+      type: 'Opaque',
+      data: {
+        'oauth2.txt': Buffer.from(credentials.oauth2).toString('base64'),
+        'oauth2service.json': Buffer.from(credentials.oauth2service).toString('base64'),
+        'client_secrets.json': Buffer.from(credentials.clientSecrets).toString('base64')
+      }
+    };
+
+    const response = await k8sCoreV1Api.createNamespacedSecret(namespace, secretSpec);
+    console.log(`Created secret ${secretName} for user ${userId}`);
+
+    return response.body;
+  } catch (error) {
+    console.error(`Error creating secret for user ${userId}:`, error);
+    throw error;
+  }
+}
+
 module.exports = {
   createSessionPod,
   deleteSessionPod,
@@ -475,5 +554,6 @@ module.exports = {
   downloadFileFromPod,
   createSessionService,
   deleteSessionService,
-  getSessionWebsocketPath
+  getSessionWebsocketPath,
+  createUserCredentialsSecret
 };

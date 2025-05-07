@@ -1,0 +1,9 @@
+node_modules
+.env
+npm-debug.log
+Dockerfile
+.dockerignore
+.git
+.gitignore
+
+# Add any other files or directories that should not be included in the build context
