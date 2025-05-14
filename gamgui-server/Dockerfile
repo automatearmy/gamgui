@@ -46,6 +46,11 @@ RUN npm ci
 # Copy the rest of the application code
 COPY . .
 
+# Diagnostic step: Output the content of KubernetesAdapter.js
+RUN echo "---- START KubernetesAdapter.js CONTENT ----" && \
+    cat services/container/KubernetesAdapter.js && \
+    echo "---- END KubernetesAdapter.js CONTENT ----"
+
 # Make scripts executable
 RUN chmod +x scripts/*.sh
 

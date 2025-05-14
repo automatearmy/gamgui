@@ -73,6 +73,10 @@ fi
 echo -e "\n=== Configuring Docker authentication ==="
 gcloud auth configure-docker
 
+# Generate a unique tag based on timestamp
+TAG=$(date +%Y%m%d%H%M%S)
+echo -e "\n=== Generating unique tag: $TAG ==="
+
 # Build the Docker image locally
 echo -e "\n=== Building Docker image locally ==="
 echo "Building image with server URL: $SERVER_URL"
@@ -86,12 +90,24 @@ docker build \
   -t gcr.io/gamgui-registry/gamgui-client-image:latest \
   ./gamgui-client
 
-# Push the Docker image to the registry
-echo -e "\n=== Pushing Docker image to registry ==="
+# Tag with timestamp
+echo -e "\n=== Tagging image with timestamp ==="
+docker tag gcr.io/gamgui-registry/gamgui-client-image:latest gcr.io/gamgui-registry/gamgui-client-image:$TAG
+
+# Push the Docker images to the registry
+echo -e "\n=== Pushing Docker images to registry ==="
 docker push gcr.io/gamgui-registry/gamgui-client-image:latest
+docker push gcr.io/gamgui-registry/gamgui-client-image:$TAG
+
+# Update the terraform.tfvars file with the new tag
+echo -e "\n=== Updating terraform.tfvars with new tag ==="
+sed -i '' "s|client_image = \"gcr.io/gamgui-registry/gamgui-client-image:.*\"|client_image = \"gcr.io/gamgui-registry/gamgui-client-image:$TAG\"|" ../gamgui-terraform/terraform.tfvars
 
 echo -e "\n=== Build and Push Complete ==="
 echo "The client Docker image has been built with the correct server URL and Google OAuth Client ID, and pushed to the registry."
+echo "The images are now available at:"
+echo "- gcr.io/gamgui-registry/gamgui-client-image:latest"
+echo "- gcr.io/gamgui-registry/gamgui-client-image:$TAG"
 echo "Next steps:"
 echo "1. Go to the gamgui-terraform repository"
 echo "2. Run 'terraform apply' to update the Cloud Run services"

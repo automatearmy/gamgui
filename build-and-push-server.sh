@@ -41,6 +41,7 @@ gcloud auth configure-docker
 echo -e "\n=== Building server Docker image locally ==="
 cd gamgui-server
 docker build \
+  --no-cache \
   --platform=linux/amd64 \
   -t gamgui-server-image:latest \
   -f Dockerfile .
@@ -48,17 +49,29 @@ cd ..
 
 echo "Server Docker image built successfully."
 
-# Tag the image for Google Container Registry
+# Generate a unique tag based on timestamp
+TAG=$(date +%Y%m%d%H%M%S)
+echo -e "\n=== Generating unique tag: $TAG ==="
+
+# Tag the image for Google Container Registry with both latest and timestamp tags
 echo -e "\n=== Tagging image for Google Container Registry ==="
 docker tag gamgui-server-image:latest gcr.io/gamgui-registry/gamgui-server-image:latest
+docker tag gamgui-server-image:latest gcr.io/gamgui-registry/gamgui-server-image:$TAG
 
-# Push the Docker image to the registry
-echo -e "\n=== Pushing server Docker image to registry ==="
+# Push the Docker images to the registry
+echo -e "\n=== Pushing server Docker images to registry ==="
 docker push gcr.io/gamgui-registry/gamgui-server-image:latest
+docker push gcr.io/gamgui-registry/gamgui-server-image:$TAG
+
+# Update the terraform.tfvars file with the new tag
+echo -e "\n=== Updating terraform.tfvars with new tag ==="
+sed -i '' "s|server_image = \"gcr.io/gamgui-registry/gamgui-server-image:.*\"|server_image = \"gcr.io/gamgui-registry/gamgui-server-image:$TAG\"|" ../gamgui-terraform/terraform.tfvars
 
 echo -e "\n=== Build and Push Complete ==="
 echo "The server Docker image has been built and pushed to the registry."
-echo "The image is now available at: gcr.io/gamgui-registry/gamgui-server-image:latest"
+echo "The images are now available at:"
+echo "- gcr.io/gamgui-registry/gamgui-server-image:latest"
+echo "- gcr.io/gamgui-registry/gamgui-server-image:$TAG"
 echo ""
 echo "Next steps:"
 echo "1. Go to the gamgui-terraform repository"

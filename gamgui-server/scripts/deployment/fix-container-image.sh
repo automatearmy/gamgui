@@ -1,52 +1,52 @@
 #!/bin/bash
 
-# Script para corrigir o problema da imagem do container no Cloud Run
+# Script to fix the container image issue in Cloud Run
 
 set -e
 
-echo "=== Corrigindo problema da imagem do container no Cloud Run ==="
+echo "=== Fixing container image issue in Cloud Run ==="
 
-# Verificar autenticação do gcloud
-echo "Verificando autenticação do gcloud..."
+# Verify gcloud authentication
+echo "Verifying gcloud authentication..."
 ACCOUNT=$(gcloud auth list --filter=status:ACTIVE --format="value(account)")
 if [ -z "$ACCOUNT" ]; then
-  echo "❌ Não há conta gcloud autenticada. Execute 'gcloud auth login' primeiro."
+  echo "❌ No authenticated gcloud account. Run 'gcloud auth login' first."
   exit 1
 fi
-echo "✅ Autenticado como: $ACCOUNT"
+echo "✅ Authenticated as: $ACCOUNT"
 
-# Verificar configuração do projeto
-echo "Verificando configuração do projeto..."
+# Verify project configuration
+echo "Verifying project configuration..."
 PROJECT=$(gcloud config get-value project)
 if [ -z "$PROJECT" ]; then
-  echo "❌ Nenhum projeto configurado. Execute 'gcloud config set project PROJECT_ID' primeiro."
+  echo "❌ No project configured. Run 'gcloud config set project PROJECT_ID' first."
   exit 1
 fi
-echo "✅ Usando projeto: $PROJECT"
+echo "✅ Using project: $PROJECT"
 
-# Obter a revisão atual do Cloud Run
-echo "Obtendo a revisão atual do Cloud Run..."
+# Get the current Cloud Run revision
+echo "Getting the current Cloud Run revision..."
 CURRENT_REVISION=$(gcloud run services describe gamgui-server --region=us-central1 --project=$PROJECT --format="value(status.traffic[0].revisionName)")
-echo "✅ Revisão atual: $CURRENT_REVISION"
+echo "✅ Current revision: $CURRENT_REVISION"
 
-# Construir a imagem do container com a plataforma específica
-echo "Construindo a imagem do container com a plataforma específica..."
+# Build the container image with the specific platform
+echo "Building the container image with the specific platform..."
 cd gamgui-app/gamgui-server
 docker build --platform linux/amd64 -t gcr.io/$PROJECT/gamgui-server-image:amd64 .
-echo "✅ Imagem construída com sucesso."
+echo "✅ Image built successfully."
 
-# Enviar a imagem para o Container Registry
-echo "Enviando a imagem para o Container Registry..."
+# Push the image to Container Registry
+echo "Pushing the image to Container Registry..."
 docker push gcr.io/$PROJECT/gamgui-server-image:amd64
-echo "✅ Imagem enviada com sucesso."
+echo "✅ Image pushed successfully."
 
-# Atualizar o serviço Cloud Run para usar a nova imagem
-echo "Atualizando o serviço Cloud Run para usar a nova imagem..."
+# Update the Cloud Run service to use the new image
+echo "Updating the Cloud Run service to use the new image..."
 gcloud run services update gamgui-server \
   --region=us-central1 \
   --project=$PROJECT \
   --image=gcr.io/$PROJECT/gamgui-server-image:amd64
 
-echo "=== Correção concluída ==="
-echo "Agora o Cloud Run deve estar usando uma imagem de container compatível."
-echo "Teste novamente a criação de sessões."
+echo "=== Fix completed ==="
+echo "Now Cloud Run should be using a compatible container image."
+echo "Test session creation again."
