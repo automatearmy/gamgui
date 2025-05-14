@@ -42,6 +42,14 @@ class EventHandlers {
       
       // Get container info
       const containerInfo = await this.sessionService.getContainerInfo(sessionId);
+
+      if (!containerInfo) {
+        // This case should ideally be caught by NotFoundError in SessionService,
+        // but as a safeguard:
+        logger.error(`[EventHandlers] containerInfo is null for session ${sessionId} after SessionService.getContainerInfo call.`);
+        socket.emit('error', { message: `Failed to retrieve container details for session ${sessionId}.` });
+        return;
+      }
       
       // Join the session room
       socket.join(sessionId);

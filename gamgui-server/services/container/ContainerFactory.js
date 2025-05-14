@@ -5,6 +5,7 @@
 const KubernetesAdapter = require('./adapters/KubernetesAdapter-cloud-run');
 const DockerAdapter = require('./DockerAdapter');
 const KubernetesWebSocketAdapter = require('./KubernetesWebSocketAdapter');
+const MockContainerAdapter = require('./MockContainerAdapter');
 
 /**
  * Factory for creating container services
@@ -17,6 +18,13 @@ class ContainerFactory {
    * @returns {import('./ContainerService')} - The container service
    */
   static createContainerService(config, logger) {
+    // Check if mock mode is enabled (for testing or when Kubernetes is not available)
+    const useMockAdapter = process.env.USE_MOCK_CONTAINER_ADAPTER === 'true';
+    if (useMockAdapter) {
+      logger.info('Using mock container adapter (Kubernetes/Docker functionality will be simulated)');
+      return new MockContainerAdapter(config, logger);
+    }
+    
     // Check if WebSocket sessions are enabled
     const websocketEnabled = config.websocket?.enabled === true;
     

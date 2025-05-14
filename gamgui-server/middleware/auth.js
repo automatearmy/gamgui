@@ -5,7 +5,11 @@ const logger = require('../utils/logger');
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // List of authorized domains
-const AUTHORIZED_DOMAINS = (process.env.AUTHORIZED_DOMAINS || 'automatearmy.com').split(',');
+const AUTHORIZED_DOMAINS = (process.env.AUTHORIZED_DOMAINS || 'automatearmy.com')
+  .split(',')
+  .map(domain => domain.trim());
+
+console.log('Authorized domains:', AUTHORIZED_DOMAINS);
 
 /**
  * Verify Google token

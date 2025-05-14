@@ -338,7 +338,7 @@ class DockerAdapter extends ContainerService {
   /**
    * Execute a bash script in a Docker container
    * @param {string} sessionId - The session ID
-   * @param {string} scriptPath - The script path (relative to uploads directory)
+   * @param {string} scriptPath - The script path (can be relative or absolute)
    * @param {object} options - Command options
    * @param {function} options.onStdout - Callback for stdout data
    * @param {function} options.onStderr - Callback for stderr data
@@ -356,6 +356,24 @@ class DockerAdapter extends ContainerService {
       const onClose = options.onClose || ((code) => this.logger.debug(`Bash process exited with code ${code}`));
       const onError = options.onError || ((err) => this.logger.error(`Bash process error: ${err.message}`));
       
+      // Determine if the script path is absolute or relative
+      const isAbsolutePath = scriptPath.startsWith('/');
+      
+      // If it's an absolute path, extract the directory and filename
+      let scriptDir = '/gam';
+      let scriptName = scriptPath;
+      
+      if (isAbsolutePath) {
+        scriptDir = path.dirname(scriptPath);
+        scriptName = path.basename(scriptPath);
+      }
+      
+      // Escape special characters in paths
+      const escapedScriptDir = scriptDir.replace(/(["'$`\\])/g, '\\$1');
+      const escapedScriptName = scriptName.replace(/(["'$`\\])/g, '\\$1');
+      
+      this.logger.debug(`Script directory: ${scriptDir}, Script name: ${scriptName}`);
+      
       // Build the Docker command
       const dockerCommand = 'docker';
       const dockerArgs = [
@@ -365,7 +383,7 @@ class DockerAdapter extends ContainerService {
         '-v', `${this.config.paths.credentials}:/root/.gam`,  // Mount credentials
         '-v', `${this.config.paths.uploads}:/gam/uploads`,     // Mount uploads
         this.config.docker.gamImage,  // Use the GAM image
-        '/bin/bash', '-c', `cd /gam/uploads && bash ${scriptPath}`  // Execute the script with bash
+        '/bin/bash', '-c', `cd "${escapedScriptDir}" && bash "${escapedScriptName}"`  // Execute the script with bash
       ];
       
       this.logger.debug(`Executing Docker command: ${dockerCommand} ${dockerArgs.join(' ')}`);

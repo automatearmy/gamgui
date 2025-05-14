@@ -94,7 +94,8 @@ class SessionService {
       imageName: sessionData.imageName || 'Default GAM Image',
       config: sessionData.config || {},
       status: 'active',
-      userId: sessionData.userId || null // Store userId in the session
+      userId: sessionData.userId || null, // Store userId in the session
+      email: sessionData.email || null // Store user's email in the session
     };
 
     // --- GCS Bucket Creation ---
@@ -318,12 +319,12 @@ class SessionService {
    * @throws {NotFoundError} - If the session or container is not found
    */
   async getContainerInfo(sessionId) {
-    const session = this.sessionRepository.findById(sessionId);
+    const session = await this.sessionRepository.findById(sessionId); // Added await
     if (!session) {
       throw new NotFoundError(`Session ${sessionId} not found`);
     }
 
-    const containerInfo = this.sessionRepository.getContainerInfo(sessionId);
+    const containerInfo = await this.sessionRepository.getContainerInfo(sessionId); // Added await
     if (!containerInfo) {
       throw new NotFoundError(`Session container ${sessionId} not found`);
     }
