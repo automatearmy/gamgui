@@ -19,6 +19,10 @@ function createCorsMiddleware(options = {}) {
     res.header('Access-Control-Allow-Headers', options.allowedHeaders || 'Content-Type, Authorization, X-Requested-With');
     res.header('Access-Control-Allow-Credentials', options.credentials || 'true');
     
+    // Add Cross-Origin-Opener-Policy for OAuth popups
+    res.header('Cross-Origin-Opener-Policy', 'unsafe-none');
+    res.header('Cross-Origin-Embedder-Policy', 'unsafe-none');
+    
     // Add exposed headers if provided
     if (options.exposedHeaders) {
       res.header('Access-Control-Expose-Headers', options.exposedHeaders);

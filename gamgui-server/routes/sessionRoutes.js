@@ -81,13 +81,11 @@ router.post('/', async (req, res) => {
         logger.info(`Using user-specific credentials: ${finalCredentialsSecret}`);
       } catch (credError) {
         logger.error(`Error setting up user credentials: ${credError.message}`);
+        logger.warn(`User ${userId} credentials not found, falling back to default GAM credentials`);
         
-        // Instead of falling back to default credentials, require the user to upload their own
-        return res.status(400).json({
-          message: 'You must upload your GAM credentials before creating a session',
-          details: 'Please go to the Settings page and upload your oauth2.txt, oauth2service.json, and client_secrets.json files',
-          error: credError.message
-        });
+        // Fall back to default credentials instead of requiring user upload
+        finalCredentialsSecret = 'gam-credentials';
+        logger.info(`Using default credentials: ${finalCredentialsSecret}`);
       }
     }
     

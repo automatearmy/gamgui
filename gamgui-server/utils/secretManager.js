@@ -5,12 +5,43 @@
  * to store and retrieve GAM credentials.
  */
 const { SecretManagerServiceClient } = require('@google-cloud/secret-manager');
+const path = require('path');
+const fs = require('fs');
 
 // Initialize the Secret Manager client
 const secretManager = new SecretManagerServiceClient();
 
-// Get the project ID from environment variables
-const projectId = process.env.PROJECT_ID || 'gamgui-tf-1';
+// Load environment configuration
+function loadEnvironmentConfig() {
+  // Try to get environment from process.env first
+  const environment = process.env.GAMGUI_ENVIRONMENT || process.env.NODE_ENV || 'stage';
+  
+  // Try to load from environments.json
+  const configPath = path.join(__dirname, '../../config/environments.json');
+  
+  if (fs.existsSync(configPath)) {
+    try {
+      const environments = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      if (environments[environment]) {
+        return environments[environment];
+      }
+    } catch (error) {
+      console.warn('Failed to load environment config:', error.message);
+    }
+  }
+  
+  // Fallback to environment variables or defaults
+  return {
+    PROJECT_ID: process.env.PROJECT_ID || process.env.GAMGUI_PROJECT_ID || 'gamgui-tf1-edu',
+    SECRET_MANAGER_PROJECT_ID: process.env.SECRET_MANAGER_PROJECT_ID || process.env.GAMGUI_PROJECT_ID || 'gamgui-tf1-edu'
+  };
+}
+
+// Get project configuration
+const config = loadEnvironmentConfig();
+const projectId = config.SECRET_MANAGER_PROJECT_ID || config.PROJECT_ID;
+
+console.log(`[SecretManager] Using project: ${projectId}`);
 
 /**
  * Save a secret to Secret Manager

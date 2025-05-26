@@ -8,7 +8,7 @@ echo "=== GamGUI WebSocket Fix Deployment Script ==="
 echo "This script will deploy the WebSocket fix to Cloud Run."
 
 # Set the correct project
-PROJECT_ID="gamgui-tf-1"
+PROJECT_ID="gamgui-tf1-edu"
 echo "Using project ID: $PROJECT_ID"
 gcloud config set project $PROJECT_ID
 

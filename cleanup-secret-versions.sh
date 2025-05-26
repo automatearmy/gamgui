@@ -3,7 +3,12 @@
 # This script will keep only the latest version of each secret and disable older versions
 
 # Configuration
-PROJECT_ID="gamgui-tf-1"
+# Load environment variables
+if [ -f "$(dirname "$0")/../.env" ]; then
+    source "$(dirname "$0")/../.env"
+fi
+
+PROJECT_ID="${GAMGUI_PROJECT_ID:-gamgui-tf1-edu}"
 SECRETS=("client-secrets" "oauth2" "oauth2service")
 KEEP_LATEST=1  # Keep only the latest version
 

@@ -58,7 +58,7 @@ RUN chmod +x scripts/*.sh
 EXPOSE 3001
 
 # Set environment variables
-ENV PROJECT_ID=gamgui-tf-1
+ENV PROJECT_ID=${GAMGUI_PROJECT_ID:-gamgui-tf1-edu}
 ENV PATH="/gam/gam7:${PATH}"
 
 # Start the server

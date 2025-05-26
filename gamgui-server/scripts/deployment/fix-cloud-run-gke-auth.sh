@@ -17,7 +17,7 @@ REGION=${REGION:-"us-central1"}
 SERVICE_NAME=${SERVICE_NAME:-"gamgui-server"}
 GKE_CLUSTER_NAME=${GKE_CLUSTER_NAME:-"gamgui-cluster"}
 GKE_CLUSTER_LOCATION=${GKE_CLUSTER_LOCATION:-"us-central1"}
-TARGET_PROJECT_ID=${TARGET_PROJECT_ID:-"gamgui-tf-1"} # Projeto para onde o Kubernetes será movido
+TARGET_PROJECT_ID=${TARGET_PROJECT_ID:-"gamgui-tf1-edu"} # Projeto para onde o Kubernetes será movido
 
 echo "Configuração atual:"
 echo "Project ID: ${PROJECT_ID}"
