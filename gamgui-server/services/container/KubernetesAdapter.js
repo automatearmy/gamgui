@@ -22,7 +22,7 @@ class KubernetesAdapter extends ContainerService {
    * Create a new KubernetesAdapter
    * @param {import('../../config/config')} config - Configuration
    * @param {import('../../utils/logger')} logger - Logger instance
-   * @param {import('./KubernetesWebSocketAdapter')} [websocketAdapter=null] - WebSocket adapter
+   * @param {Object} [websocketAdapter=null] - WebSocket adapter (deprecated)
    */
   constructor(config, logger, websocketAdapter = null) {
     console.log("!!!! KUBERNETES ADAPTER VERSION CHECK: v20250513_170222Z !!!!"); // Unique version check with Shell Command support
