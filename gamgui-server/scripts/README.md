@@ -1,41 +1,57 @@
 # GAMGUI Server Scripts
 
-This directory contains various scripts used for development, testing, deployment, and diagnostics of the GAMGUI server.
+This directory contains scripts for testing, diagnostics, and maintenance of the GAMGUI server.
 
 ## Directory Structure
 
-- **diagnostics/**: Scripts for diagnosing issues and testing functionality
-  - `check-api-response.js`: Verify API response format
-  - `check-api-response-format.js`: Detailed API response format checker
-  - `check-application-status.js`: Check overall application status
-  - `diagnose-gcp-auth.js`: Diagnose GCP authentication issues
-  - `diagnose-gcp-auth-issue.js`: Specific GCP auth issue diagnostics
-  - `diagnose-kubernetes-auth.js`: Diagnose Kubernetes authentication issues
-  - `test-delete-pod.js`: Test pod deletion functionality
-  - `test-gcp-auth-adapter.js`: Test GCP auth adapter
-  - `test-gcp-auth-adapter-updated.js`: Updated version of GCP auth adapter test
-  - `test-session-creation.js`: Test session creation functionality
+### diagnostics/
+Scripts for testing and diagnosing application functionality:
+- `check-application-status.js`: Check overall application health and status
+- `test-application.js`: Comprehensive application functionality tests
 
-- **deployment/**: Scripts for deploying and updating the application
-  - `deploy-api-response-fix.sh`: Deploy API response format fix
-  - `deploy-cloud-run-adapter.sh`: Deploy Cloud Run adapter
-  - `deploy-fixed-kubernetes-adapter.sh`: Deploy fixed Kubernetes adapter
-  - `deploy-gcp-auth-adapter.sh`: Deploy GCP auth adapter
-  - `deploy-kubernetes-adapter-fix.sh`: Deploy Kubernetes adapter fix
-  - `fix-cloud-run-permissions.sh`: Fix Cloud Run permissions
-  - `fix-container-image.sh`: Fix container image issues
-  - `update-cloud-run-env.sh`: Update Cloud Run environment variables
+### maintenance/
+Scripts for system maintenance and cleanup:
+- `cleanup-old-sessions.js`: Clean up expired sessions and resources
+- `schedule-cleanup.sh`: Schedule automated cleanup tasks
+
+### WebSocket Testing
+- `test-websocket-client.html`: HTML-based WebSocket client for testing
+- `test-websocket-client.js`: JavaScript WebSocket client implementation
+- `test-websocket-client.sh`: Shell script for WebSocket testing
 
 ## Usage
 
-Most scripts can be run directly from the command line. For example:
-
+### Running Diagnostic Scripts
 ```bash
-# Run a diagnostic script
+# Check application status
 node scripts/diagnostics/check-application-status.js
 
-# Run a deployment script
-./scripts/deployment/deploy-cloud-run-adapter.sh
+# Run comprehensive tests
+node scripts/diagnostics/test-application.js
 ```
 
-Some scripts may require environment variables to be set. Check the script content for details.
+### Running Maintenance Scripts
+```bash
+# Clean up old sessions
+node scripts/maintenance/cleanup-old-sessions.js
+
+# Schedule cleanup (requires cron)
+./scripts/maintenance/schedule-cleanup.sh
+```
+
+### WebSocket Testing
+```bash
+# Test WebSocket connection
+./scripts/test-websocket-client.sh
+
+# Or open test-websocket-client.html in a browser for interactive testing
+```
+
+## Environment Requirements
+
+Most scripts require the following environment variables:
+- `PROJECT_ID`: Google Cloud project ID
+- `GKE_CLUSTER_NAME`: Kubernetes cluster name
+- `GKE_CLUSTER_LOCATION`: Kubernetes cluster location
+
+Check individual script files for specific requirements.
