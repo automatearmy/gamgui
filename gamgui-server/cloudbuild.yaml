@@ -8,7 +8,8 @@ steps:
         'gcr.io/gamgui-registry/gamgui-server-image:latest', # Correct gcr.io path
         '.' # Build context is the gamgui-server directory
       ]
-    # Removed dir directive as we submit from this directory
+    # Set the directory for the build context relative to the workspace root
+    dir: 'gamgui-server'
 
   # Push the Docker image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'

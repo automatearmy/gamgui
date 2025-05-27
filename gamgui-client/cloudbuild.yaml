@@ -12,7 +12,7 @@ steps:
       '.' # Build context is the gamgui-client directory
     ]
     # Set the directory for the build context relative to the workspace root
-    dir: 'gamgui-app/gamgui-client' 
+    dir: 'gamgui-client' 
 
   # Push the container image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
