@@ -8,6 +8,7 @@ const config = require('../config/config');
 const logger = require('../utils/logger');
 const { getFromSecretManager } = require('../utils/secretManager');
 const { createUserCredentialsSecret } = require('../utils/kubernetesClient');
+const UserService = require('../services/UserService');
 const router = express.Router();
 
 // Create services
@@ -56,17 +57,39 @@ router.post('/', async (req, res) => {
       fs.mkdirSync(tempUploadsDir, { recursive: true });
     }
     
-    // Determine the credentials secret name based on userId
+    // Determine the credentials secret name based on userId with fallback support
     let finalCredentialsSecret = credentialsSecret || 'gam-credentials';
     if (userId) {
       try {
         // If userId is provided, fetch user-specific credentials from Secret Manager
         logger.info(`Fetching credentials for user ${userId} from Secret Manager`);
         
-        // Get credentials from Secret Manager
-        const oauth2 = await getFromSecretManager('oauth2', userId);
-        const oauth2service = await getFromSecretManager('oauth2service', userId);
-        const clientSecrets = await getFromSecretManager('client-secrets', userId);
+        let oauth2, oauth2service, clientSecrets;
+        
+        try {
+          // Try new format first (usr_xxxxxxxxxxxx)
+          oauth2 = await getFromSecretManager('oauth2', userId);
+          oauth2service = await getFromSecretManager('oauth2service', userId);
+          clientSecrets = await getFromSecretManager('client-secrets', userId);
+          
+          logger.info(`Found credentials in new format for user ${userId}`);
+        } catch (newFormatError) {
+          // Fallback to legacy format if user has legacy ID
+          if (req.user?.legacyId && req.user.legacyId !== userId) {
+            logger.info(`Trying legacy format for user ${req.user.legacyId}`);
+            
+            oauth2 = await getFromSecretManager('oauth2', req.user.legacyId);
+            oauth2service = await getFromSecretManager('oauth2service', req.user.legacyId);
+            clientSecrets = await getFromSecretManager('client-secrets', req.user.legacyId);
+            
+            logger.info(`Found credentials in legacy format for user ${req.user.legacyId}`);
+            
+            // Log migration opportunity
+            UserService.logMigration(req.user.legacyId, userId);
+          } else {
+            throw newFormatError;
+          }
+        }
         
         // Create Kubernetes secret with user credentials
         finalCredentialsSecret = `user-${userId}-credentials`;
