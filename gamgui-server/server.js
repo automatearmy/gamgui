@@ -3,6 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const { createCorsMiddleware } = require('./middleware/cors');
 
 // Load environment variables
 dotenv.config();
@@ -25,21 +26,36 @@ const { authMiddleware } = require('./middleware/auth');
 const app = express();
 const server = http.createServer(app);
 
-// Define allowed origins
-const allowedOrigins = [
-  'https://gamgui-client-vthtec4m3a-uc.a.run.app',
-  'https://gamgui-client-2fdozy6y5a-uc.a.run.app',
-  'https://gamgui-client-269905622982.us-central1.run.app',
-  'http://localhost:3000',
-  'http://localhost:5173'
-];
+// Dynamic CORS configuration
+const getAllowedOrigins = () => {
+  // Check for explicit environment variable first
+  const envOrigins = process.env.ALLOWED_ORIGINS;
+  if (envOrigins) {
+    return envOrigins.split(',').map(origin => origin.trim());
+  }
+  
+  // Auto-detect based on project number
+  const projectNumber = process.env.PROJECT_NUMBER || '1381612022';
+  const region = process.env.REGION || 'us-central1';
+  
+  return [
+    `https://gamgui-client-${projectNumber}.${region}.run.app`,
+    `https://gamgui-server-${projectNumber}.${region}.run.app`,
+    'http://localhost:3000',
+    'http://localhost:5173'
+  ];
+};
+
+// Get allowed origins dynamically
+const allowedOrigins = getAllowedOrigins();
+console.log('CORS allowed origins:', allowedOrigins);
 
 // Configure CORS
 const corsOptions = {
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1 || origin.includes('localhost')) {
+    if (allowedOrigins.indexOf(origin) !== -1 || origin.includes('localhost') || origin.includes('run.app')) {
       callback(null, true);
     } else {
       console.log('CORS blocked origin:', origin);
@@ -48,16 +64,22 @@ const corsOptions = {
   },
   credentials: true,
   methods: 'GET, POST, PUT, DELETE, OPTIONS',
-  allowedHeaders: 'Content-Type, Authorization, X-Requested-With'
+  allowedHeaders: 'Content-Type, Authorization, X-Requested-With',
+  exposedHeaders: 'Access-Control-Allow-Origin'
 };
 
 // Configure Socket.io with CORS and improved connection settings
 const io = new Server(server, {
-  cors: corsOptions,
-  pingTimeout: 60000, // Increase ping timeout to 60 seconds
+  cors: {
+    origin: '*', // Allow all origins for WebSocket connections
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  },
+  pingTimeout: 120000, // Increase ping timeout to 120 seconds
   pingInterval: 25000, // Send ping every 25 seconds
-  connectTimeout: 30000, // Increase connection timeout
-  maxHttpBufferSize: 5e6, // Increase buffer size for larger payloads
+  connectTimeout: 60000, // Increase connection timeout to 60 seconds
+  maxHttpBufferSize: 10e6, // Increase buffer size for larger payloads
   transports: ['websocket', 'polling'], // Try WebSocket first, fallback to polling
   allowUpgrades: true, // Allow transport upgrades
   perMessageDeflate: {
@@ -70,6 +92,12 @@ const PORT = process.env.PORT || 3001;
 // Middleware
 app.use(cors(corsOptions));
 app.use(express.json());
+app.use(createCorsMiddleware({
+  methods: 'GET, POST, PUT, DELETE, OPTIONS',
+  allowedHeaders: 'Content-Type, Authorization, X-Requested-With',
+  exposedHeaders: 'Access-Control-Allow-Origin',
+  credentials: true
+}));
 
 // User authentication middleware (IAP or OAuth)
 app.use((req, res, next) => {
@@ -82,11 +110,32 @@ app.use((req, res, next) => {
       // Remove the prefix "accounts.google.com:" from the email
       req.user = {
         email: email.replace('accounts.google.com:', ''),
-        id: email.replace('accounts.google.com:', ''), // Use email as ID for simplicity
+        id: email.replace('accounts.google.com:', '').split('@')[0], // Use email prefix as ID for consistency
       };
       logger.info(`IAP authenticated user: ${req.user.email}`);
     }
   }
+  next();
+});
+
+// Force consistent userId for all authenticated routes
+app.use('/api', (req, res, next) => {
+  // If user is authenticated via OAuth (authMiddleware), override the ID
+  if (req.user && req.user.email) {
+    // Always use email prefix as ID for consistency
+    const emailPrefix = req.user.email.split('@')[0];
+    req.user.id = emailPrefix;
+    logger.info(`Normalized userId to: ${req.user.id} for email: ${req.user.email}`);
+  }
+  next();
+});
+
+// Add CORS headers to all responses
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.header('Access-Control-Allow-Credentials', 'true');
   next();
 });
 

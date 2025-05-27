@@ -1,5 +1,13 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001';
+import { getApiConfig, validateConfig, logConfig } from './config';
+
+// Get dynamic configuration
+const { apiUrl: API_BASE_URL, socketUrl: SOCKET_URL } = getApiConfig();
+
+// Validate configuration on module load
+validateConfig({ apiUrl: API_BASE_URL, socketUrl: SOCKET_URL });
+
+// Log configuration for debugging
+logConfig();
 
 export interface AuthFiles {
   clientSecrets: File | null;

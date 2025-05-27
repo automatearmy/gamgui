@@ -151,10 +151,15 @@ router.get('/check/:userId?', async (req, res) => {
       secretManagerStatus.error = error.message;
     }
     
+    // If userId is provided, prioritize Secret Manager status over local files
+    const isComplete = userId 
+      ? secretManagerStatus.available 
+      : localMissingFiles.length === 0;
+    
     return res.status(200).json({
       localFiles: {
-        complete: localMissingFiles.length === 0,
-        missingFiles: localMissingFiles
+        complete: isComplete,
+        missingFiles: userId ? secretManagerStatus.missingSecrets : localMissingFiles
       },
       secretManager: secretManagerStatus
     });

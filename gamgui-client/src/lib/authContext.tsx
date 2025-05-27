@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import { getApiConfig } from './config';
 
 // Define the user type
 interface User {
@@ -56,7 +57,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (tokenResponse: any) => {
     try {
       // Send the token to the backend for verification
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/verify`, {
+      // Get dynamic API configuration
+      const { apiUrl } = getApiConfig();
+      const response = await fetch(`${apiUrl}/auth/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

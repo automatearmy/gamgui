@@ -81,26 +81,50 @@ router.post('/', async (req, res) => {
         logger.info(`Using user-specific credentials: ${finalCredentialsSecret}`);
       } catch (credError) {
         logger.error(`Error setting up user credentials: ${credError.message}`);
-        logger.info('Falling back to default credentials');
+        logger.warn(`User ${userId} credentials not found, falling back to default GAM credentials`);
+        
+        // Fall back to default credentials instead of requiring user upload
         finalCredentialsSecret = 'gam-credentials';
+        logger.info(`Using default credentials: ${finalCredentialsSecret}`);
       }
     }
     
-    // Create the session
-    const result = await sessionService.createSession({
-      name,
-      imageId: imageId || DEFAULT_IMAGE.id,
-      imageName: image.imageName,
-      config: sessionConfig || {},
-      credentialsSecret: finalCredentialsSecret,
-      userId
-    });
-    
-    return res.status(201).json({
-      message: 'Session created successfully',
-      session: result.session,
-      websocketInfo: result.websocketInfo
-    });
+    try {
+      // Create the session
+      const result = await sessionService.createSession({
+        name,
+        imageId: imageId || DEFAULT_IMAGE.id,
+        imageName: image.imageName,
+        config: sessionConfig || {},
+        credentialsSecret: finalCredentialsSecret,
+        userId,
+        email: req.user ? req.user.email : null // Include user's email if available
+      });
+      
+      return res.status(201).json({
+        message: 'Session created successfully',
+        session: result.session,
+        websocketInfo: result.websocketInfo
+      });
+    } catch (sessionError) {
+      logger.error('Error creating session:', sessionError);
+      
+      // Check if it's a connection error
+      if (sessionError.message && sessionError.message.includes('ECONNREFUSED')) {
+        return res.status(500).json({
+          message: 'Unable to connect to the Kubernetes cluster',
+          details: 'The server cannot establish a connection to the Kubernetes API. Please contact the administrator.',
+          error: sessionError.message
+        });
+      }
+      
+      // Return a generic error for other issues
+      return res.status(500).json({
+        message: 'Failed to create session',
+        details: 'An error occurred while creating the session. Please try again later or contact the administrator.',
+        error: sessionError.message
+      });
+    }
   } catch (error) {
     logger.error('Error creating session:', error);
     return res.status(500).json({ 

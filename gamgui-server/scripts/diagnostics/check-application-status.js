@@ -2,8 +2,8 @@
  * Script to check if the application is still working correctly
  * This script verifies the status of the Cloud Run service and GKE cluster
  */
-const axios = require(require('path').resolve(__dirname, '../../node_modules/axios'));
-const { execSync } = require(require('path').resolve(__dirname, '../../node_modules/child_process'));
+const axios = require('axios');
+const { execSync } = require('child_process');
 
 // Colors for output
 const GREEN = '\x1b[32m';
@@ -17,7 +17,7 @@ function log(color, message) {
 }
 
 // URL of the server
-const SERVER_URL = process.env.SERVER_URL || 'https://gamgui-server-vthtec4m3a-uc.a.run.app';
+const SERVER_URL = process.env.SERVER_URL || 'https://gamgui-server-1381612022.us-central1.run.app';
 
 // Function to check if the server is running
 async function checkServerStatus() {

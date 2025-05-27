@@ -37,7 +37,7 @@ gcloud run deploy ${SERVICE_NAME} \
   --region ${REGION} \
   --project ${PROJECT_ID} \
   --allow-unauthenticated \
-  --update-env-vars "CLOUD_RUN_REVISION=true,WEBSOCKET_ENABLED=true,WEBSOCKET_PROXY_SERVICE_URL=websocket-proxy.gamgui.svc.cluster.local,WEBSOCKET_SESSION_CONNECTION_TEMPLATE=ws://websocket-proxy.gamgui.svc.cluster.local/ws/session/{{SESSION_ID}}/,WEBSOCKET_SESSION_PATH_TEMPLATE=/ws/session/{{SESSION_ID}}/,WEBSOCKET_MAX_SESSIONS=50,EXTERNAL_WEBSOCKET_URL_TEMPLATE=wss://api.gamgui.example.com/ws/session/{{SESSION_ID}}/" \
+  --update-env-vars="CLOUD_RUN_REVISION=true,WEBSOCKET_ENABLED=true,WEBSOCKET_PROXY_SERVICE_URL=websocket-proxy.gamgui.svc.cluster.local,WEBSOCKET_SESSION_CONNECTION_TEMPLATE=ws://websocket-proxy.gamgui.svc.cluster.local/ws/session/{{SESSION_ID}}/,WEBSOCKET_SESSION_PATH_TEMPLATE=/ws/session/{{SESSION_ID}}/,WEBSOCKET_MAX_SESSIONS=50,EXTERNAL_WEBSOCKET_URL_TEMPLATE=wss://api.gamgui.example.com/ws/session/{{SESSION_ID}}/,AUTHORIZED_DOMAINS=automatearmy.com,gedu.demo.automatearmy.com" \
   --memory 512Mi \
   --cpu 1 \
   --port 3001

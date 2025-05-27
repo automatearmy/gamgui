@@ -1,0 +1,30 @@
+{
+  "stage": {
+    "PROJECT_ID": "gamgui-tf1-edu",
+    "SECRET_MANAGER_PROJECT_ID": "gamgui-tf1-edu",
+    "REGISTRY_PROJECT_ID": "gamgui-registry",
+    "ENVIRONMENT": "stage",
+    "REGION": "us-central1",
+    "GKE_CLUSTER_NAME": "gamgui-cluster",
+    "GKE_CLUSTER_LOCATION": "us-central1",
+    "K8S_NAMESPACE": "gamgui",
+    "GAM_IMAGE": "gcr.io/gamgui-registry/docker-gam7:latest",
+    "API_BASE_URL": "https://gamgui-server-1381612022.us-central1.run.app",
+    "CLIENT_BASE_URL": "https://gamgui-client-1381612022.us-central1.run.app",
+    "DESCRIPTION": "Staging environment (migrated from gamgui-tf-1)"
+  },
+  "prod": {
+    "PROJECT_ID": "gamgui-prod",
+    "SECRET_MANAGER_PROJECT_ID": "gamgui-prod",
+    "REGISTRY_PROJECT_ID": "gamgui-registry",
+    "ENVIRONMENT": "prod",
+    "REGION": "us-central1",
+    "GKE_CLUSTER_NAME": "gamgui-cluster",
+    "GKE_CLUSTER_LOCATION": "us-central1",
+    "K8S_NAMESPACE": "gamgui",
+    "GAM_IMAGE": "gcr.io/gamgui-registry/docker-gam7:latest",
+    "API_BASE_URL": "https://gamgui-server-prod.run.app",
+    "CLIENT_BASE_URL": "https://gamgui-client-prod.run.app",
+    "DESCRIPTION": "Production environment (future)"
+  }
+}

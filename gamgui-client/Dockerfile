@@ -38,11 +38,11 @@ RUN npm run build
 # Install serve globally to serve the static files
 RUN npm install -g serve
 
-# Expose port 3000
-EXPOSE 3000
+# Expose the port specified by the PORT environment variable (default to 8080 for Cloud Run)
+EXPOSE ${PORT:-8080}
 
 # Start the serve command to serve files from the dist directory
-CMD ["serve", "-s", "dist", "-l", "3000"]
+CMD ["sh", "-c", "serve -s dist -l ${PORT:-8080}"]
 
 # Optional: Clean up build tools if image size is critical
 # RUN apk del .gyp

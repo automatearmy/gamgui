@@ -51,7 +51,44 @@ coverage
 *.swp
 *.swo 
 .clinerules
-gamgui-server/gam-credentials
-credentials
-test-files
+
+# GAM Credentials and sensitive files
+gamgui-server/gam-credentials/
+gam-credentials/
+credentials/
+*.json
+!package*.json
+!tsconfig*.json
+!components.json
+!**/README.md
+
+# Configuration files with sensitive data
+config/environments.json
+server-config.yaml
+env.yaml
+
+# Temporary uploads and files
 gamgui-server/temp-uploads/*
+temp-uploads/
+test-files/
+uploads/
+
+# Build artifacts
+build/
+dist/
+.next/
+out/
+
+# Cache directories
+.cache/
+.parcel-cache/
+.vite/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

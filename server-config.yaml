@@ -39,7 +39,7 @@ spec:
         - name: GAM_IMAGE
           value: us-central1.gcr.io/gamgui-registry/docker-gam7:latest
         - name: PROJECT_ID
-          value: gamgui-tf-1
+          value: ${GAMGUI_PROJECT_ID:-gamgui-tf1-edu}
         - name: REVISION_TIMESTAMP
           value: '20250423154951'
         - name: GKE_CLUSTER_NAME

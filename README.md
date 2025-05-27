@@ -55,54 +55,32 @@ The application now supports running GAM sessions in Kubernetes pods:
   - `kubectl` command-line tool configured
   - Kubernetes namespace and service account
 
-## Getting Started
+## 📚 Documentation
 
-### 1. Clone the repository
+### Quick Start Guides
+- **[Getting Started](docs/GETTING_STARTED.md)** - Setup guide for new developers
+- **[Development Guide](docs/DEVELOPMENT.md)** - Detailed development workflow
+- **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
 
+### Quick Setup
 ```bash
-git clone <repository-url>
-cd gamgui
+# 1. Install dependencies
+cd gamgui-server && npm install
+cd ../gamgui-client && npm install
+
+# 2. Setup environment files
+cp gamgui-server/.env.example gamgui-server/.env
+cp gamgui-client/.env.example gamgui-client/.env.development
+
+# 3. Setup GAM credentials (see Getting Started guide)
+mkdir -p gamgui-server/gam-credentials
+
+# 4. Start development servers
+cd gamgui-server && npm run dev &
+cd gamgui-client && npm run dev &
 ```
 
-### 2. Set up the server
-
-```bash
-cd gamgui-server
-npm install
-cp .env.example .env
-```
-
-Edit the `.env` file with your configuration.
-
-### 3. Set up credentials
-
-Place your GAM credential files in the `gamgui-server/gam-credentials` directory:
-- `oauth2service.json`
-- `oauth2.txt`
-- `client_secrets.json`
-
-### 4. Set up the frontend
-
-```bash
-cd ../gamgui-app
-npm install
-```
-
-### 5. Start the server
-
-```bash
-cd ../gamgui-server
-npm run dev
-```
-
-### 6. Start the frontend
-
-```bash
-cd ../gamgui-app
-npm run dev
-```
-
-Access the application at: http://localhost:5173
+**Access**: http://localhost:5173
 
 ## Features
 
