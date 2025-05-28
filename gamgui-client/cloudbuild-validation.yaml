@@ -1,0 +1,39 @@
+steps:
+  # Install dependencies
+  - name: 'node:20-alpine'
+    id: 'install-dependencies'
+    dir: gamgui-client
+    entrypoint: npm
+    args: ['ci']
+
+  # Run unit tests
+  - name: 'node:20-alpine'
+    id: 'execute-tests'
+    dir: gamgui-client
+    entrypoint: npm
+    args: ['test']
+
+  # Run linting check
+  - name: 'node:20-alpine'
+    id: 'lint-check'
+    dir: gamgui-client
+    entrypoint: npm
+    args: ['run', 'lint']
+
+  # Verify Dockerfile builds correctly
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - '--no-cache'
+      - '--pull'
+      - '-t'
+      - 'gamgui-client:validate'
+      - .
+    dir: gamgui-client
+    id: docker-build-validate
+
+timeout: 1200s
+options:
+  logStreamingOption: STREAM_ON
+  logging: CLOUD_LOGGING_ONLY
+serviceAccount: 'projects/${PROJECT_ID}/serviceAccounts/gamgui-registry-cloud-builder@${PROJECT_ID}.iam.gserviceaccount.com'

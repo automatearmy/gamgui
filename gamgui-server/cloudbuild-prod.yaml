@@ -1,0 +1,50 @@
+steps:
+  # Install dependencies
+  - name: 'node:20-alpine'
+    id: 'install-dependencies'
+    dir: gamgui-server
+    entrypoint: npm
+    args: ['ci']
+
+  # Run tests
+  - name: 'node:20-alpine'
+    id: 'execute-tests'
+    dir: gamgui-server
+    entrypoint: npm
+    args: ['test']
+
+  # Build the container image with unique digest
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - '--build-arg'
+      - 'BUILD_ID=${COMMIT_SHA}'
+      - '-t'
+      - '${_REGISTRY_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY_NAME}/gamgui-server:$COMMIT_SHA'
+      - '-t'
+      - '${_REGISTRY_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY_NAME}/gamgui-server:latest'
+      - .
+    dir: gamgui-server
+    id: docker-build
+
+  # Push images with different tags
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - '${_REGISTRY_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY_NAME}/gamgui-server:$COMMIT_SHA'
+    id: docker-push-sha
+  
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - '${_REGISTRY_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY_NAME}/gamgui-server:latest'
+    id: docker-push-latest
+
+timeout: 1800s
+images:
+  - '${_REGISTRY_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY_NAME}/gamgui-server:$COMMIT_SHA'
+  - '${_REGISTRY_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY_NAME}/gamgui-server:latest'
+options:
+  logStreamingOption: STREAM_ON
+  logging: CLOUD_LOGGING_ONLY
+serviceAccount: 'projects/${PROJECT_ID}/serviceAccounts/gamgui-registry-cloud-builder@${PROJECT_ID}.iam.gserviceaccount.com'
