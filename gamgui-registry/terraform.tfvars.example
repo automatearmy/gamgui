@@ -1,0 +1,23 @@
+# Example production environment variables for gamgui-registry Terraform
+# Copy this file to prod.tfvars and fill in the values
+
+# GCP project ID
+project_id = "gamgui-registry" 
+
+# GCP region for resources
+region = "us-central1"
+
+# GitHub repository owner
+github_owner = "automatearmy"
+
+# GitHub repository name
+repository_name = "gamgui-app"
+
+# GitHub app installation ID for Cloud Build connection
+github_app_installation_id = "54757105"
+
+# List of customer service account emails to grant access to
+customer_service_accounts = [
+  # Example: "customer1-sa@customer-project-id.iam.gserviceaccount.com",
+  # Example: "customer2-sa@customer-project-id.iam.gserviceaccount.com"
+]
