@@ -1,14 +1,14 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+
+import ProtectedRoute from "@/components/auth/protected-route";
 import { Sidebar } from "@/components/sidebar";
-import { SessionsPage } from "@/pages/sessions";
-import { SettingsPage } from "@/pages/settings";
 import { getApiBaseUrl } from "@/lib/api"; // Import API helper
-import { NewSessionPage } from "@/pages/sessions/new";
+import { AuthProviderWithGoogle, useAuth } from "@/lib/auth-context";
+import LoginPage from "@/pages/auth/login-page";
+import { SessionsPage } from "@/pages/sessions";
 import { SessionDetailPage } from "@/pages/sessions/[id]";
-import { AuthProviderWithGoogle } from "@/lib/authContext";
-import { useAuth } from "@/lib/authContext";
-import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import LoginPage from "@/pages/auth/LoginPage";
+import { NewSessionPage } from "@/pages/sessions/new";
+import { SettingsPage } from "@/pages/settings";
 
 // Wrapper component to access auth context
 function AppContent() {
@@ -21,17 +21,16 @@ function AppContent() {
     const fetchVersion = async () => {
       try {
         const apiUrl = `${getApiBaseUrl()}/version`;
-        console.log("Fetching server version from:", apiUrl);
         const response = await fetch(apiUrl);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        console.log("Server version response:", data);
-        setServerVersion(data.version || 'unknown');
-      } catch (error) {
+        setServerVersion(data.version || "unknown");
+      }
+      catch (error) {
         console.error("Failed to fetch server version:", error);
-        setServerVersion('error');
+        setServerVersion("error");
       }
     };
 
@@ -73,7 +72,7 @@ function AppContent() {
         </ProtectedRoute>
       );
     }
-    
+
     if (currentPath === "/sessions/new") {
       return (
         <ProtectedRoute onNavigate={navigate}>
@@ -83,7 +82,7 @@ function AppContent() {
     }
 
     // Check if the path matches /sessions/{id} pattern
-    const sessionMatch = currentPath.match(/^\/sessions\/([^\/]+)$/);
+    const sessionMatch = currentPath.match(/^\/sessions\/([^/]+)$/);
     if (sessionMatch && sessionMatch[1] !== "new") {
       return (
         <ProtectedRoute onNavigate={navigate}>
@@ -106,7 +105,7 @@ function AppContent() {
   // Create user profile props from authenticated user
   const userProfileProps = {
     name: user?.name || "User",
-    role: user?.domain ? `@${user.domain}` : "User"
+    role: user?.domain ? `@${user.domain}` : "User",
   };
 
   return (
@@ -121,7 +120,7 @@ function AppContent() {
       )}
 
       {/* Main content */}
-      <main className={`flex-1 p-6 ${showSidebar ? 'md:ml-64' : ''}`}>
+      <main className={`flex-1 p-6 ${showSidebar ? "md:ml-64" : ""}`}>
         {renderPage()}
       </main>
     </div>

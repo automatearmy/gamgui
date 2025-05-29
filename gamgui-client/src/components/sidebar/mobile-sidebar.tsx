@@ -1,11 +1,13 @@
+import { Menu, X } from "lucide-react";
 import * as React from "react";
 import { useState } from "react";
-import { cn, focusRing } from "@/lib/utils";
-import { UserProfile } from "./UserProfile";
-import { Menu, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
-interface MobileSidebarProps {
+import { Button } from "@/components/ui/button";
+import { cn, focusRing } from "@/lib/utils";
+
+import { UserProfile } from "./user-profile";
+
+type MobileSidebarProps = {
   children: React.ReactNode;
   userProfileProps?: {
     name?: string;
@@ -13,13 +15,13 @@ interface MobileSidebarProps {
   };
   onNavigate?: (path: string) => void;
   currentPath?: string;
-}
+};
 
 export function MobileSidebar({
   children,
   userProfileProps = {},
   onNavigate,
-  currentPath: _currentPath
+  currentPath: _currentPath,
 }: MobileSidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -27,10 +29,11 @@ export function MobileSidebar({
   const handleLogout = () => {
     setIsOpen(false); // Close the sidebar
     if (onNavigate) {
-      onNavigate('/login');
-    } else {
+      onNavigate("/login");
+    }
+    else {
       // Fallback to traditional navigation if onNavigate is not provided
-      window.location.href = '/login';
+      window.location.href = "/login";
     }
   };
 
@@ -62,7 +65,7 @@ export function MobileSidebar({
       <div
         className={cn(
           "fixed inset-y-0 right-0 z-50 w-3/4 max-w-xs transform bg-sidebar p-4 shadow-lg transition-transform duration-300 ease-in-out md:hidden",
-          isOpen ? "translate-x-0" : "translate-x-full"
+          isOpen ? "translate-x-0" : "translate-x-full",
         )}
       >
         <div className="flex items-center justify-between">

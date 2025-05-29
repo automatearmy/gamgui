@@ -1,25 +1,26 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { GoogleOAuthProvider } from '@react-oauth/google';
-import { getApiConfig } from './config';
+import { GoogleOAuthProvider } from "@react-oauth/google";
+import React, { createContext, use, useEffect, useState } from "react";
+
+import { getApiConfig } from "./config";
 
 // Define the user type
-interface User {
+type User = {
   id: string;
   email: string;
   name: string;
   picture: string;
   domain: string;
-}
+};
 
 // Define the auth context type
-interface AuthContextType {
+type AuthContextType = {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   token: string | null;
   login: (tokenResponse: any) => Promise<void>;
   logout: () => void;
-}
+};
 
 // Create the auth context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,18 +34,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Check for existing session on component mount
   useEffect(() => {
     const checkExistingSession = async () => {
-      const storedUser = localStorage.getItem('gamgui-user');
-      const storedToken = localStorage.getItem('gamgui-token');
-      
+      const storedUser = localStorage.getItem("gamgui-user");
+      const storedToken = localStorage.getItem("gamgui-token");
+
       if (storedUser && storedToken) {
         try {
           const parsedUser = JSON.parse(storedUser);
           setUser(parsedUser);
           setToken(storedToken);
-        } catch (error) {
-          console.error('Failed to parse stored user:', error);
-          localStorage.removeItem('gamgui-user');
-          localStorage.removeItem('gamgui-token');
+        }
+        catch (error) {
+          console.error("Failed to parse stored user:", error);
+          localStorage.removeItem("gamgui-user");
+          localStorage.removeItem("gamgui-token");
         }
       }
       setIsLoading(false);
@@ -60,27 +62,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Get dynamic API configuration
       const { apiUrl } = getApiConfig();
       const response = await fetch(`${apiUrl}/auth/verify`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ token: tokenResponse.credential }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Authentication failed');
+        throw new Error(errorData.message || "Authentication failed");
       }
 
       const userData = await response.json();
-      
+
       // Store user data and token in state and localStorage
       setUser(userData);
       setToken(tokenResponse.credential);
-      localStorage.setItem('gamgui-user', JSON.stringify(userData));
-      localStorage.setItem('gamgui-token', tokenResponse.credential);
-    } catch (error) {
-      console.error('Login error:', error);
+      localStorage.setItem("gamgui-user", JSON.stringify(userData));
+      localStorage.setItem("gamgui-token", tokenResponse.credential);
+    }
+    catch (error) {
+      console.error("Login error:", error);
       throw error;
     }
   };
@@ -89,8 +92,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     setUser(null);
     setToken(null);
-    localStorage.removeItem('gamgui-user');
-    localStorage.removeItem('gamgui-token');
+    localStorage.removeItem("gamgui-user");
+    localStorage.removeItem("gamgui-token");
   };
 
   const value = {
@@ -102,26 +105,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     logout,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return <AuthContext value={value}>{children}</AuthContext>;
 };
 
 // Create a hook to use the auth context
-export const useAuth = () => {
-  const context = useContext(AuthContext);
+export function useAuth() {
+  const context = use(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
-};
+}
 
 // Create a wrapper component that includes the Google OAuth provider
 export const AuthProviderWithGoogle: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-  
+
   if (!clientId) {
     return <div>Error: Google OAuth client ID is not configured</div>;
   }
-  
+
   return (
     <GoogleOAuthProvider clientId={clientId}>
       <AuthProvider>{children}</AuthProvider>

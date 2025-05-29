@@ -1,10 +1,11 @@
-import React from 'react';
-import { useAuth } from '../../lib/authContext';
+import React from "react";
 
-interface ProtectedRouteProps {
+import { useAuth } from "../../lib/auth-context";
+
+type ProtectedRouteProps = {
   children: React.ReactNode;
   onNavigate: (path: string) => void;
-}
+};
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, onNavigate }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -23,10 +24,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, onNavigate })
 
   // Redirect to login if not authenticated
   if (!isAuthenticated) {
-    // Use setTimeout to ensure the redirect happens after the component renders
-    React.useEffect(() => {
-      onNavigate('/login');
-    }, [onNavigate]);
+    onNavigate("/login");
 
     // Return null to avoid flash of content
     return null;

@@ -1,10 +1,12 @@
+import { LayoutDashboard, Settings } from "lucide-react";
 import * as React from "react";
-import { cn, focusRing } from "@/lib/utils";
-import { UserProfile } from "./UserProfile";
-import { MobileSidebar } from "./MobileSidebar";
-import { Settings, LayoutDashboard } from "lucide-react";
 
-interface SidebarProps {
+import { cn, focusRing } from "@/lib/utils";
+
+import { MobileSidebar } from "./mobile-sidebar";
+import { UserProfile } from "./user-profile";
+
+type SidebarProps = {
   className?: string;
   userProfileProps?: {
     name?: string;
@@ -13,15 +15,15 @@ interface SidebarProps {
   onNavigate?: (path: string) => void;
   currentPath?: string;
   serverVersion?: string | null; // Add serverVersion prop
-}
+};
 
-interface NavItemProps {
+type NavItemProps = {
   path: string;
   icon: React.ReactNode;
   children: React.ReactNode;
   isActive?: boolean;
   onClick?: (path: string) => void;
-}
+};
 
 function NavItem({ path, icon, children, isActive = false, onClick }: NavItemProps) {
   const handleClick = (e: React.MouseEvent) => {
@@ -40,7 +42,7 @@ function NavItem({ path, icon, children, isActive = false, onClick }: NavItemPro
         focusRing,
         isActive
           ? "bg-sidebar-accent text-sidebar-primary font-medium"
-          : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+          : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
       )}
     >
       {icon}
@@ -65,12 +67,13 @@ export function Sidebar({
   userProfileProps = {},
   onNavigate,
   currentPath = "/",
-  serverVersion // Destructure serverVersion
+  serverVersion, // Destructure serverVersion
 }: SidebarProps) {
   const handleNavigation = (path: string) => {
     if (onNavigate) {
       onNavigate(path);
-    } else {
+    }
+    else {
       // Fallback to traditional navigation if onNavigate is not provided
       window.location.href = path;
     }
@@ -78,7 +81,7 @@ export function Sidebar({
 
   // Handle logout by navigating to login page
   const handleLogout = () => {
-    handleNavigation('/login');
+    handleNavigation("/login");
   };
 
   // Navigation content to be used in both desktop and mobile sidebars
@@ -111,7 +114,7 @@ export function Sidebar({
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-sidebar-border bg-sidebar md:flex",
-          className
+          className,
         )}
       >
         <div className="flex h-14 items-center border-b border-sidebar-border px-4">
@@ -122,11 +125,15 @@ export function Sidebar({
           {navigationContent}
         </div>
 
-        <div className="mt-auto border-t border-sidebar-border p-2"> {/* Added mt-auto and padding */}
+        <div className="mt-auto border-t border-sidebar-border p-2">
+          {" "}
+          {/* Added mt-auto and padding */}
           {/* Display Server Version */}
           {serverVersion && (
             <div className="px-2 py-1 text-xs text-sidebar-foreground/60 text-center truncate" title={serverVersion}>
-              Server: {serverVersion === 'error' ? 'Error fetching' : serverVersion}
+              Server:
+              {" "}
+              {serverVersion === "error" ? "Error fetching" : serverVersion}
             </div>
           )}
           <UserProfile

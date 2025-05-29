@@ -1,34 +1,36 @@
-import { useState, useEffect } from "react";
-import { uploadCredentials, checkCredentials, deleteCredentials, AuthFiles } from "@/lib/api";
-import { Button } from "@/components/ui/button";
-import { FileInput } from "@/components/ui/file-input";
-import { 
-  Card, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription, 
-  CardContent 
-} from "@/components/ui/card";
-import { 
-  Alert, 
-  AlertTitle, 
-  AlertDescription 
-} from "@/components/ui/alert";
 import { Info, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
 
+import type { AuthFiles } from "@/lib/api";
+
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { FileInput } from "@/components/ui/file-input";
+import { checkCredentials, deleteCredentials, uploadCredentials } from "@/lib/api";
 
 export function SettingsPage() {
   // Generate a random userId that will be consistent for this user across sessions
   const [userId] = useState(() => {
     // Check if userId already exists in localStorage
-    const storedUserId = localStorage.getItem('gamgui-user-id');
+    const storedUserId = localStorage.getItem("gamgui-user-id");
     if (storedUserId) {
       return storedUserId;
     }
-    
+
     // Generate a new userId and store it in localStorage
     const newUserId = `user-${Math.random().toString(36).substring(2, 10)}`;
-    localStorage.setItem('gamgui-user-id', newUserId);
+    localStorage.setItem("gamgui-user-id", newUserId);
     return newUserId;
   });
   const [authFiles, setAuthFiles] = useState<AuthFiles>({
@@ -71,21 +73,23 @@ export function SettingsPage() {
         if (response && response.localFiles) {
           setCredentialsStatus({
             complete: response.localFiles.complete,
-            missingFiles: response.localFiles.missingFiles || []
+            missingFiles: response.localFiles.missingFiles || [],
           });
-        } else {
+        }
+        else {
           // Fallback to default state if response is not as expected
           setCredentialsStatus({
             complete: false,
-            missingFiles: []
+            missingFiles: [],
           });
         }
-      } catch (error) {
+      }
+      catch (error) {
         console.error("Failed to check credentials status:", error);
         // Set default state on error
         setCredentialsStatus({
           complete: false,
-          missingFiles: []
+          missingFiles: [],
         });
       }
     };
@@ -100,7 +104,7 @@ export function SettingsPage() {
         ...prev,
         [fileType]: file,
       };
-      
+
       return updatedFiles;
     });
 
@@ -108,44 +112,45 @@ export function SettingsPage() {
     if (file) {
       try {
         setUploadStatus({ loading: true, success: false, error: null });
-        
+
         // Create a temporary AuthFiles object with only the changed file
         const filesToUpload: AuthFiles = {
           clientSecrets: null,
           oauth2: null,
-          oauth2service: null
+          oauth2service: null,
         };
-        
+
         // Set only the changed file
         filesToUpload[fileType] = file;
-        
+
         // Upload only the changed file using the API function with userId
         await uploadCredentials(filesToUpload, userId);
-        
+
         // Refresh credentials status with userId
         const statusResponse = await checkCredentials(userId);
-        
+
         // Update credentials status
         if (statusResponse && statusResponse.localFiles) {
           setCredentialsStatus({
             complete: statusResponse.localFiles.complete,
-            missingFiles: statusResponse.localFiles.missingFiles || []
+            missingFiles: statusResponse.localFiles.missingFiles || [],
           });
         }
-        
+
         setUploadStatus({ loading: false, success: true, error: null });
-      } catch (error) {
+      }
+      catch (error) {
         console.error("Failed to upload file:", error);
-        
+
         // Extract error message if available
-        const errorMessage = error instanceof Error 
-          ? error.message 
+        const errorMessage = error instanceof Error
+          ? error.message
           : "Unknown error occurred";
-          
-        setUploadStatus({ 
-          loading: false, 
-          success: false, 
-          error: `Failed to upload file: ${errorMessage}` 
+
+        setUploadStatus({
+          loading: false,
+          success: false,
+          error: `Failed to upload file: ${errorMessage}`,
         });
       }
     }
@@ -154,54 +159,56 @@ export function SettingsPage() {
   const handleDeleteAll = async () => {
     try {
       setDeleteStatus({ loading: true, success: false, error: null });
-      
+
       // Call API to delete credentials on server with userId
       await deleteCredentials(userId);
-      
+
       // Reset local state
       setAuthFiles({
         clientSecrets: null,
         oauth2: null,
         oauth2service: null,
       });
-      
+
       // Refresh credentials status with userId
       const response = await checkCredentials(userId);
       // Map the API response to our state structure
       if (response && response.localFiles) {
         setCredentialsStatus({
           complete: response.localFiles.complete,
-          missingFiles: response.localFiles.missingFiles || []
+          missingFiles: response.localFiles.missingFiles || [],
         });
-      } else {
+      }
+      else {
         // Fallback to default state if response is not as expected
         setCredentialsStatus({
           complete: false,
-          missingFiles: []
+          missingFiles: [],
         });
       }
-      
+
       setDeleteStatus({ loading: false, success: true, error: null });
-      
+
       // Auto-hide success message after 3 seconds
       setTimeout(() => {
         setDeleteStatus(prev => ({
           ...prev,
-          success: false
+          success: false,
         }));
       }, 3000);
-    } catch (error) {
+    }
+    catch (error) {
       console.error("Failed to delete credentials:", error);
-      
+
       // Extract error message if available
-      const errorMessage = error instanceof Error 
-        ? error.message 
+      const errorMessage = error instanceof Error
+        ? error.message
         : "Unknown error occurred";
-        
+
       setDeleteStatus({
         loading: false,
         success: false,
-        error: `Failed to delete credentials: ${errorMessage}`
+        error: `Failed to delete credentials: ${errorMessage}`,
       });
     }
   };
@@ -271,7 +278,7 @@ export function SettingsPage() {
                 </AlertDescription>
               </Alert>
             )}
-            
+
             {uploadStatus.error && (
               <Alert variant="destructive">
                 <AlertTitle>Upload Error</AlertTitle>
@@ -280,7 +287,7 @@ export function SettingsPage() {
                 </AlertDescription>
               </Alert>
             )}
-            
+
             {deleteStatus.loading && (
               <Alert>
                 <AlertTitle>Deleting...</AlertTitle>
@@ -289,7 +296,7 @@ export function SettingsPage() {
                 </AlertDescription>
               </Alert>
             )}
-            
+
             {deleteStatus.success && (
               <Alert>
                 <AlertTitle>Credentials Deleted</AlertTitle>
@@ -298,7 +305,7 @@ export function SettingsPage() {
                 </AlertDescription>
               </Alert>
             )}
-            
+
             {deleteStatus.error && (
               <Alert variant="destructive">
                 <AlertTitle>Delete Error</AlertTitle>
@@ -307,30 +314,36 @@ export function SettingsPage() {
                 </AlertDescription>
               </Alert>
             )}
-            
-            {credentialsStatus.complete ? (
-              <Alert>
-                <AlertTitle>Credentials Status</AlertTitle>
-                <AlertDescription>
-                  All required credential files are present. You can now create a new session.
-                </AlertDescription>
-              </Alert>
-            ) : credentialsStatus.missingFiles && credentialsStatus.missingFiles.length > 0 ? (
-              <Alert variant="destructive">
-                <AlertTitle>Missing Credentials</AlertTitle>
-                <AlertDescription>
-                  The following credential files are missing: {credentialsStatus.missingFiles.join(', ')}
-                </AlertDescription>
-              </Alert>
-            ) : null}
+
+            {credentialsStatus.complete
+              ? (
+                  <Alert>
+                    <AlertTitle>Credentials Status</AlertTitle>
+                    <AlertDescription>
+                      All required credential files are present. You can now create a new session.
+                    </AlertDescription>
+                  </Alert>
+                )
+              : credentialsStatus.missingFiles && credentialsStatus.missingFiles.length > 0
+                ? (
+                    <Alert variant="destructive">
+                      <AlertTitle>Missing Credentials</AlertTitle>
+                      <AlertDescription>
+                        The following credential files are missing:
+                        {" "}
+                        {credentialsStatus.missingFiles.join(", ")}
+                      </AlertDescription>
+                    </Alert>
+                  )
+                : null}
           </div>
 
           {/* Action buttons */}
           <div className="flex justify-end gap-4 mt-4">
             {/* Delete Credentials button */}
             {(authFiles.clientSecrets || authFiles.oauth2 || authFiles.oauth2service || credentialsStatus.complete) && (
-              <Button 
-                variant="destructive" 
+              <Button
+                variant="destructive"
                 onClick={handleDeleteAll}
                 className="flex items-center gap-2"
                 disabled={deleteStatus.loading}

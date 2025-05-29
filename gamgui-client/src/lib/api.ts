@@ -1,4 +1,4 @@
-import { getApiConfig, validateConfig, logConfig } from './config';
+import { getApiConfig, logConfig, validateConfig } from "./config";
 
 // Get dynamic configuration
 const { apiUrl: API_BASE_URL, socketUrl: SOCKET_URL } = getApiConfig();
@@ -9,28 +9,28 @@ validateConfig({ apiUrl: API_BASE_URL, socketUrl: SOCKET_URL });
 // Log configuration for debugging
 logConfig();
 
-export interface AuthFiles {
+export type AuthFiles = {
   clientSecrets: File | null;
   oauth2: File | null;
   oauth2service: File | null;
-}
+};
 
 // Helper function to get the auth token from localStorage
 function getAuthToken(): string | null {
-  return localStorage.getItem('gamgui-token');
+  return localStorage.getItem("gamgui-token");
 }
 
 // Helper function to create headers with authorization
 function createAuthHeaders(): HeadersInit {
   const token = getAuthToken();
   const headers: HeadersInit = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   };
-  
+
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers.Authorization = `Bearer ${token}`;
   }
-  
+
   return headers;
 }
 
@@ -38,15 +38,15 @@ export async function uploadCredentials(files: AuthFiles, userId?: string) {
   const formData = new FormData();
 
   if (files.clientSecrets) {
-    formData.append('client_secrets', files.clientSecrets);
+    formData.append("client_secrets", files.clientSecrets);
   }
 
   if (files.oauth2) {
-    formData.append('oauth2', files.oauth2);
+    formData.append("oauth2", files.oauth2);
   }
 
   if (files.oauth2service) {
-    formData.append('oauth2service', files.oauth2service);
+    formData.append("oauth2service", files.oauth2service);
   }
 
   // Use userId in the URL if provided, otherwise use the authenticated user's ID
@@ -57,11 +57,11 @@ export async function uploadCredentials(files: AuthFiles, userId?: string) {
   const headers: HeadersInit = {};
   const token = getAuthToken();
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers.Authorization = `Bearer ${token}`;
   }
 
   const response = await fetch(url, {
-    method: 'POST',
+    method: "POST",
     headers,
     body: formData,
   });
@@ -71,7 +71,7 @@ export async function uploadCredentials(files: AuthFiles, userId?: string) {
 
 export async function createImage(name: string) {
   const response = await fetch(`${API_BASE_URL}/images`, {
-    method: 'POST',
+    method: "POST",
     headers: createAuthHeaders(),
     body: JSON.stringify({ name }),
   });
@@ -85,13 +85,10 @@ export async function checkCredentials(userId?: string) {
     ? `${API_BASE_URL}/credentials/check/${userId}`
     : `${API_BASE_URL}/credentials/check`;
 
-  console.log('API call: checking credentials at URL:', url);
-  console.log('API_BASE_URL value:', API_BASE_URL);
-  
   const response = await fetch(url, {
     headers: createAuthHeaders(),
   });
-  
+
   return response.json();
 }
 
@@ -102,7 +99,7 @@ export async function deleteCredentials(userId?: string) {
     : `${API_BASE_URL}/credentials`;
 
   const response = await fetch(url, {
-    method: 'DELETE',
+    method: "DELETE",
     headers: createAuthHeaders(),
   });
 
@@ -110,7 +107,7 @@ export async function deleteCredentials(userId?: string) {
 }
 
 // Session management functions
-export interface Session {
+export type Session = {
   id: string;
   name: string;
   containerId: string;
@@ -121,17 +118,14 @@ export interface Session {
   lastModified: string;
   status: string;
   userId?: string; // Add userId field
-}
+};
 
 export async function getSessions(userId?: string) {
   try {
     // Add userId as a query parameter if provided
-    const queryParams = userId ? `?userId=${userId}` : '';
+    const queryParams = userId ? `?userId=${userId}` : "";
     const fullUrl = `${API_BASE_URL}/sessions${queryParams}`;
 
-    console.log('API call: fetching sessions from URL:', fullUrl);
-    console.log('API_BASE_URL value:', API_BASE_URL);
-    
     const response = await fetch(fullUrl, {
       headers: createAuthHeaders(),
     });
@@ -141,27 +135,25 @@ export async function getSessions(userId?: string) {
       console.error(`API error (${response.status}): ${errorText}`);
       return {
         error: `Failed to fetch sessions: ${response.status} ${response.statusText}`,
-        statusCode: response.status
+        statusCode: response.status,
       };
     }
 
     const data = await response.json();
-    console.log('API response for sessions list:', data);
     return data;
-  } catch (err) {
-    console.error('API call error:', err);
-    return { error: err instanceof Error ? err.message : 'Network error' };
+  }
+  catch (err) {
+    console.error("API call error:", err);
+    return { error: err instanceof Error ? err.message : "Network error" };
   }
 }
 
 export async function getSession(sessionId: string, userId?: string) {
   try {
     // Add userId as a query parameter if provided
-    const queryParams = userId ? `?userId=${userId}` : '';
+    const queryParams = userId ? `?userId=${userId}` : "";
     const url = `${API_BASE_URL}/sessions/${sessionId}${queryParams}`;
 
-    console.log(`API call: fetching session with ID ${sessionId}`);
-    
     const response = await fetch(url, {
       headers: createAuthHeaders(),
     });
@@ -171,22 +163,22 @@ export async function getSession(sessionId: string, userId?: string) {
       console.error(`API error (${response.status}): ${errorText}`);
       return {
         error: `Failed to fetch session: ${response.status} ${response.statusText}`,
-        statusCode: response.status
+        statusCode: response.status,
       };
     }
 
     const data = await response.json();
-    console.log('API response for session:', data);
     return data;
-  } catch (err) {
-    console.error('API call error:', err);
-    return { error: err instanceof Error ? err.message : 'Network error' };
+  }
+  catch (err) {
+    console.error("API call error:", err);
+    return { error: err instanceof Error ? err.message : "Network error" };
   }
 }
 
 export async function createSession(name: string, imageId: string, config = {}, credentialsSecret?: string, userId?: string) {
   const response = await fetch(`${API_BASE_URL}/sessions`, {
-    method: 'POST',
+    method: "POST",
     headers: createAuthHeaders(),
     body: JSON.stringify({ name, imageId, config, credentialsSecret, userId }),
   });
@@ -196,11 +188,11 @@ export async function createSession(name: string, imageId: string, config = {}, 
 
 export async function endSession(sessionId: string, userId?: string) {
   // Add userId as a query parameter if provided
-  const queryParams = userId ? `?userId=${userId}` : '';
+  const queryParams = userId ? `?userId=${userId}` : "";
   const url = `${API_BASE_URL}/sessions/${sessionId}${queryParams}`;
 
   const response = await fetch(url, {
-    method: 'DELETE',
+    method: "DELETE",
     headers: createAuthHeaders(),
   });
 
@@ -210,11 +202,9 @@ export async function endSession(sessionId: string, userId?: string) {
 export async function getSessionWebsocketInfo(sessionId: string, userId?: string) {
   try {
     // Add userId as a query parameter if provided
-    const queryParams = userId ? `?userId=${userId}` : '';
+    const queryParams = userId ? `?userId=${userId}` : "";
     const url = `${API_BASE_URL}/sessions/${sessionId}/websocket${queryParams}`;
 
-    console.log(`API call: fetching websocket info for session ${sessionId}`);
-    
     const response = await fetch(url, {
       headers: createAuthHeaders(),
     });
@@ -224,16 +214,16 @@ export async function getSessionWebsocketInfo(sessionId: string, userId?: string
       console.error(`API error (${response.status}): ${errorText}`);
       return {
         error: `Failed to fetch websocket info: ${response.status} ${response.statusText}`,
-        statusCode: response.status
+        statusCode: response.status,
       };
     }
 
     const data = await response.json();
-    console.log('API response for session websocket info:', data);
     return data;
-  } catch (err) {
-    console.error('API call error:', err);
-    return { error: err instanceof Error ? err.message : 'Network error' };
+  }
+  catch (err) {
+    console.error("API call error:", err);
+    return { error: err instanceof Error ? err.message : "Network error" };
   }
 }
 
@@ -241,21 +231,21 @@ export async function uploadSessionFiles(sessionId: string, files: File[], userI
   const formData = new FormData();
 
   files.forEach((file) => {
-    formData.append('files', file);
+    formData.append("files", file);
   });
 
   // Add userId as a query parameter if provided
-  const queryParams = userId ? `?userId=${userId}` : '';
+  const queryParams = userId ? `?userId=${userId}` : "";
   const url = `${API_BASE_URL}/sessions/${sessionId}/files${queryParams}`;
 
   const headers: HeadersInit = {};
   const token = getAuthToken();
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers.Authorization = `Bearer ${token}`;
   }
 
   const response = await fetch(url, {
-    method: 'POST',
+    method: "POST",
     headers,
     body: formData,
   });
@@ -267,7 +257,7 @@ export async function getImages() {
   const response = await fetch(`${API_BASE_URL}/images`, {
     headers: createAuthHeaders(),
   });
-  
+
   return response.json();
 }
 
@@ -280,35 +270,35 @@ export async function getCredentialSecrets(userId?: string) {
   const response = await fetch(url, {
     headers: createAuthHeaders(),
   });
-  
+
   return response.json();
 }
 
 // Authentication functions
 export async function verifyToken(token: string) {
   const response = await fetch(`${API_BASE_URL}/auth/verify`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({ token }),
   });
-  
+
   return response.json();
 }
 
 export async function getCurrentUser() {
   const token = getAuthToken();
   if (!token) {
-    return { error: 'No authentication token found' };
+    return { error: "No authentication token found" };
   }
-  
+
   const response = await fetch(`${API_BASE_URL}/auth/user`, {
     headers: {
-      'Authorization': `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
     },
   });
-  
+
   return response.json();
 }
 

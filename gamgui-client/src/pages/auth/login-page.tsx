@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react';
-import LoginButton from '../../components/auth/LoginButton';
-import { useAuth } from '../../lib/authContext';
+import React, { useEffect } from "react";
 
-interface LoginPageProps {
+import LoginButton from "../../components/auth/login-button";
+import { useAuth } from "../../lib/auth-context";
+
+type LoginPageProps = {
   onNavigate: (path: string) => void;
-}
+};
 
 const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -12,7 +13,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
   // Redirect to home if already authenticated
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
-      onNavigate('/');
+      onNavigate("/");
     }
   }, [isAuthenticated, isLoading, onNavigate]);
 
@@ -40,7 +41,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
             Note: Only users with authorized email domains can access this application.
           </p>
         </div>
-        
+
         <div className="mt-8 flex justify-center">
           <LoginButton />
         </div>

@@ -1,26 +1,35 @@
 steps:
-  - name: 'node:20-alpine'
-    id: 'install-dependencies'
+  # Install
+  - name: "node:20-alpine"
+    id: install-dependencies
     dir: gamgui-client
     entrypoint: npm
-    args: ['ci']
+    args: [ci]
 
-  - name: 'node:20-alpine'
-    id: 'execute-tests'
+  # Lint
+  - name: "node:20-alpine"
+    id: execute-tests
     dir: gamgui-client
     entrypoint: npm
-    args: ['test']
+    args: [run, lint]
+
+  # Test
+  - name: "node:20-alpine"
+    id: execute-tests
+    dir: gamgui-client
+    entrypoint: npm
+    args: [run, test]
 
   # Build the container image with unique digest
   - name: gcr.io/cloud-builders/docker
     args:
       - build
-      - '--build-arg'
-      - 'BUILD_ID=${COMMIT_SHA}'
-      - '-t'
-      - '${_REGISTRY_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY_NAME}/gamgui-client:$COMMIT_SHA'
-      - '-t'
-      - '${_REGISTRY_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY_NAME}/gamgui-client:latest'
+      - --build-arg
+      - "BUILD_ID=${COMMIT_SHA}"
+      - -t
+      - "${_REGISTRY_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY_NAME}/gamgui-client:$COMMIT_SHA"
+      - -t
+      - "${_REGISTRY_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY_NAME}/gamgui-client:latest"
       - .
     dir: gamgui-client
     id: docker-build
@@ -29,20 +38,20 @@ steps:
   - name: gcr.io/cloud-builders/docker
     args:
       - push
-      - '${_REGISTRY_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY_NAME}/gamgui-client:$COMMIT_SHA'
+      - "${_REGISTRY_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY_NAME}/gamgui-client:$COMMIT_SHA"
     id: docker-push-sha
 
   - name: gcr.io/cloud-builders/docker
     args:
       - push
-      - '${_REGISTRY_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY_NAME}/gamgui-client:latest'
+      - "${_REGISTRY_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY_NAME}/gamgui-client:latest"
     id: docker-push-latest
 
 timeout: 1800s
 images:
-  - '${_REGISTRY_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY_NAME}/gamgui-client:$COMMIT_SHA'
-  - '${_REGISTRY_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY_NAME}/gamgui-client:latest'
+  - "${_REGISTRY_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY_NAME}/gamgui-client:$COMMIT_SHA"
+  - "${_REGISTRY_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY_NAME}/gamgui-client:latest"
 options:
   logStreamingOption: STREAM_ON
   logging: CLOUD_LOGGING_ONLY
-serviceAccount: 'projects/${PROJECT_ID}/serviceAccounts/gamgui-registry-cloud-builder@${PROJECT_ID}.iam.gserviceaccount.com'
+serviceAccount: "projects/${PROJECT_ID}/serviceAccounts/gamgui-registry-cloud-builder@${PROJECT_ID}.iam.gserviceaccount.com"

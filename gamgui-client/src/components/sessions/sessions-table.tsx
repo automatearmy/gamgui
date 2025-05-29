@@ -1,18 +1,18 @@
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/user-avatar";
 
-export interface Session {
+export type Session = {
   id: string;
   label: string;
   user: string;
   date: string;
   isHighlighted?: boolean;
-}
+};
 
-interface SessionsTableProps {
+type SessionsTableProps = {
   sessions: Session[];
   onViewSession: (sessionId: string) => void;
-}
+};
 
 export function SessionsTable({ sessions, onViewSession }: SessionsTableProps) {
   return (
