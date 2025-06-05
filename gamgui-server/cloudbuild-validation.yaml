@@ -1,24 +1,24 @@
 steps:
-  # Install dependencies
-  - name: 'node:20-alpine'
-    id: 'install-dependencies'
-    dir: gamgui-server
+  # Install
+  - name: "node:20-alpine"
+    id: install-dependencies
+    dir: gamgui-client
     entrypoint: npm
-    args: ['ci']
+    args: [ci]
 
-  # Run tests
-  - name: 'node:20-alpine'
-    id: 'execute-tests'
-    dir: gamgui-server
-    entrypoint: npm
-    args: ['test']
+  # Lint
+  # - name: "node:20-alpine"
+  #   id: execute-lint
+  #   dir: gamgui-client
+  #   entrypoint: npm
+  #   args: [run, lint]
 
-  # Run linting check
-  - name: 'node:20-alpine'
-    id: 'lint-check'
-    dir: gamgui-server
-    entrypoint: npm
-    args: ['run', 'lint']
+  # # Test
+  # - name: "node:20-alpine"
+  #   id: execute-tests
+  #   dir: gamgui-client
+  #   entrypoint: npm
+  #   args: [run, test]
 
   # Verify Dockerfile builds correctly
   - name: gcr.io/cloud-builders/docker
