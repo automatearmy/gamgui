@@ -1,90 +1,66 @@
-"""Main application for GAM Session Worker"""
-import logging
-import uvicorn
+"""
+Main entry point for GAMGUI Session Manager.
+"""
+
 from contextlib import asynccontextmanager
+import logging
+import sys
+from typing import Any, Dict
 
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from datetime import datetime
+import uvicorn
 
-from config.environment import env
-from services.secret_service import SecretService
-from services.auth_service import AuthService
-from services.gam_service import GamService
+from config import environment
+from config.logging import configure_logging
+from controllers.auth_controller import AuthController
 from controllers.websocket_controller import WebSocketController
+from services.gam_service import GamService
 
-# Configure logging
-logging.basicConfig(
-    level=getattr(logging, env.log_level.upper()),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+# Configure logging before anything else
+configure_logging()
 logger = logging.getLogger(__name__)
 
-# Global service instances
-secret_service: SecretService
-auth_service: AuthService
-gam_service: GamService
-websocket_controller: WebSocketController
+# Validate environment configuration
+errors = environment.validate_environment()
+if errors:
+    for error in errors:
+        logger.error(error)
+    logger.error("Environment configuration is invalid, exiting")
+    sys.exit(1)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan context manager"""
+    """
+    Lifespan context manager for FastAPI.
+    Handles startup and shutdown events.
+    """
     # Startup
-    logger.info("Starting GAM Session Worker...")
-    
-    # Validate environment
-    try:
-        env.validate()
-        logger.info("Environment validation passed")
-    except ValueError as e:
-        logger.error(f"Environment validation failed: {e}")
-        raise
-    
-    # Initialize services
-    global secret_service, auth_service, gam_service, websocket_controller
-    
-    secret_service = SecretService()
-    auth_service = AuthService(secret_service)
-    gam_service = GamService()
-    websocket_controller = WebSocketController(auth_service, gam_service)
-    
-    logger.info(f"Services initialized for session: {env.session_id}")
-    
-    # Check GAM availability
-    if gam_service.is_gam_available():
-        logger.info("GAM is available and ready")
-    else:
-        logger.warning("GAM is not available - commands will fail")
-    
-    logger.info(f"GAM Session Worker started on port {env.port}")
-    
+    logger.info("Starting GAMGUI Session Manager")
+    logger.info(f"Environment: {environment.ENVIRONMENT}")
+    logger.info(f"Project ID: {environment.PROJECT_ID}")
+    logger.info(f"Session ID: {environment.SESSION_ID}")
+
     yield
-    
+
     # Shutdown
-    logger.info("Shutting down GAM Session Worker...")
-    
-    # Cancel any running commands
-    if gam_service:
-        cancelled_count = gam_service.cancel_all_commands()
-        if cancelled_count > 0:
-            logger.info(f"Cancelled {cancelled_count} running commands during shutdown")
-    
-    logger.info("GAM Session Worker shutdown complete")
+    logger.info("Shutting down GAMGUI Session Manager")
+    logger.info("GAMGUI Session Manager shutdown complete")
 
 
-# Create FastAPI application
+# Create FastAPI app
 app = FastAPI(
-    title="GAM Session Worker",
-    description=f"WebSocket server for GAM command execution in session {env.session_id}",
+    title="GAMGUI Session Manager",
+    description=f"WebSocket server for GAM command execution in session {environment.SESSION_ID}",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
-# Add CORS middleware
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=env.allowed_origins,
+    allow_origins=environment.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -92,62 +68,56 @@ app.add_middleware(
 
 
 @app.get("/health")
-async def health_check():
-    """Health check endpoint"""
-    gam_available = gam_service.is_gam_available() if gam_service else False
-    
+async def health_check() -> Dict[str, Any]:
+    """Health check endpoint that confirms the service is running"""
     return {
         "status": "healthy",
-        "session_id": env.session_id,
-        "gam_available": gam_available,
-        "timestamp": datetime.utcnow().isoformat()
-    }
-
-
-@app.get("/info")
-async def session_info():
-    """Get detailed session information"""
-    if not websocket_controller or not gam_service:
-        return {
-            "session_id": env.session_id,
-            "status": "initializing",
-            "timestamp": datetime.utcnow().isoformat()
-        }
-    
-    return {
-        "session_id": env.session_id,
-        "active_connections": websocket_controller.get_connection_count(),
-        "connected_users": websocket_controller.get_connected_users(),
-        "running_commands": gam_service.get_running_commands(),
-        "gam_available": gam_service.is_gam_available(),
-        "secret_manager_available": secret_service.is_available() if secret_service else False,
-        "environment": {
-            "gam_path": env.gam_path,
-            "gam_config_dir": env.gam_config_dir,
-            "project_id": env.project_id,
-        },
-        "timestamp": datetime.utcnow().isoformat()
+        "session_id": environment.SESSION_ID,
+        "environment": environment.ENVIRONMENT,
+        "project_id": environment.PROJECT_ID,
     }
 
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    """Main WebSocket endpoint for GAM command execution (no auth)"""
-    if not websocket_controller:
-        await websocket.close(code=1011, reason="Service not ready")
+    """Main WebSocket endpoint for GAM command execution"""
+
+    logger.info("WebSocket connection request received")
+
+    auth_controller = AuthController()
+    auth_success, user_info = await auth_controller.authenticate_websocket(websocket)
+
+    # If authentication failed, the connection would have been closed in auth_controller
+    if not auth_success:
+        logger.warning("Authentication failed, connection closed")
         return
-    
+
+    logger.info(f"Authentication successful for user: {user_info.get('email')}")
+
+    # Create remaining services
+    gam_service = GamService()
+
+    # Check if GAM is available
+    gam_available = gam_service.is_gam_available()
+    if gam_available:
+        logger.info("GAM is available and ready")
+    else:
+        logger.warning("GAM is not available - commands will fail")
+
+    # Create controller for handling commands
+    websocket_controller = WebSocketController(gam_service=gam_service)
+
+    # Handle the connection
     await websocket_controller.handle_connection(websocket)
 
 
 if __name__ == "__main__":
-    logger.info(f"Starting GAM Session Worker for session {env.session_id}")
-    logger.info(f"Listening on port {env.port}")
-    
+    logger.info(f"Starting GAMGUI Session Manager on port {environment.PORT}")
+
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=env.port,
-        log_level=env.log_level.lower(),
-        access_log=True
+        port=environment.PORT,
+        reload=environment.IS_DEVELOPMENT,
+        log_level=environment.LOG_LEVEL.lower(),
     )

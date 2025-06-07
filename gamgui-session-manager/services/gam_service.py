@@ -7,7 +7,7 @@ import subprocess
 from datetime import datetime
 from typing import Optional, Dict, Any, AsyncGenerator
 
-from config.environment import env
+from config import environment
 
 logger = logging.getLogger(__name__)
 
@@ -67,8 +67,8 @@ class GamService:
             # Prepare environment for GAM
             gam_env = {
                 **dict(os.environ),
-                "GAMCFGDIR": env.gam_config_dir,
-                "PATH": f"{os.path.dirname(env.gam_path)}:{os.environ.get('PATH', '')}"
+                "GAMCFGDIR": environment.GAM_CONFIG_DIR,
+                "PATH": f"{os.path.dirname(environment.GAM_PATH)}:{os.environ.get('PATH', '')}"
             }
             
             # Start the GAM process
@@ -80,7 +80,7 @@ class GamService:
                 bufsize=1,
                 universal_newlines=True,
                 env=gam_env,
-                cwd=env.gam_config_dir
+                cwd=environment.GAM_CONFIG_DIR
             )
             
             # Store the process for potential cancellation
@@ -136,7 +136,7 @@ class GamService:
             yield {
                 "type": "error",
                 "command_id": command_id,
-                "message": f"GAM executable not found at {env.gam_path}",
+                "message": f"GAM executable not found at {environment.GAM_PATH}",
                 "timestamp": datetime.utcnow().isoformat()
             }
         except Exception as e:
@@ -190,7 +190,7 @@ class GamService:
         """Check if GAM is available and executable"""
         try:
             result = subprocess.run(
-                [env.gam_path, "version"],
+                [environment.GAM_PATH, "version"],
                 capture_output=True,
                 text=True,
                 timeout=10

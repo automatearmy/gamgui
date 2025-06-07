@@ -1,0 +1,6 @@
+{
+  "recommendations": [
+    "ms-python.python", // Core Python support, includes Pylance
+    "charliermarsh.ruff" // Ruff linter and formatter integration
+  ]
+}
