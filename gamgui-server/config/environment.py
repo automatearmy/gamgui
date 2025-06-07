@@ -28,7 +28,7 @@ def _get_required_env(name: str) -> str:
     """
     value = os.environ.get(name)
 
-    if value is None:
+    if not value or value is None:
         logging.error(f"Required environment variable '{name}' is not set")
         raise ValueError(f"Required environment variable '{name}' is not set")
     return value
