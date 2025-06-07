@@ -52,7 +52,3 @@ README.md
 # Test files
 test_*
 tests/
-
-# Kubernetes
-*.yaml
-*.yml
