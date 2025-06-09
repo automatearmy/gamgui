@@ -5,18 +5,16 @@ Defines routes for managing user sessions.
 
 from typing import Dict, List
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from controllers.session_controller import SessionController
+from middlewares.auth_middleware import verify_token
 from models.session_model import Session
 from schemas.responses import SuccessResponse
 from schemas.session_schemas import SessionListItem
 
 # Create router
-router = APIRouter(
-    prefix="/sessions",
-    tags=["Sessions"],
-)
+router = APIRouter(prefix="/sessions", tags=["Sessions"], dependencies=[Depends(verify_token)])
 
 # Create a single controller instance to be used by all routes
 session_controller = SessionController()
