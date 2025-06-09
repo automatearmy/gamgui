@@ -7,7 +7,7 @@ import logging
 
 from fastapi import Request
 
-from schemas.auth_schemas import SessionResponse, TokenResponse
+from schemas.auth_schemas import SessionResponse, TokenRequest, TokenResponse
 from schemas.responses import SuccessResponse
 from services.auth_service import AuthService
 
@@ -20,12 +20,12 @@ class AuthController:
     def __init__(self):
         self.auth_service = AuthService()
 
-    async def sign_in(self, google_token: str) -> SuccessResponse[TokenResponse]:
+    async def sign_in(self, token_request: TokenRequest) -> SuccessResponse[TokenResponse]:
         """
         Sign in with a Google ID token.
         Verifies the token and creates a JWT for future API requests.
         """
-        return await self.auth_service.sign_in(google_token)
+        return await self.auth_service.sign_in(token_request.token)
 
     async def get_session(self, request: Request) -> SuccessResponse[SessionResponse]:
         """

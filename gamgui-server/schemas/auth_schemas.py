@@ -9,6 +9,12 @@ from typing import Optional
 from pydantic import BaseModel
 
 
+class TokenRequest(BaseModel):
+    """Request model for authentication with token"""
+
+    token: str
+
+
 class TokenResponse(BaseModel):
     """Response model for successful authentication"""
 

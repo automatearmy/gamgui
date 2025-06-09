@@ -27,7 +27,7 @@ router.add_api_route(
     methods=["POST"],
     response_model=SuccessResponse[TokenResponse],
     summary="Sign in with Google ID token",
-    description="Validates Google ID token and returns a JWT token for API access",
+    description="Validates Google ID token from request body and returns a JWT token for API access",
 )
 
 router.add_api_route(
