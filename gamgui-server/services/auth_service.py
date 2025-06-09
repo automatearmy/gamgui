@@ -64,27 +64,40 @@ class AuthService:
                         status_code=status.HTTP_401_UNAUTHORIZED,
                     )
 
-                # Create JWT token expiring based on environment setting
-                expires_at = datetime.datetime.now(datetime.UTC) + datetime.timedelta(hours=24)  # Expires in 24h
+                # Ensure user exists in Firestore and get user object
+                user = await self._ensure_user_exists(
+                    email=email,
+                    name=id_info.get("name", ""),
+                    picture=id_info.get("picture"),
+                )
 
+                if not user:
+                    logger.error(f"Failed to create or retrieve user with email: {email}")
+                    raise APIException(
+                        message="Failed to create or retrieve user account",
+                        error_code="USER_CREATION_FAILED",
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    )
+
+                # Create JWT token expiring based on environment setting
+                now = datetime.datetime.now(datetime.UTC)
+                expires_at = now + datetime.timedelta(hours=24)  # Expires in 24h
+
+                # Create token payload with proper JWT claims
                 payload = {
+                    "sub": user.id,  # User ID as the subject
+                    "iss": "gamgui-server",  # Issuer
+                    "iat": now,  # Issued at time
+                    "exp": expires_at,  # Expiration time
                     "email": email,
-                    "name": id_info.get("name"),
-                    "picture": id_info.get("picture"),
-                    "exp": expires_at,
+                    "name": user.display_name,
+                    "picture": user.picture,
                 }
 
                 jwt_token = jwt.encode(
                     payload,
                     environment.JWT_SECRET,
                     algorithm="HS256",
-                )
-
-                # Ensure user exists in Firestore
-                await self._ensure_user_exists(
-                    email=email,
-                    name=id_info.get("name", ""),
-                    picture=id_info.get("picture"),
                 )
 
                 # Create token response
@@ -173,7 +186,7 @@ class AuthService:
             logger.error(f"Error verifying token: {e}")
             return None
 
-    async def _ensure_user_exists(self, email: str, name: str, picture: Optional[str] = None) -> None:
+    async def _ensure_user_exists(self, email: str, name: str, picture: Optional[str] = None) -> User:
         """
         Ensure a user exists in Firestore.
         If the user doesn't exist, create a new one with default values.
@@ -182,6 +195,9 @@ class AuthService:
             email: User email
             name: User display name
             picture: Optional profile picture URL
+
+        Returns:
+            User: The user object (either existing or newly created)
 
         Raises:
             APIException: If user creation fails
@@ -194,7 +210,7 @@ class AuthService:
                 # User exists, update last login time
                 await self.user_repository.update_last_login(user.id)
                 logger.info(f"Updated last login for existing user: {email}")
-                return
+                return user
 
             # User doesn't exist, create new user
             # Get default role and organization (for simplicity, using defaults)
@@ -219,6 +235,8 @@ class AuthService:
             # Save to repository
             await self.user_repository.create(new_user)
             logger.info(f"Created new user: {email}")
+
+            return new_user
 
         except Exception as e:
             logger.error(f"Error ensuring user exists: {e}")
