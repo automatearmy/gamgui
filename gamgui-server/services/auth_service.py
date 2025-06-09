@@ -158,9 +158,7 @@ class AuthService:
             # Create and return the session info
             session_response = SessionResponse(
                 authenticated=True,
-                email=user_data.get("email"),
-                name=user_data.get("name"),
-                picture=user_data.get("picture"),
+                user=user,
             )
 
             return SuccessResponse(success=True, message="Session validated successfully", data=session_response)

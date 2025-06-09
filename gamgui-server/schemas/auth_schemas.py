@@ -8,6 +8,8 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+from models.user_model import User
+
 
 class TokenRequest(BaseModel):
     """Request model for authentication with token"""
@@ -29,6 +31,4 @@ class SessionResponse(BaseModel):
     """Response model for session status"""
 
     authenticated: bool
-    email: Optional[str] = None
-    name: Optional[str] = None
-    picture: Optional[str] = None
+    user: Optional[User] = None
