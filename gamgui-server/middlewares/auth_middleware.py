@@ -40,7 +40,7 @@ async def verify_token(request: Request) -> Dict:
         )
 
     try:
-        # Verify the token using the JWT_SECRET
+        # Verify the token
         payload = jwt.decode(token, environment.JWT_SECRET, algorithms=["HS256"])
 
         # Validate email exists in token
@@ -74,30 +74,6 @@ async def verify_token(request: Request) -> Dict:
             error_code="UNAUTHORIZED",
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
-
-
-def get_current_user(request: Request = Depends()) -> Dict:
-    """
-    Get the authenticated user data from the request state.
-    This should be used after verify_token has processed the request.
-
-    Args:
-        request: The request object with authenticated user data
-
-    Returns:
-        Dict containing user data from the JWT token
-
-    Raises:
-        HTTPException: If user data is not found in request state
-    """
-    if not hasattr(request.state, "user"):
-        raise APIException(
-            message="Not authenticated",
-            error_code="UNAUTHORIZED",
-            status_code=status.HTTP_401_UNAUTHORIZED,
-        )
-
-    return request.state.user
 
 
 def protect_router(router: APIRouter) -> APIRouter:

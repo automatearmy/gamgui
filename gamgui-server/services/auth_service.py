@@ -138,7 +138,7 @@ class AuthService:
     async def get_session(self, request: Request) -> SuccessResponse[SessionResponse]:
         """
         Get the current user session.
-        Uses user data from the request state populated by verify_token middleware.
+        Uses user data from the request state populated middleware.
         """
         try:
             # User data is already verified and available in request.state.user
@@ -176,15 +176,6 @@ class AuthService:
                 exception=str(e),
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-
-    async def verify_token(self, token: str) -> Optional[dict]:
-        """Verify JWT token and return payload"""
-        try:
-            payload = jwt.decode(token, environment.JWT_SECRET, algorithms=["HS256"])
-            return payload
-        except Exception as e:
-            logger.error(f"Error verifying token: {e}")
-            return None
 
     async def _ensure_user_exists(self, email: str, name: str, picture: Optional[str] = None) -> User:
         """
