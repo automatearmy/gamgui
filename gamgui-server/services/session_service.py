@@ -60,7 +60,8 @@ class SessionService:
                 # Get pod details from the Kubernetes service response
                 pod_name = k8s_pod["pod_name"]
                 pod_namespace = k8s_pod["namespace"]
-                websocket_url = f"ws://{k8s_pod['external_ip']}:{k8s_pod['external_port']}/ws"
+                # The websocket_url is now constructed by the kubernetes service using the ingress path
+                websocket_url = k8s_pod["websocket_url"]
 
                 # Now create the pod info for the database
                 pod_info = PodInfo(
@@ -96,6 +97,7 @@ class SessionService:
                 try:
                     await self.kubernetes_service.delete_session_pod(session_id)
                     await self.kubernetes_service.delete_session_service(session_id)
+                    await self.kubernetes_service.delete_session_ingress(session_id)
                 except Exception as cleanup_error:
                     logger.warning(f"Failed to clean up Kubernetes resources: {cleanup_error}")
 
@@ -200,6 +202,7 @@ class SessionService:
                 # Delete Kubernetes resources
                 await self.kubernetes_service.delete_session_pod(session_id)
                 await self.kubernetes_service.delete_session_service(session_id)
+                await self.kubernetes_service.delete_session_ingress(session_id)
 
                 # Delete session from Firestore after successful Kubernetes cleanup
                 await self.session_repository.delete(session_id)
