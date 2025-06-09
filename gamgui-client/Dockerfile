@@ -1,48 +1,26 @@
-# Use Node 18 Alpine as the base image
-FROM node:18-alpine
+# Build stage
+FROM node:20-alpine
 
-# Install build tools needed for some npm packages
-RUN apk add --no-cache --virtual .gyp \
-    python3 \
-    make \
-    g++
-
-# Set working directory
 WORKDIR /app
 
-# Define build arguments for API, Socket URLs and Google OAuth Client ID
-ARG VITE_API_URL
-ARG VITE_SOCKET_URL
-ARG VITE_GOOGLE_CLIENT_ID
+# Copy package files
+COPY package*.json ./
 
-# Set environment variables for the build process
-ENV VITE_API_URL=${VITE_API_URL}
-ENV VITE_SOCKET_URL=${VITE_SOCKET_URL}
-ENV VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
-ENV NODE_ENV=production
+# Install dependencies
+RUN npm ci
 
-# Copy package files for dependency installation
-COPY package.json package-lock.json ./
+# Add build metadata as labels
+LABEL org.opencontainers.image.version=$BUILD_ID
+LABEL org.opencontainers.image.revision=$BUILD_ID
 
-# Install dependencies (including dev dependencies for build)
-# Use --ignore-scripts to prevent potential issues during install
-# and run rebuild scripts separately if needed (though often not for frontends)
-RUN npm ci --include=dev --ignore-scripts
-
-# Copy the rest of the application code
+# Copy source code
 COPY . .
 
-# Build the application with the environment variables
+# Build the application
 RUN npm run build
 
-# Install serve globally to serve the static files
-RUN npm install -g serve
+# Expose the port the app runs on
+EXPOSE 8080
 
-# Expose the port specified by the PORT environment variable (default to 8080 for Cloud Run)
-EXPOSE ${PORT:-8080}
-
-# Start the serve command to serve files from the dist directory
-CMD ["sh", "-c", "serve -s dist -l ${PORT:-8080}"]
-
-# Optional: Clean up build tools if image size is critical
-# RUN apk del .gyp
+# Start the application
+CMD ["npm", "start"]
