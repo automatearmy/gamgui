@@ -97,7 +97,15 @@ class KubernetesService:
         pod_spec = client.V1PodSpec(
             containers=[container],
             restart_policy="Never",
-            tolerations=[client.V1Toleration(key="session-node", operator="Equal", value="true", effect="NoSchedule")],
+            service_account_name="session-pod-ksa",
+            tolerations=[
+                client.V1Toleration(
+                    key="session-node",
+                    operator="Equal",
+                    value="true",
+                    effect="NoSchedule",
+                )
+            ],
         )
 
         # Pod metadata with labels
@@ -284,7 +292,10 @@ class KubernetesService:
 
         logger.info(f"Created ClusterIP service {service_name} for session {session_id}")
 
-        return {"service_name": service_name, "creation_timestamp": service.metadata.creation_timestamp}
+        return {
+            "service_name": service_name,
+            "creation_timestamp": service.metadata.creation_timestamp,
+        }
 
     async def _create_ingress_rule(self, session_id: str, service_name: str) -> Dict[str, Any]:
         """Create an Ingress rule for the session"""
