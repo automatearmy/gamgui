@@ -48,6 +48,7 @@
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "google-auth-library": "^9.15.1",
+    "http-proxy-middleware": "^3.0.5",
     "js-cookie": "^3.0.5",
     "jwt-decode": "^4.0.0",
     "lucide-react": "^0.487.0",
