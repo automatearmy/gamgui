@@ -49,9 +49,8 @@ class HealthController:
         # Collect API information (non-sensitive environment variables)
         api_info = {
             "port": environment.PORT,
-            "log_level": environment.LOG_LEVEL,
-            "kubernetes_namespace": environment.KUBERNETES_NAMESPACE,
-            "session_timeout_minutes": environment.SESSION_TIMEOUT_MINUTES,
+            "environment": environment.ENVIRONMENT,
+            "region": environment.REGION,
         }
 
         env_info = EnvironmentInfoResponse(
