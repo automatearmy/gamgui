@@ -1,14 +1,16 @@
 import { Route, Routes } from "react-router-dom";
 
 import { ProtectedRoute } from "@/components/auth/protected-route";
-import { LoginPage } from "@/pages/auth/login";
+import { AccountPage } from "@/pages/account";
 import { DashboardPage } from "@/pages/dashboard";
+import { LoginPage } from "@/pages/login";
 import { SessionsPage } from "@/pages/sessions";
 import { SessionDetailPage } from "@/pages/sessions/[id]";
+import { SettingsPage } from "@/pages/settings";
 
 const publicRoutes = [
   {
-    path: "/auth/login",
+    path: "/login",
     element: <LoginPage />,
   },
 ] as const;
@@ -25,6 +27,14 @@ const protectedRoutes = [
   {
     path: "/sessions/:id",
     element: <SessionDetailPage />,
+  },
+  {
+    path: "/settings",
+    element: <SettingsPage />,
+  },
+  {
+    path: "/account",
+    element: <AccountPage />,
   },
 ] as const;
 
