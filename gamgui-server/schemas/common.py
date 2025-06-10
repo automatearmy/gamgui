@@ -13,4 +13,5 @@ class SessionStatus(str, Enum):
     RUNNING = "running"
     STOPPING = "stopping"
     STOPPED = "stopped"
+    TERMINATED = "terminated"
     ERROR = "error"

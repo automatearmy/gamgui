@@ -38,8 +38,7 @@ class SessionController:
             APIException: If session creation fails
         """
         try:
-            user_data = request.state.user
-            user_id = user_data.get("email")
+            user_id = request.state.user.get("sub")
 
             # Create the session
             session = await self.session_service.create_session(
@@ -76,8 +75,7 @@ class SessionController:
         """
         try:
             # User data is already verified and available in request.state.user
-            user_data = request.state.user
-            user_id = user_data.get("email")
+            user_id = request.state.user.get("sub")
 
             # Get the user's sessions
             sessions = await self.session_service.list_user_sessions(user_id)
@@ -112,8 +110,7 @@ class SessionController:
         """
         try:
             # User data is already verified and available in request.state.user
-            user_data = request.state.user
-            user_id = user_data.get("email")
+            user_id = request.state.user.get("sub")
 
             # Get the session
             session = await self.session_service.get_session(session_id=session_id, user_id=user_id)
@@ -155,8 +152,7 @@ class SessionController:
         """
         try:
             # User data is already verified and available in request.state.user
-            user_data = request.state.user
-            user_id = user_data.get("email")
+            user_id = request.state.user.get("sub")
 
             # Delete the session
             deleted = await self.session_service.delete_session(session_id=session_id, user_id=user_id)
