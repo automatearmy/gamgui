@@ -78,12 +78,14 @@ class KubernetesService:
             client.V1EnvVar(name="PORT", value=str(environment.SESSION_DEFAULT_PORT)),
             client.V1EnvVar(name="JWT_SECRET", value=environment.JWT_SECRET),
             client.V1EnvVar(name="LOG_LEVEL", value=environment.LOG_LEVEL),
+            client.V1EnvVar(name="GAM_PATH", value="/usr/local/bin/gam"),
+            client.V1EnvVar(name="GAM_CONFIG_DIR", value="/gam-config"),
         ]
 
         # Container specification
         container = client.V1Container(
             name="session-manager",
-            image="lamonlopes/nodejs-terminal-app:0.0.5",
+            image="lamonlopes/nodejs-terminal-app:0.0.9",
             image_pull_policy=environment.SESSION_IMAGE_PULL_POLICY,
             ports=[client.V1ContainerPort(container_port=environment.SESSION_DEFAULT_PORT)],
             env=env_vars,
