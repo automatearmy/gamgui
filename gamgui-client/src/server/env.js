@@ -8,20 +8,26 @@ const envSchema = z.object({
     .string()
     .transform(val => Number.parseInt(val, 10))
     .default("8080"),
-  VITE_CLIENT_ID: z.string().min(1, "Client ID is required"),
-  API_URL: z.string().url("API URL must be a valid URL"),
-  CLIENT_SECRET: z.string().min(1, "Client secret is required"),
-  PROJECT_ID: z.string().min(1, "Project ID is required"),
+  PROJECT_ID: z.string().min(1, "Required"),
+  PROJECT_NUMBER: z.string().min(1, "Required"),
+  ENVIRONMENT: z.string().min(1, "Required"),
+  REGION: z.string().min(1, "Required"),
+  CLIENT_SERVICE_ACCOUNT_EMAIL: z.string().min(1, "Required"),
+  SERVER_URL: z.string().min(1, "Required"),
+  CLIENT_OAUTH_CLIENT_ID: z.string().min(1, "Required"),
   VITE: z.string().transform(val => val === "true").default("false"),
 });
 
 // Parse and validate environment variables
 const parsedEnv = envSchema.parse({
   PORT: process.env.PORT,
-  VITE_CLIENT_ID: process.env.VITE_CLIENT_ID,
-  API_URL: process.env.API_URL,
-  CLIENT_SECRET: process.env.CLIENT_SECRET,
   PROJECT_ID: process.env.PROJECT_ID,
+  PROJECT_NUMBER: process.env.PROJECT_NUMBER,
+  ENVIRONMENT: process.env.ENVIRONMENT,
+  REGION: process.env.REGION,
+  CLIENT_SERVICE_ACCOUNT_EMAIL: process.env.CLIENT_SERVICE_ACCOUNT_EMAIL,
+  SERVER_URL: process.env.SERVER_URL,
+  CLIENT_OAUTH_CLIENT_ID: process.env.CLIENT_OAUTH_CLIENT_ID,
   VITE: process.env.VITE,
 });
 

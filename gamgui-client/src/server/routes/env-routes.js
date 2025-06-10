@@ -13,7 +13,13 @@ export function createEnvRoutes() {
   router.get("/frontend-env", (req, res) => {
     // Only expose specific environment variables that the frontend needs
     const frontendEnv = {
-      VITE_CLIENT_ID: env.VITE_CLIENT_ID,
+      PROJECT_ID: env.PROJECT_ID,
+      PROJECT_NUMBER: env.PROJECT_NUMBER,
+      ENVIRONMENT: env.ENVIRONMENT,
+      REGION: env.REGION,
+      CLIENT_SERVICE_ACCOUNT_EMAIL: env.CLIENT_SERVICE_ACCOUNT_EMAIL,
+      SERVER_URL: env.SERVER_URL,
+      CLIENT_OAUTH_CLIENT_ID: env.CLIENT_OAUTH_CLIENT_ID,
     };
 
     res.json(frontendEnv);

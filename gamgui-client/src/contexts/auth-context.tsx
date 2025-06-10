@@ -5,6 +5,7 @@ import { createContext, useCallback, useEffect, useMemo, useState } from "react"
 import type { User } from "@/types/user";
 
 import { getSession, signIn } from "@/api/auth";
+import { useEnv } from "@/hooks/use-env";
 import { api } from "@/lib/api";
 import { AUTHENTICATION_TOKEN_KEY } from "@/lib/constants/cookies";
 
@@ -30,6 +31,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [user, setUser] = useState<User>({} as User);
   const [loading, setLoading] = useState<boolean>(true);
+  const { data: env } = useEnv();
 
   const signOut = useCallback(async () => {
     try {
@@ -125,7 +127,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   // Get Google client ID from environment variables
-  const googleClientId = import.meta.env.VITE_CLIENT_ID || "";
+  const googleClientId = env?.CLIENT_OAUTH_CLIENT_ID || "";
 
   return (
     <GoogleOAuthProvider clientId={googleClientId}>

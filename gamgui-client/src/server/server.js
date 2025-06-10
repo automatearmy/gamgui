@@ -27,7 +27,7 @@ app.use("/api/env", createEnvRoutes());
 app.use(
   "/api",
   createProxyMiddleware({
-    target: env.API_URL,
+    target: env.SERVER_URL,
     changeOrigin: true,
     pathRewrite: { "^/api": "" },
     onProxyReq: async (proxyReq, req) => {

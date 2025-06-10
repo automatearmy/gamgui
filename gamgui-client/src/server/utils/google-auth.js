@@ -14,7 +14,7 @@ const auth = new GoogleAuth();
 export async function getIdToken() {
   try {
     // Get the API URL and use full URL as audience
-    const apiUrl = env.API_URL;
+    const apiUrl = env.SERVER_URL;
 
     // Get application default credentials with the full URL as audience
     const client = await auth.getIdTokenClient(apiUrl);
