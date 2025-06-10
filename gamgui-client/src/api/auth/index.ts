@@ -1,27 +1,17 @@
+import type { User } from "@/types/user";
+
 import type { ApiResponse } from "../types";
 
 import { api } from "../../lib/api";
 
 export type SignInData = {
   token: string;
-  user: {
-    id: string;
-    email: string;
-    name: string;
-    picture: string;
-    domain: string;
-  };
+  user?: User;
 };
 
 export type SessionData = {
   authenticated: boolean;
-  user?: {
-    id: string;
-    email: string;
-    name: string;
-    picture: string;
-    domain: string;
-  };
+  user?: User;
 };
 
 export async function signIn(token: string): Promise<ApiResponse<SignInData>> {
