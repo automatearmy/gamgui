@@ -44,17 +44,17 @@ const data = {
   navSecondary: [
     {
       title: "Settings",
-      url: "#",
+      url: "/settings",
       icon: IconSettings,
     },
     {
       title: "Get Help",
-      url: "#",
+      url: "https://github.com/automatearmy/gamgui-app",
       icon: IconHelp,
     },
     {
       title: "Search",
-      url: "#",
+      url: "https://github.com/automatearmy/gamgui-app",
       icon: IconSearch,
     },
   ],
