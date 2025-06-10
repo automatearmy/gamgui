@@ -27,7 +27,8 @@ export function SessionsHeader() {
         <Alert className="border-orange-200 bg-orange-50">
           <AlertCircle className="h-4 w-4 text-orange-600" />
           <AlertDescription className="text-orange-800">
-            Configuration required before creating sessions.{" "}
+            Configuration required before creating sessions.
+            {" "}
             <Link to="/settings" className="font-medium underline hover:no-underline">
               Complete setup in Settings
             </Link>
@@ -37,15 +38,17 @@ export function SessionsHeader() {
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          {isLoading ? (
-            <Skeleton className="h-6 w-32" />
-          ) : (
-            <span className="text-sm text-muted-foreground">
-              {isConfigured ? "Ready to create sessions" : "Setup required"}
-            </span>
-          )}
+          {isLoading
+            ? (
+                <Skeleton className="h-6 w-32" />
+              )
+            : (
+                <span className="text-sm text-muted-foreground">
+                  {isConfigured ? "Ready to create sessions" : "Setup required"}
+                </span>
+              )}
         </div>
-        
+
         <div className="flex items-center gap-2">
           {!isConfigured && (
             <Button variant="outline" size="sm" asChild>
@@ -55,20 +58,22 @@ export function SessionsHeader() {
               </Link>
             </Button>
           )}
-          
-          {isConfigured ? (
-            <CreateSessionModal>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                New Session
-              </Button>
-            </CreateSessionModal>
-          ) : (
-            <Button disabled>
-              <Plus className="mr-2 h-4 w-4" />
-              New Session
-            </Button>
-          )}
+
+          {isConfigured
+            ? (
+                <CreateSessionModal>
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    New Session
+                  </Button>
+                </CreateSessionModal>
+              )
+            : (
+                <Button disabled>
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Session
+                </Button>
+              )}
         </div>
       </div>
     </div>

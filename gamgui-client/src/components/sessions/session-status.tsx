@@ -7,7 +7,7 @@ type SessionStatusProps = {
 
 function getStatusConfig(status: string) {
   const normalizedStatus = status.toLowerCase();
-  
+
   switch (normalizedStatus) {
     case "creating":
       return {
@@ -26,7 +26,7 @@ function getStatusConfig(status: string) {
       };
     case "stopped":
       return {
-        label: "Stopped", 
+        label: "Stopped",
         className: "text-gray-700 bg-gray-50 border-gray-200",
       };
     case "error":
@@ -44,13 +44,13 @@ function getStatusConfig(status: string) {
 
 export function SessionStatus({ status, className }: SessionStatusProps) {
   const { label, className: statusClassName } = getStatusConfig(status);
-  
+
   return (
-    <span 
+    <span
       className={cn(
         "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border",
         statusClassName,
-        className
+        className,
       )}
     >
       {label}

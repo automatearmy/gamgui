@@ -57,7 +57,7 @@ export function SessionDetailPage() {
         setTerminalOutput(prev => [...prev, "Connection error"]);
       };
     }
-    catch (error) {
+    catch {
       setConnectionStatus("error");
       setTerminalOutput(prev => [...prev, "Failed to connect"]);
     }

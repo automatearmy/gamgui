@@ -3,14 +3,14 @@ import "dotenv/config";
 import dotenv from "dotenv";
 // Core dependencies
 import express from "express";
+import { createProxyMiddleware } from "http-proxy-middleware";
 import nocache from "nocache";
 import path from "node:path";
 
 import { env } from "./env";
 // Authentication
 import { createEnvRoutes } from "./routes/env-routes";
-import { createProxyMiddleware } from "http-proxy-middleware"
-import { getIdToken } from "./utils/google-auth"
+import { getIdToken } from "./utils/google-auth";
 
 dotenv.config();
 
@@ -21,7 +21,6 @@ app.set("etag", false);
 app.set("trust proxy", true);
 app.use(nocache());
 
-
 // Environment Routes - no authentication required
 app.use("/api/env", createEnvRoutes());
 
@@ -31,13 +30,13 @@ app.use(
     target: env.API_URL,
     changeOrigin: true,
     pathRewrite: { "^/api": "" },
-    onProxyReq: async (proxyReq, req, res) => {
+    onProxyReq: async (proxyReq, req) => {
       const idToken = await getIdToken();
-      
+
       proxyReq.setHeader("authorization", `Bearer ${idToken}`);
       proxyReq.setHeader("x-access-token", req.headers["x-access-token"] || "");
     },
-  })
+  }),
 );
 
 if (!env.VITE) {
