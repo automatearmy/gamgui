@@ -9,22 +9,20 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     wget \
     unzip \
+    xz-utils \
     git \
     vim \
     nano \
     procps \
     net-tools \
     iputils-ping \
-    telnet \
-    && rm -rf /var/lib/apt/lists/*
+    telnet
 
-# Install GAM with the recommended method
-RUN curl -s -S -L https://gam-shortn.appspot.com/gam-install > gam-install.sh && \
-    bash gam-install.sh -d /usr/local/gam && \
-    ln -s /usr/local/gam/gam /usr/local/bin/gam && \
-    rm gam-install.sh && \
-    # Verify GAM installation
-    /usr/local/bin/gam version
+# Install GAM with -l flag to update to latest version without creating project or authorizations
+# Using a different approach to handle the curl and bash execution
+RUN curl -s -S -L https://git.io/gam-install > /tmp/gam-install.sh && \
+    bash /tmp/gam-install.sh -l -d /usr/local/gam && \
+    rm /tmp/gam-install.sh
 
 # Create GAM config directory
 RUN mkdir -p /gam-config
@@ -41,7 +39,7 @@ COPY . .
 # Create non-root user for security but give access to common directories
 RUN useradd -m -u 1000 gamworker && \
     chown -R gamworker:gamworker /app /gam-config && \
-    mkdir -p /home/gamworker && \
+    mkdir -p /home/gamworker/gam-config && \
     chown -R gamworker:gamworker /home/gamworker && \
     # Fix permissions on gam directory to allow non-root access
     chown -R gamworker:gamworker /usr/local/gam
