@@ -1,216 +1,217 @@
-import { Plus, RefreshCw, Settings } from "lucide-react";
-import { useEffect, useState } from "react";
+import type { ColumnDef, SortingState } from "@tanstack/react-table";
 
-import type { Session as TableSession } from "@/components/sessions/sessions-table";
-import type { Session as ApiSession } from "@/lib/api";
+import {
 
-import { SessionsTable } from "@/components/sessions/sessions-table";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+  flexRender,
+  getCoreRowModel,
+  getSortedRowModel,
+
+  useReactTable,
+} from "@tanstack/react-table";
+import { ExternalLink, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+import type { Session } from "@/types/session";
+
+import { CreateSessionModal } from "@/components/sessions/create-session-modal";
+import { SessionStatus } from "@/components/sessions/session-status";
 import { Button } from "@/components/ui/button";
-import { checkCredentials, getSessions } from "@/lib/api";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useDeleteSession, useSessions } from "@/hooks/use-sessions";
 
-export function SessionsPage({ onNavigate }: { onNavigate?: (path: string) => void }) {
-  // Use a consistent userId across sessions
-  const [userId] = useState(() => {
-    // Check if userId already exists in localStorage
-    const storedUserId = localStorage.getItem("gamgui-user-id");
-    if (storedUserId) {
-      return storedUserId;
-    }
-
-    // Generate a new userId and store it in localStorage
-    const newUserId = `user-${Math.random().toString(36).substring(2, 10)}`;
-    localStorage.setItem("gamgui-user-id", newUserId);
-    return newUserId;
+function formatDate(dateString: string) {
+  return new Date(dateString).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
-  const [sessions, setSessions] = useState<TableSession[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [credentialsStatus, setCredentialsStatus] = useState<{
-    complete: boolean;
-    missingFiles: string[];
-  }>({
-    complete: false,
-    missingFiles: [],
+}
+
+
+export function SessionsPage() {
+  const { data: sessions, isLoading, error } = useSessions();
+  const deleteSessionMutation = useDeleteSession();
+  const navigate = useNavigate();
+  const [sorting, setSorting] = useState<SortingState>([]);
+
+  const columns: ColumnDef<Session>[] = [
+    {
+      accessorKey: "name",
+      header: "Name",
+      cell: ({ row }) => (
+        <div className="font-medium">{row.getValue("name")}</div>
+      ),
+    },
+    {
+      accessorKey: "description",
+      header: "Description",
+      cell: ({ row }) => (
+        <div className="text-muted-foreground max-w-xs truncate">
+          {row.getValue("description")}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => {
+        const status = row.getValue("status") as string;
+        return <SessionStatus status={status} />;
+      },
+    },
+    {
+      accessorKey: "created_at",
+      header: "Created",
+      cell: ({ row }) => formatDate(row.getValue("created_at")),
+    },
+    {
+      accessorKey: "expires_at",
+      header: "Expires",
+      cell: ({ row }) => formatDate(row.getValue("expires_at")),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) => {
+        const session = row.original;
+
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => navigate(`/sessions/${session.id}`)}
+              >
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Open
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => deleteSessionMutation.mutate(session.id)}
+                className="text-red-600"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
+  ];
+
+  const table = useReactTable({
+    data: sessions || [],
+    columns,
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    state: {
+      sorting,
+    },
   });
-  // Function to fetch all sessions
-  const fetchSessions = async () => {
-    try {
-      setIsRefreshing(true);
-      const response = await getSessions(userId);
-
-      if (response.error) {
-        throw new Error(response.error);
-      }
-
-      // Transform API sessions to table format
-      const formattedSessions = Array.isArray(response.sessions)
-        ? response.sessions.map((session: ApiSession) => ({
-            id: session.id,
-            label: session.name,
-            user: session.userId || "User", // Use userId from session if available
-            date: new Date(session.createdAt).toLocaleDateString(),
-            isHighlighted: session.status === "running",
-          }))
-        : [];
-
-      setSessions(formattedSessions);
-      setError(null);
-    }
-    catch (err) {
-      console.error("Failed to fetch sessions:", err);
-      setError(err instanceof Error ? err.message : "Failed to fetch sessions");
-    }
-    finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  };
-
-  // Check credentials status
-  const checkCredentialsStatus = async () => {
-    try {
-      const response = await checkCredentials(userId);
-
-      // Map the API response to our state structure
-      if (response && response.localFiles) {
-        setCredentialsStatus({
-          complete: response.localFiles.complete,
-          missingFiles: response.localFiles.missingFiles || [],
-        });
-      }
-    }
-    catch (error) {
-      console.error("Failed to check credentials status:", error);
-    }
-  };
-
-  // Fetch all sessions and check credentials on component mount
-  useEffect(() => {
-    setIsLoading(true);
-    fetchSessions();
-    checkCredentialsStatus();
-  }, [userId]); // Add userId as a dependency
-
-  const handleRefresh = () => {
-    fetchSessions();
-  };
-
-  const handleNewSession = () => {
-    console.log("handleNewSession called"); // Add this log
-    if (onNavigate) {
-      onNavigate("/sessions/new");
-    }
-    else {
-      // Fallback for direct navigation
-      window.location.href = "/sessions/new";
-    }
-  };
-
-  const handleViewSession = (sessionId: string) => {
-    if (onNavigate) {
-      onNavigate(`/sessions/${sessionId}`);
-    }
-    else {
-      // Fallback for direct navigation
-      window.location.href = `/sessions/${sessionId}`;
-    }
-  };
 
   if (isLoading) {
+    return <LoadingSpinner fullPage />;
+  }
+
+  if (error) {
     return (
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-          <h1 className="text-2xl font-semibold">Sessions</h1>
-          <Button disabled className="shrink-0">
-            <Plus className="h-4 w-4" />
-            New Session
-          </Button>
-        </div>
-        <div className="flex items-center justify-center p-8">
-          <p>Loading sessions...</p>
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-lg font-medium text-red-600">Error loading sessions</p>
+          <p className="text-muted-foreground">Please try again later</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Header */}
-      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-        <h1 className="text-2xl font-semibold">Sessions</h1>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            title="Refresh sessions"
-          >
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
-          </Button>
-
-          <Button onClick={handleNewSession} className="shrink-0">
-            <Plus className="h-4 w-4" />
+    <div className="p-4 md:p-6 lg:p-8">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold">Sessions</h1>
+          <p className="text-muted-foreground">Manage your active sessions</p>
+        </div>
+        <CreateSessionModal>
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
             New Session
           </Button>
-        </div>
+        </CreateSessionModal>
       </div>
 
-      {/* Error message */}
-      {error && (
-        <div className="p-4 border border-red-300 bg-red-50 rounded-md text-red-500">
-          <p>
-            Error:
-            {error}
-          </p>
-          <Button variant="link" onClick={handleRefresh} className="p-0 h-auto text-red-600">
-            Try again
-          </Button>
-        </div>
-      )}
-
-      {/* Credentials warning */}
-      {!credentialsStatus.complete && (
-        <Alert className="mb-4 border-yellow-200 bg-yellow-50">
-          <AlertTitle className="flex items-center gap-2">
-            <Settings className="h-4 w-4" />
-            Missing Credentials
-          </AlertTitle>
-          <AlertDescription className="mt-2">
-            <p className="mb-2">
-              You need to upload all required credentials before creating a session.
-              {credentialsStatus.missingFiles.length > 0 && (
-                <span>
-                  {" "}
-                  Missing files:
-                  {credentialsStatus.missingFiles.join(", ")}
-                </span>
-              )}
-            </p>
-            <Button
-              onClick={() => onNavigate ? onNavigate("/settings") : window.location.href = "/settings"}
-              variant="outline"
-              size="sm"
-              className="mt-2"
-            >
-              Go to Settings
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Sessions Table */}
-      {sessions.length > 0
-        ? (
-            <SessionsTable sessions={sessions} onViewSession={handleViewSession} />
-          )
-        : (
-            <div className="flex items-center justify-center p-8 border rounded-md">
-              <p className="text-muted-foreground">No sessions found. Create a new session to get started.</p>
-            </div>
-          )}
+      <div className="rounded-lg border bg-white">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map(headerGroup => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map(header => (
+                  <TableHead key={header.id}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length
+              ? (
+                  table.getRowModel().rows.map(row => (
+                    <TableRow
+                      key={row.id}
+                      data-state={row.getIsSelected() && "selected"}
+                    >
+                      {row.getVisibleCells().map(cell => (
+                        <TableCell key={cell.id}>
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                )
+              : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={columns.length}
+                      className="h-24 text-center"
+                    >
+                      No sessions found.
+                    </TableCell>
+                  </TableRow>
+                )}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }
