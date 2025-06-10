@@ -53,20 +53,20 @@ output "client_build_triggers" {
   }
 }
 
-output "gam_docker_build_triggers" {
-  description = "Cloud Build trigger IDs for GAM Docker component"
-  value = {
-    production = module.cloud_build.gam_docker_production_trigger_id
-    staging    = module.cloud_build.gam_docker_staging_trigger_id
-    validation = module.cloud_build.gam_docker_pr_validation_trigger_id
-  }
-}
-
 output "server_build_triggers" {
   description = "Cloud Build trigger IDs for Server component"
   value = {
     production = module.cloud_build.server_production_trigger_id
     staging    = module.cloud_build.server_staging_trigger_id
     validation = module.cloud_build.server_pr_validation_trigger_id
+  }
+}
+
+output "session_build_triggers" {
+  description = "Cloud Build trigger IDs for Session component"
+  value = {
+    production = module.cloud_build.session_production_trigger_id
+    staging    = module.cloud_build.session_staging_trigger_id
+    validation = module.cloud_build.session_pr_validation_trigger_id
   }
 }

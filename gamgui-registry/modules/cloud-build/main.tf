@@ -16,7 +16,7 @@
  * Cloud Build Module
  * 
  * This module creates Cloud Build triggers for CI/CD pipelines for the gamgui-app project.
- * It sets up separate triggers for Client, Server, and GAM Docker components in both production and staging environments.
+ * It sets up separate triggers for Client, Server, and Session components in both production and staging environments.
  */
 
 # Create GitHub repository connection
@@ -170,70 +170,6 @@ resource "google_cloudbuild_trigger" "server_production_trigger" {
   service_account = "projects/${var.project_id}/serviceAccounts/${var.cloudbuild_service_account}"
 }
 
-# GAM Docker Staging Trigger
-resource "google_cloudbuild_trigger" "gam_docker_staging_trigger" {
-  project     = var.project_id
-  location    = var.region
-  name        = "gamgui-gam-docker-staging-deploy"
-  description = "Build and deploy GAM Docker to staging on staging branch push"
-
-  github {
-    owner = var.github_owner
-    name  = var.repository_name
-
-    push {
-      branch = "^staging$"
-    }
-  }
-
-  include_build_logs = "INCLUDE_BUILD_LOGS_WITH_STATUS"
-
-  included_files = [
-    "gamgui-gam-docker/**"
-  ]
-
-  filename = "gamgui-gam-docker/cloudbuild-staging.yaml"
-
-  substitutions = {
-    "_REGISTRY_LOCATION" = var.region
-    "_REPOSITORY_NAME"   = var.staging_repository_id
-  }
-
-  service_account = "projects/${var.project_id}/serviceAccounts/${var.cloudbuild_service_account}"
-}
-
-# GAM Docker Production Trigger
-resource "google_cloudbuild_trigger" "gam_docker_production_trigger" {
-  project     = var.project_id
-  location    = var.region
-  name        = "gamgui-gam-docker-production-deploy"
-  description = "Build and deploy GAM Docker to production on main branch push"
-
-  github {
-    owner = var.github_owner
-    name  = var.repository_name
-
-    push {
-      branch = "^main$"
-    }
-  }
-
-  include_build_logs = "INCLUDE_BUILD_LOGS_WITH_STATUS"
-
-  included_files = [
-    "gamgui-gam-docker/**"
-  ]
-
-  filename = "gamgui-gam-docker/cloudbuild-prod.yaml"
-
-  substitutions = {
-    "_REGISTRY_LOCATION" = var.region
-    "_REPOSITORY_NAME"   = var.production_repository_id
-  }
-
-  service_account = "projects/${var.project_id}/serviceAccounts/${var.cloudbuild_service_account}"
-}
-
 # PR Validation Triggers for each component
 
 # Client PR Validation
@@ -288,34 +224,6 @@ resource "google_cloudbuild_trigger" "server_pr_validation" {
   ]
 
   filename = "gamgui-server/cloudbuild-validation.yaml"
-
-  service_account = "projects/${var.project_id}/serviceAccounts/${var.cloudbuild_service_account}"
-}
-
-# GAM Docker PR Validation
-resource "google_cloudbuild_trigger" "gam_docker_pr_validation" {
-  project     = var.project_id
-  location    = var.region
-  name        = "gamgui-gam-docker-pr-validation"
-  description = "Run tests on GAM Docker PR to staging or main"
-
-  github {
-    owner = var.github_owner
-    name  = var.repository_name
-
-    pull_request {
-      branch          = "^(staging|main)$"
-      comment_control = "COMMENTS_ENABLED"
-    }
-  }
-
-  include_build_logs = "INCLUDE_BUILD_LOGS_WITH_STATUS"
-
-  included_files = [
-    "gamgui-gam-docker/**"
-  ]
-
-  filename = "gamgui-gam-docker/cloudbuild-validation.yaml"
 
   service_account = "projects/${var.project_id}/serviceAccounts/${var.cloudbuild_service_account}"
 }

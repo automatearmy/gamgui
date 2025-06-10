@@ -36,14 +36,14 @@ output "server_production_trigger_id" {
   value       = google_cloudbuild_trigger.server_production_trigger.id
 }
 
-output "gam_docker_staging_trigger_id" {
-  description = "The ID of the GAM Docker staging Cloud Build trigger"
-  value       = google_cloudbuild_trigger.gam_docker_staging_trigger.id
+output "session_staging_trigger_id" {
+  description = "The ID of the Session staging Cloud Build trigger"
+  value       = google_cloudbuild_trigger.session_staging_trigger.id
 }
 
-output "gam_docker_production_trigger_id" {
-  description = "The ID of the GAM Docker production Cloud Build trigger"
-  value       = google_cloudbuild_trigger.gam_docker_production_trigger.id
+output "session_production_trigger_id" {
+  description = "The ID of the Session production Cloud Build trigger"
+  value       = google_cloudbuild_trigger.session_production_trigger.id
 }
 
 output "client_pr_validation_trigger_id" {
@@ -56,7 +56,7 @@ output "server_pr_validation_trigger_id" {
   value       = google_cloudbuild_trigger.server_pr_validation.id
 }
 
-output "gam_docker_pr_validation_trigger_id" {
-  description = "The ID of the GAM Docker PR validation Cloud Build trigger"
-  value       = google_cloudbuild_trigger.gam_docker_pr_validation.id
+output "session_pr_validation_trigger_id" {
+  description = "The ID of the Session PR validation Cloud Build trigger"
+  value       = google_cloudbuild_trigger.session_pr_validation.id
 }
