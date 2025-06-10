@@ -140,7 +140,6 @@ class WebSocketController:
         await websocket.send_text(f"$ {command}")
 
         try:
-            import asyncio
             import subprocess
 
             # Execute command
@@ -167,7 +166,7 @@ class WebSocketController:
 
             # Send completion status
             if return_code == 0:
-                await websocket.send_text(f"✅ Command completed successfully")
+                await websocket.send_text("✅ Command completed successfully")
             else:
                 await websocket.send_text(f"❌ Command failed with exit code {return_code}")
 

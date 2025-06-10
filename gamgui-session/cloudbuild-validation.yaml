@@ -1,0 +1,40 @@
+steps:
+  # Run linting check with ruff
+  - name: 'python:3.12-slim-bookworm'
+    id: 'lint-check'
+    dir: gamgui-session
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        pip install ruff
+        ruff check .
+
+  # Run formatting check with ruff
+  - name: 'python:3.12-slim-bookworm'
+    id: 'format-check'
+    dir: gamgui-session
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        pip install ruff
+        ruff format --check .
+
+  # Verify Dockerfile builds correctly
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - '--no-cache'
+      - '--pull'
+      - '-t'
+      - 'gamgui-session:validate'
+      - .
+    dir: gamgui-session
+    id: docker-build-validate
+
+timeout: 1200s
+options:
+  logStreamingOption: STREAM_ON
+  logging: CLOUD_LOGGING_ONLY
+serviceAccount: 'projects/${PROJECT_ID}/serviceAccounts/gamgui-registry-cloud-builder@${PROJECT_ID}.iam.gserviceaccount.com'

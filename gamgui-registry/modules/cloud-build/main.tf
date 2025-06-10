@@ -319,3 +319,95 @@ resource "google_cloudbuild_trigger" "gam_docker_pr_validation" {
 
   service_account = "projects/${var.project_id}/serviceAccounts/${var.cloudbuild_service_account}"
 }
+
+# Session Staging Trigger
+resource "google_cloudbuild_trigger" "session_staging_trigger" {
+  project     = var.project_id
+  location    = var.region
+  name        = "gamgui-session-staging-deploy"
+  description = "Build and deploy Session to staging on staging branch push"
+
+  github {
+    owner = var.github_owner
+    name  = var.repository_name
+
+    push {
+      branch = "^staging$"
+    }
+  }
+
+  include_build_logs = "INCLUDE_BUILD_LOGS_WITH_STATUS"
+
+  included_files = [
+    "gamgui-session/**"
+  ]
+
+  filename = "gamgui-session/cloudbuild-staging.yaml"
+
+  substitutions = {
+    "_REGISTRY_LOCATION" = var.region
+    "_REPOSITORY_NAME"   = var.staging_repository_id
+  }
+
+  service_account = "projects/${var.project_id}/serviceAccounts/${var.cloudbuild_service_account}"
+}
+
+# Session Production Trigger
+resource "google_cloudbuild_trigger" "session_production_trigger" {
+  project     = var.project_id
+  location    = var.region
+  name        = "gamgui-session-production-deploy"
+  description = "Build and deploy Session to production on main branch push"
+
+  github {
+    owner = var.github_owner
+    name  = var.repository_name
+
+    push {
+      branch = "^main$"
+    }
+  }
+
+  include_build_logs = "INCLUDE_BUILD_LOGS_WITH_STATUS"
+
+  included_files = [
+    "gamgui-session/**"
+  ]
+
+  filename = "gamgui-session/cloudbuild-prod.yaml"
+
+  substitutions = {
+    "_REGISTRY_LOCATION" = var.region
+    "_REPOSITORY_NAME"   = var.production_repository_id
+  }
+
+  service_account = "projects/${var.project_id}/serviceAccounts/${var.cloudbuild_service_account}"
+}
+
+# Session PR Validation
+resource "google_cloudbuild_trigger" "session_pr_validation" {
+  project     = var.project_id
+  location    = var.region
+  name        = "gamgui-session-pr-validation"
+  description = "Run tests on Session PR to staging or main"
+
+  github {
+    owner = var.github_owner
+    name  = var.repository_name
+
+    pull_request {
+      branch          = "^(staging|main)$"
+      comment_control = "COMMENTS_ENABLED"
+    }
+  }
+
+  include_build_logs = "INCLUDE_BUILD_LOGS_WITH_STATUS"
+
+  included_files = [
+    "gamgui-session/**"
+  ]
+
+  filename = "gamgui-session/cloudbuild-validation.yaml"
+
+  service_account = "projects/${var.project_id}/serviceAccounts/${var.cloudbuild_service_account}"
+}
