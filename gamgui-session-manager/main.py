@@ -16,6 +16,7 @@ from config.logging import configure_logging
 from controllers.auth_controller import AuthController
 from controllers.websocket_controller import WebSocketController
 from services.gam_service import GamService
+from services.startup_service import StartupService
 
 # Configure logging before anything else
 configure_logging()
@@ -41,6 +42,16 @@ async def lifespan(app: FastAPI):
     logger.info(f"Environment: {environment.ENVIRONMENT}")
     logger.info(f"Project ID: {environment.PROJECT_ID}")
     logger.info(f"Session ID: {environment.SESSION_ID}")
+
+    # Initialize session and mount secrets
+    startup_service = StartupService()
+    initialization_success = await startup_service.initialize_session()
+
+    if not initialization_success:
+        logger.error("Session initialization failed, application will not start")
+        raise RuntimeError("Session initialization failed")
+
+    logger.info("Session initialization completed successfully")
 
     yield
 
