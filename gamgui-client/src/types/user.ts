@@ -1,10 +1,3 @@
-/**
- * User model type definitions based on backend model
- */
-
-/**
- * User model
- */
 export type User = {
   id: string; // Typically added by the database
   email: string;

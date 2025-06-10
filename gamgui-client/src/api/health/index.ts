@@ -5,13 +5,25 @@ import { api } from "../../lib/api";
 export type HealthData = {
   status: string;
   timestamp: string;
+  environment: string;
+  project_id: string;
+  version: string;
 };
 
 export type EnvironmentInfoData = {
-  version: string;
   environment: string;
-  pythonVersion: string;
-  dependencies: Record<string, string>;
+  project_id: string;
+  system_info: {
+    python_version: string;
+    platform: string;
+    processor: string;
+    hostname: string;
+  };
+  api_info: {
+    port: number;
+    environment: string;
+    region: string;
+  };
 };
 
 export async function healthCheck(): Promise<ApiResponse<HealthData>> {

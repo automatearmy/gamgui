@@ -2,11 +2,8 @@ import axios, { isAxiosError } from "axios";
 
 // Create axios instance with base configuration
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "/api",
+  baseURL: "/api",
   timeout: 300000, // 5 minutes
-  headers: {
-    "Content-Type": "application/json",
-  },
 });
 
 // Add response interceptor to handle common scenarios
