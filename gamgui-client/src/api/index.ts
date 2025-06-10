@@ -1,5 +1,3 @@
-// Re-export all API functions and types for convenient imports
-
 // Auth API
 import * as Auth from "./auth";
 // Health API
