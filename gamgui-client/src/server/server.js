@@ -24,18 +24,26 @@ app.use(nocache());
 // Environment Routes - no authentication required
 app.use("/api/env", createEnvRoutes());
 
+app.use("/api", async (req, res, next) => {
+  try {
+    const idToken = await getIdToken();
+
+    req.headers.authorization = `Bearer ${idToken}`;
+    req.headers["x-access-token"] = req.headers["x-access-token"] || "";
+
+    next();
+  }
+  catch {
+    res.status(500).send("Authentication failed");
+  }
+});
+
 app.use(
   "/api",
   createProxyMiddleware({
     target: env.SERVER_URL,
     changeOrigin: true,
     pathRewrite: { "^/api": "" },
-    onProxyReq: async (proxyReq, req) => {
-      const idToken = await getIdToken();
-
-      proxyReq.setHeader("authorization", `Bearer ${idToken}`);
-      proxyReq.setHeader("x-access-token", req.headers["x-access-token"] || "");
-    },
   }),
 );
 
