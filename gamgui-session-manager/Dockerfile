@@ -42,7 +42,9 @@ RUN useradd -m -u 1000 gamworker && \
     mkdir -p /home/gamworker/gam-config && \
     chown -R gamworker:gamworker /home/gamworker && \
     # Fix permissions on gam directory to allow non-root access
-    chown -R gamworker:gamworker /usr/local/gam
+    chown -R gamworker:gamworker /usr/local/gam && \
+    # Ensure GAM executable has execute permissions
+    chmod +x /usr/local/gam/gam7/gam
 
 # Switch to non-root user
 USER gamworker
@@ -51,7 +53,7 @@ USER gamworker
 WORKDIR /home/gamworker
 
 # Set PATH to include GAM
-ENV PATH="/usr/local/gam:/usr/local/bin:$PATH"
+ENV PATH="/usr/local/gam/gam7:/usr/local/bin:$PATH"
 ENV HOME="/home/gamworker"
 
 # Expose port

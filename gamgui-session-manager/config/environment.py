@@ -54,7 +54,7 @@ class AppConfig(BaseModel):
     # Optional Configuration
     log_level: LogLevel = Field(LogLevel.INFO, description="Logging level")
     allowed_origins: List[str] = Field(["*"], description="CORS allowed origins")
-    gam_path: str = Field("/usr/local/bin/gam", description="Path to GAM executable")
+    gam_path: str = Field("/usr/local/gam/gam7/gam", description="Path to GAM executable")
     gam_config_dir: str = Field("/gam-config", description="GAM configuration directory")
 
     model_config = {
@@ -167,7 +167,7 @@ def _load_config() -> AppConfig:
             "jwt_secret": _get_env_var("JWT_SECRET"),
             "log_level": _get_env_var("LOG_LEVEL", "INFO", required=False),
             "allowed_origins": _get_env_var("ALLOWED_ORIGINS", "*", required=False),
-            "gam_path": _get_env_var("GAM_PATH", "/usr/local/bin/gam", required=False),
+            "gam_path": _get_env_var("GAM_PATH", "/usr/local/gam/gam7/gam", required=False),
             "gam_config_dir": _get_env_var("GAM_CONFIG_DIR", "/gam-config", required=False),
         }
 
