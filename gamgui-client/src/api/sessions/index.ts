@@ -5,7 +5,7 @@ import type { ApiResponse } from "../types";
 import { api } from "../../lib/api";
 
 export async function getSessions(): Promise<ApiResponse<Session[]>> {
-  const response = await api.get("/sessions", { withCredentials: true });
+  const response = await api.get("/sessions/", { withCredentials: true });
   return response.data;
 }
 
@@ -15,7 +15,7 @@ export async function getSession(id: string): Promise<ApiResponse<Session>> {
 }
 
 export async function createSession(data: CreateSessionRequest): Promise<ApiResponse<Session>> {
-  const response = await api.post("/sessions", data, { withCredentials: true });
+  const response = await api.post("/sessions/", data, { withCredentials: true });
   return response.data;
 }
 

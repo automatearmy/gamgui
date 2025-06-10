@@ -1,6 +1,5 @@
 // Environment configuration
 import "dotenv/config";
-import bodyParser from "body-parser";
 import dotenv from "dotenv";
 // Core dependencies
 import express from "express";
@@ -10,8 +9,8 @@ import path from "node:path";
 import { env } from "./env";
 // Authentication
 import { createEnvRoutes } from "./routes/env-routes";
-// Middleware
-import { createProxyMiddleware } from "./utils/proxy-middleware";
+import { createProxyMiddleware } from "http-proxy-middleware"
+import { getIdToken } from "./utils/google-auth"
 
 dotenv.config();
 
@@ -19,16 +18,27 @@ export const app = express();
 
 // App Configurations
 app.set("etag", false);
-app.set("trust proxy", true); // TODO: Make this more restrictive
+app.set("trust proxy", true);
 app.use(nocache());
-app.use(express.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+
 
 // Environment Routes - no authentication required
 app.use("/api/env", createEnvRoutes());
 
-// Use proxy middleware for all API routes
-app.use(createProxyMiddleware({ prefix: "/api" }));
+app.use(
+  "/api",
+  createProxyMiddleware({
+    target: env.API_URL,
+    changeOrigin: true,
+    pathRewrite: { "^/api": "" },
+    onProxyReq: async (proxyReq, req, res) => {
+      const idToken = await getIdToken();
+      
+      proxyReq.setHeader("authorization", `Bearer ${idToken}`);
+      proxyReq.setHeader("x-access-token", req.headers["x-access-token"] || "");
+    },
+  })
+);
 
 if (!env.VITE) {
   /* global __dirname */

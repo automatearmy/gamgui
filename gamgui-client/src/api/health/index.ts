@@ -27,7 +27,7 @@ export type EnvironmentInfoData = {
 };
 
 export async function healthCheck(): Promise<ApiResponse<HealthData>> {
-  const response = await api.get("/health");
+  const response = await api.get("/health/");
   return response.data;
 }
 
