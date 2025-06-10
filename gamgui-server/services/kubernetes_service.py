@@ -162,7 +162,7 @@ class KubernetesService:
 
         # Container specification
         container = client.V1Container(
-            name="session-manager",
+            name="gamgui-session",
             image="lamonlopes/nodejs-terminal-app:0.0.10",
             image_pull_policy=environment.SESSION_IMAGE_PULL_POLICY,
             ports=[client.V1ContainerPort(container_port=environment.SESSION_DEFAULT_PORT)],
