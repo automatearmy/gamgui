@@ -10,10 +10,10 @@ export type FrontendEnv = {
 
 export async function getFrontendEnv(): Promise<FrontendEnv> {
   const response = await fetch("/api/env/frontend-env");
-  
+
   if (!response.ok) {
     throw new Error("Failed to fetch environment variables");
   }
-  
+
   return response.json();
 }
