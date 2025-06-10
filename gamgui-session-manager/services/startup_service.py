@@ -12,6 +12,7 @@ from clients.secret_manager_client import get_client
 from config import environment
 from models.session_model import Session
 from schemas.common import SecretType
+from services.gam_config_service import GamConfigService
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +66,13 @@ class StartupService:
                     return False
             except Exception as e:
                 logger.error(f"Secret mounting failed: {e}")
+                return False
+
+            # Step 4: Generate GAM configuration file and directories
+            try:
+                await self._generate_gam_config()
+            except Exception as e:
+                logger.error(f"Failed to generate GAM config file: {e}")
                 return False
 
             logger.info("Session initialization completed successfully")
@@ -207,4 +215,25 @@ class StartupService:
 
         except Exception as e:
             logger.error(f"Error writing secret to file {file_path}: {e}")
+            raise
+
+    async def _generate_gam_config(self) -> None:
+        """
+        Generate GAM configuration file and required directories.
+        """
+        try:
+            # Create GAM config service instance
+            gam_config_service = GamConfigService(self.gam_config_dir)
+
+            # Generate the GAM configuration file
+            gam_config_service.generate_gam_config()
+
+            # Create required directories
+            gam_config_service.create_downloads_directory()
+            gam_config_service.create_cache_directory()
+
+            logger.info("GAM configuration setup completed successfully")
+
+        except Exception as e:
+            logger.error(f"Error generating GAM configuration: {e}")
             raise
