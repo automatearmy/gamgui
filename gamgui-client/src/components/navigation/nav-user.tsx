@@ -1,8 +1,8 @@
+import type { Icon } from "@tabler/icons-react";
+
 import {
   IconDotsVertical,
   IconLogout,
-  IconSettings,
-  IconUserCircle,
 } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
 
@@ -30,26 +30,16 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/use-auth";
 
-const routes = [
-  {
-    label: "Account",
-    href: "/account",
-    icon: IconUserCircle,
-    group: "main",
-  },
-  {
-    label: "Settings",
-    href: "/settings",
-    icon: IconSettings,
-    group: "main",
-  },
-];
-
-export function NavUser({
-  user,
-}: {
+type NavUserProps = {
   user: User;
-}) {
+  routes: Array<{
+    label: string;
+    href: string;
+    icon: Icon;
+  }>;
+};
+
+export function NavUser({ user, routes }: NavUserProps) {
   const { isMobile } = useSidebar();
   const { signOut } = useAuth();
 

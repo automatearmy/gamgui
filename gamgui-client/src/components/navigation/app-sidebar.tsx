@@ -1,18 +1,12 @@
 import {
-  IconChartBar,
   IconDashboard,
-  IconDatabase,
-  IconFileDescription,
   IconHelp,
-  IconInnerShadowTop,
   IconListDetails,
-  IconReport,
   IconSearch,
   IconSettings,
+  IconUserCircle,
 } from "@tabler/icons-react";
-import * as React from "react";
 
-import { NavDocuments } from "@/components/navigation/nav-documents";
 import { NavMain } from "@/components/navigation/nav-main";
 import { NavSecondary } from "@/components/navigation/nav-secondary";
 import { NavUser } from "@/components/navigation/nav-user";
@@ -47,24 +41,6 @@ const data = {
       icon: IconListDetails,
     },
   ],
-  navClouds: [
-    {
-      title: "Session Management",
-      icon: IconFileDescription,
-      isActive: true,
-      url: "/sessions",
-      items: [
-        {
-          title: "Active Sessions",
-          url: "/sessions",
-        },
-        {
-          title: "Create Session",
-          url: "/sessions/create",
-        },
-      ],
-    },
-  ],
   navSecondary: [
     {
       title: "Settings",
@@ -82,16 +58,16 @@ const data = {
       icon: IconSearch,
     },
   ],
-  documents: [
+  userRoutes: [
     {
-      name: "Data Library",
-      url: "#",
-      icon: IconDatabase,
+      label: "Account",
+      href: "/account",
+      icon: IconUserCircle,
     },
     {
-      name: "Reports",
-      url: "#",
-      icon: IconReport,
+      label: "Settings",
+      href: "/settings",
+      icon: IconSettings,
     },
   ],
 };
@@ -115,11 +91,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-        <NavDocuments items={data.documents} />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={user} />
+        <NavUser user={user} routes={data.userRoutes} />
       </SidebarFooter>
     </Sidebar>
   );
