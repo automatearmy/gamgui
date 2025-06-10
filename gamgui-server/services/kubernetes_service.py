@@ -1,10 +1,15 @@
 """Kubernetes service for managing session pods"""
 
 import asyncio
+import base64
 import logging
+import tempfile
 from typing import Any, Dict, Optional
 
-from kubernetes import client, config
+from google.auth import default as auth
+from google.auth.transport import requests as auth_requests
+from google.cloud import container_v1
+from kubernetes import client
 from kubernetes.client.rest import ApiException
 
 from config import environment
@@ -23,9 +28,16 @@ class KubernetesService:
         """Singleton pattern implementation"""
         if cls._instance is None:
             logger.info("Creating new KubernetesService instance")
+
             cls._instance = super(KubernetesService, cls).__new__(cls)
+
             cls._instance.core_v1_api = None
-            cls._instance._initialize_client()
+            cls._instance.networking_v1_api = None
+
+            cls._instance._temp_files = []
+            cls._instance._ssl_ca_cert = None
+
+            cls._instance._configure_kubernetes_client()
         return cls._instance
 
     def __init__(self):
@@ -33,19 +45,85 @@ class KubernetesService:
         # No initialization here since it's done in __new__
         pass
 
-    def _initialize_client(self) -> None:
-        """Initialize Kubernetes client"""
+    def _configure_kubernetes_client(self):
+        """
+        Configure the Kubernetes client for GKE access.
+        """
         try:
-            config.load_kube_config()
-            logger.info("Loaded kubeconfig configuration")
+            # Create GKE client
+            self.gke_client = container_v1.ClusterManagerClient()
 
+            # Get credentials with proper scopes
+            SCOPES = ["https://www.googleapis.com/auth/cloud-platform"]
+            self.credentials, _ = auth(scopes=SCOPES)
+
+            # Load Kubernetes configuration
+            self._configure_gke()
+
+            # Create Kubernetes API clients
             self.core_v1_api = client.CoreV1Api()
             self.networking_v1_api = client.NetworkingV1Api()
-            logger.info("Kubernetes client initialized successfully")
+
+            logger.info("Kubernetes client initialized successfully for GKE")
 
         except Exception as e:
             logger.error(f"Failed to initialize Kubernetes client: {e}")
             raise
+
+    def _configure_gke(self):
+        """Configure authentication for GKE when running in Cloud Run."""
+        # Get cluster info
+        cluster_path = (
+            f"projects/{environment.PROJECT_ID}/locations/{environment.REGION}/clusters/{environment.CLUSTER_NAME}"
+        )
+        cluster = self.gke_client.get_cluster(name=cluster_path)
+
+        # Use internal IP in Cloud Run, public endpoint locally
+        if environment.ENVIRONMENT in ["production", "staging"]:
+            endpoint = cluster.private_cluster_config.private_endpoint or cluster.endpoint
+        else:
+            endpoint = cluster.endpoint
+
+        # Configure kubernetes client with auto-refreshing credentials
+        configuration = client.Configuration()
+        configuration.host = f"https://{endpoint}"
+
+        # Configure SSL verification
+        if cluster.master_auth and cluster.master_auth.cluster_ca_certificate:
+            ca_cert_b64 = cluster.master_auth.cluster_ca_certificate
+            ca_cert_bytes = base64.b64decode(ca_cert_b64)
+
+            # Create a temporary file to store the CA certificate
+            temp_ca_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pem", mode="wb")
+            temp_ca_file.write(ca_cert_bytes)
+            temp_ca_file.close()  # Close the file handle, but the file remains due to delete=False
+            self._temp_files.append(temp_ca_file.name)  # Keep track for cleanup
+
+            self._ssl_ca_cert = temp_ca_file.name
+            configuration.ssl_ca_cert = self._ssl_ca_cert
+            configuration.verify_ssl = True
+
+            logger.debug("Configured Kubernetes client with SSL verification using CA cert")
+        else:
+            logger.warning(
+                "Cluster CA certificate not found. Disabling SSL verification for Kubernetes client. "
+                "This is insecure and should be addressed."
+            )
+            configuration.verify_ssl = False
+
+        # Define token refresh function as local function to avoid serialization issues
+        def refresh_token(conf):
+            logger.debug("Refreshing GKE API token...")
+            auth_req = auth_requests.Request()
+            self.credentials.refresh(auth_req)
+            token = self.credentials.token
+            conf.api_key = {"authorization": "Bearer " + token}
+            logger.debug("GKE API token refreshed successfully")
+
+        # Set up configuration with refresh hook
+        configuration.refresh_api_key_hook = refresh_token
+        refresh_token(configuration)  # Initial token setup
+        client.Configuration.set_default(configuration)
 
     def _generate_pod_name(self, session_id: str) -> str:
         """Generate a unique pod name for the session"""
@@ -476,3 +554,23 @@ class KubernetesService:
     def is_available(self) -> bool:
         """Check if Kubernetes client is available"""
         return self.core_v1_api is not None
+
+    def cleanup(self):
+        """Clean up temporary files created during initialization"""
+        import os
+
+        for temp_file in self._temp_files:
+            try:
+                if os.path.exists(temp_file):
+                    os.unlink(temp_file)
+                    logger.debug(f"Cleaned up temporary file: {temp_file}")
+            except Exception as e:
+                logger.warning(f"Failed to clean up temporary file {temp_file}: {e}")
+
+        self._temp_files.clear()
+        self._ssl_ca_cert = None
+
+    def __del__(self):
+        """Destructor to ensure cleanup of temporary files"""
+        if hasattr(self, "_temp_files"):
+            self.cleanup()

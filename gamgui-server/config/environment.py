@@ -77,6 +77,9 @@ CLIENT_OAUTH_UI_CLIENT_SECRET = _get_required_env("CLIENT_OAUTH_UI_CLIENT_SECRET
 # Authentication
 JWT_SECRET = _get_optional_env("JWT_SECRET", f"{SERVER_OAUTH_CLIENT_SECRET}{CLIENT_OAUTH_UI_CLIENT_SECRET}")
 
+# Kubernetes/GKE Configuration
+CLUSTER_NAME = _get_optional_env("CLUSTER_NAME", "gamgui-sessions")
+
 # Session Configuration
 SESSION_IMAGE_PULL_POLICY = _get_optional_env("SESSION_IMAGE_PULL_POLICY", "Always")
 SESSION_DEFAULT_PORT = int(_get_optional_env("SESSION_DEFAULT_PORT", 8080))
