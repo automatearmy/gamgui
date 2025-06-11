@@ -223,7 +223,7 @@ class KubernetesService:
 
             # Get the ingress controller's external IP
             external_ip = ingress_info["external_ip"]
-            websocket_url = f"ws://{external_ip}{ingress_info['path']}"
+            websocket_url = f"wss://{external_ip}{ingress_info['path']}"
 
             return {
                 "pod_name": pod.metadata.name,
@@ -378,7 +378,7 @@ class KubernetesService:
         }
 
     async def _create_ingress_rule(self, session_id: str, service_name: str) -> Dict[str, Any]:
-        """Create an Ingress rule for the session"""
+        """Create an Ingress rule for the session with TLS support"""
         # Sanitize the ingress name - replace underscores with hyphens to make it RFC 1123 compliant
         sanitized_session_id = session_id.replace("_", "-")
         ingress_name = f"session-{sanitized_session_id}"
@@ -395,13 +395,23 @@ class KubernetesService:
                 namespace="default",
                 annotations={
                     "kubernetes.io/ingress.class": "nginx",
-                    "nginx.ingress.kubernetes.io/proxy-read-timeout": "3600",
-                    "nginx.ingress.kubernetes.io/proxy-send-timeout": "3600",
+                    "nginx.ingress.kubernetes.io/proxy-read-timeout": "172800",  # 48 hours
+                    "nginx.ingress.kubernetes.io/proxy-send-timeout": "172800",  # 48 hours
                     "nginx.ingress.kubernetes.io/websocket-services": "true",
                     "nginx.ingress.kubernetes.io/rewrite-target": "/ws",
+                    "nginx.ingress.kubernetes.io/ssl-redirect": "true",
+                    "nginx.ingress.kubernetes.io/force-ssl-redirect": "true",
+                    "nginx.ingress.kubernetes.io/backend-protocol": "HTTP",
+                    "nginx.ingress.kubernetes.io/upstream-vhost": service_name,
                 },
             ),
             spec=client.V1IngressSpec(
+                tls=[
+                    client.V1IngressTLS(
+                        hosts=[],  # Empty hosts list means it applies to all hosts/IPs
+                        secret_name="nginx-tls-cert"
+                    )
+                ],
                 rules=[
                     client.V1IngressRule(
                         http=client.V1HTTPIngressRuleValue(
@@ -425,7 +435,7 @@ class KubernetesService:
 
         self.networking_v1_api.create_namespaced_ingress(namespace="default", body=ingress_spec)
 
-        logger.info(f"Created Ingress rule {ingress_name} for session {session_id}")
+        logger.info(f"Created TLS-enabled Ingress rule {ingress_name} for session {session_id}")
 
         # Get the Ingress Controller's external IP
         try:
