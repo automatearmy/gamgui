@@ -1,0 +1,34 @@
+steps:
+  # Build the container image
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - '-t'
+      - '${_REGISTRY_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY_NAME}/gamgui-session:$COMMIT_SHA'
+      - '-t'
+      - '${_REGISTRY_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY_NAME}/gamgui-session:latest'
+      - .
+    dir: gamgui-session
+    id: docker-build
+
+  # Push images with different tags
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - '${_REGISTRY_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY_NAME}/gamgui-session:$COMMIT_SHA'
+    id: docker-push-sha
+  
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - '${_REGISTRY_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY_NAME}/gamgui-session:latest'
+    id: docker-push-latest
+
+timeout: 1800s
+images:
+  - '${_REGISTRY_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY_NAME}/gamgui-session:$COMMIT_SHA'
+  - '${_REGISTRY_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY_NAME}/gamgui-session:latest'
+options:
+  logStreamingOption: STREAM_ON
+  logging: CLOUD_LOGGING_ONLY
+serviceAccount: 'projects/${PROJECT_ID}/serviceAccounts/gamgui-registry-cloud-builder@${PROJECT_ID}.iam.gserviceaccount.com'

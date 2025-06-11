@@ -1,26 +1,31 @@
 import { GoogleLogin } from "@react-oauth/google";
-import React from "react";
+import { toast } from "sonner";
 
-import { useAuth } from "../../lib/auth-context";
+import { useAuth } from "@/hooks/use-auth";
 
-const LoginButton: React.FC = () => {
-  const { login } = useAuth();
+export function LoginButton() {
+  const { signInWithGoogle } = useAuth();
 
   return (
     <div className="login-button-container">
       <GoogleLogin
         onSuccess={(credentialResponse) => {
-          login(credentialResponse).catch((error) => {
+          signInWithGoogle(credentialResponse.credential || "").catch((error) => {
             console.error("Login failed:", error);
+            toast.error("Authentication failed", {
+              description: "There was a problem signing you in.",
+            });
           });
         }}
         onError={() => {
           console.error("Login failed");
+          toast.error("Authentication failed", {
+            description: "There was a problem with Google authentication.",
+          });
         }}
         useOneTap
+        auto_select
       />
     </div>
   );
 };
-
-export default LoginButton;

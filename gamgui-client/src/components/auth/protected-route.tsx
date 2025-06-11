@@ -1,37 +1,26 @@
-import React from "react";
+import { Navigate } from "react-router-dom";
 
-import { useAuth } from "../../lib/auth-context";
+import { AuthenticatedLayout } from "@/components/layout/authenticated-layout";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { useAuth } from "@/hooks/use-auth";
 
 type ProtectedRouteProps = {
   children: React.ReactNode;
-  onNavigate: (path: string) => void;
 };
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, onNavigate }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+export function ProtectedRoute({ children }: ProtectedRouteProps) {
+  const { isAuthenticated, loading } = useAuth();
 
   // Show loading state while checking authentication
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-lg">Loading...</p>
-        </div>
-      </div>
-    );
+  if (loading) {
+    return <LoadingSpinner fullPage />;
   }
 
   // Redirect to login if not authenticated
   if (!isAuthenticated) {
-    onNavigate("/login");
-
-    // Return null to avoid flash of content
-    return null;
+    return <Navigate to="/login" replace />;
   }
 
-  // Render children if authenticated
-  return <>{children}</>;
+  // Render children wrapped in authenticated layout if authenticated
+  return <AuthenticatedLayout>{children}</AuthenticatedLayout>;
 };
-
-export default ProtectedRoute;

@@ -20,7 +20,8 @@ export default antfu({
     "no-console": ["warn"],
     "antfu/no-top-level-await": ["off"],
     "node/prefer-global/process": ["off"],
-    "node/no-process-env": ["error"],
+    "node/no-process-env": ["off"],
+    "react-hooks-extra/no-direct-set-state-in-use-effect": ["off"],
     "perfectionist/sort-imports": ["error", {
       tsconfigRootDir: ".",
     }],
