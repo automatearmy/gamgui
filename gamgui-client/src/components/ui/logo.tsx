@@ -7,6 +7,7 @@ type LogoProps = {
   size?: "sm" | "md" | "lg" | "xl";
   iconOnly?: boolean;
   textOnly?: boolean;
+  clickable?: boolean;
 };
 
 const sizeClasses = {
@@ -37,12 +38,27 @@ export function Logo({
   size = "md",
   iconOnly = false,
   textOnly = false,
+  clickable = false,
 }: LogoProps) {
   const sizes = sizeClasses[size];
 
+  const hoverClasses = clickable
+    ? "cursor-pointer transition-all duration-200 hover:opacity-80 hover:drop-shadow-sm"
+    : "";
+
   if (textOnly) {
     return (
-      <div className={cn("font-bold tracking-wide", sizes.text, className)}>
+      <div
+        className={cn(
+          "font-bold tracking-wide",
+          sizes.text,
+          hoverClasses,
+          className,
+        )}
+        role={clickable ? "button" : undefined}
+        tabIndex={clickable ? 0 : undefined}
+        aria-label={clickable ? "Navigate to dashboard" : undefined}
+      >
         <span className="text-black">GAM</span>
         <span style={{ color: "#86aef6" }}>GUI</span>
       </div>
@@ -52,13 +68,31 @@ export function Logo({
   if (iconOnly) {
     return (
       <Terminal
-        className={cn("text-black", sizes.icon, className)}
+        className={cn(
+          "text-black",
+          sizes.icon,
+          hoverClasses,
+          className,
+        )}
+        role={clickable ? "button" : undefined}
+        tabIndex={clickable ? 0 : undefined}
+        aria-label={clickable ? "Navigate to dashboard" : undefined}
       />
     );
   }
 
   return (
-    <div className={cn("flex items-center", sizes.spacing, className)}>
+    <div
+      className={cn(
+        "flex items-center",
+        sizes.spacing,
+        hoverClasses,
+        className,
+      )}
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      aria-label={clickable ? "Navigate to dashboard" : undefined}
+    >
       <Terminal
         className={cn("text-black", sizes.icon)}
       />

@@ -6,6 +6,7 @@ import {
   IconSettings,
   IconUserCircle,
 } from "@tabler/icons-react";
+import { Link } from "react-router-dom";
 
 import { NavMain } from "@/components/navigation/nav-main";
 import { NavSecondary } from "@/components/navigation/nav-secondary";
@@ -84,7 +85,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               asChild
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              <Logo />
+              <Link to="/">
+                <Logo clickable />
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
