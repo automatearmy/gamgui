@@ -82,8 +82,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <div className="flex items-center gap-2">
-              <SidebarTrigger className="-ml-1 cursor-pointer" />
+            <div className="flex items-center justify-between">
               <SidebarMenuButton
                 asChild
                 className="data-[slot=sidebar-menu-button]:!p-1.5 flex-1"
@@ -92,6 +91,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <Logo clickable />
                 </Link>
               </SidebarMenuButton>
+              <SidebarTrigger className="size-8 shrink-0" />
             </div>
           </SidebarMenuItem>
         </SidebarMenu>
