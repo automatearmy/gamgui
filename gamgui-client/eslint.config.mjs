@@ -13,6 +13,11 @@ export default antfu({
     semi: true,
     quotes: "double",
   },
+  ignores: [
+    "**/*.md",
+    "dist/**",
+    "node_modules/**",
+  ],
 }, {
   rules: {
     "ts/no-redeclare": "off",
