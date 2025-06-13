@@ -59,21 +59,14 @@ export function SessionsHeader() {
             </Button>
           )}
 
-          {isConfigured
-            ? (
-                <CreateSessionModal>
-                  <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    New Session
-                  </Button>
-                </CreateSessionModal>
-              )
-            : (
-                <Button disabled>
-                  <Plus className="mr-2 h-4 w-4" />
-                  New Session
-                </Button>
-              )}
+          {isConfigured && (
+            <CreateSessionModal>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                New Session
+              </Button>
+            </CreateSessionModal>
+          )}
         </div>
       </div>
     </div>

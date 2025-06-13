@@ -1,5 +1,4 @@
 import {
-  IconDashboard,
   IconHelp,
   IconListDetails,
   IconSearch,
@@ -33,13 +32,8 @@ const data = {
   },
   navMain: [
     {
-      title: "Dashboard",
-      url: "/",
-      icon: IconDashboard,
-    },
-    {
       title: "Sessions",
-      url: "/sessions",
+      url: "/",
       icon: IconListDetails,
     },
   ],
