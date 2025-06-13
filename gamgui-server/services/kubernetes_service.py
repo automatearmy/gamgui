@@ -221,9 +221,8 @@ class KubernetesService:
             # Wait for pod to be ready with a shorter timeout
             await self._wait_for_pod_ready(pod.metadata.name, timeout_seconds=60)
 
-            # Get the ingress controller's external IP
-            external_ip = ingress_info["external_ip"]
-            websocket_url = f"ws://{external_ip}{ingress_info['path']}"
+            # Get the WebSocket URL from the ingress creation
+            websocket_url = ingress_info["websocket_url"]
 
             return {
                 "pod_name": pod.metadata.name,
@@ -231,7 +230,6 @@ class KubernetesService:
                 "creation_timestamp": pod.metadata.creation_timestamp,
                 "status": "running",
                 "service_name": service_info["service_name"],
-                "external_ip": external_ip,
                 "external_port": environment.SESSION_DEFAULT_PORT,
                 "websocket_url": websocket_url,
             }
@@ -378,7 +376,7 @@ class KubernetesService:
         }
 
     async def _create_ingress_rule(self, session_id: str, service_name: str) -> Dict[str, Any]:
-        """Create an Ingress rule for the session"""
+        """Create an Ingress rule for the session (without TLS - uses main domain certificate)"""
         # Sanitize the ingress name - replace underscores with hyphens to make it RFC 1123 compliant
         sanitized_session_id = session_id.replace("_", "-")
         ingress_name = f"session-{sanitized_session_id}"
@@ -387,23 +385,32 @@ class KubernetesService:
         # This will be rewritten to /ws when it reaches the pod
         path = f"/sessions/{session_id}/ws"
 
+        # Annotations for NGINX Ingress - NO cert-manager annotations (uses main certificate)
+        annotations = {
+            "kubernetes.io/ingress.class": "nginx",
+            "nginx.ingress.kubernetes.io/proxy-read-timeout": "172800",
+            "nginx.ingress.kubernetes.io/proxy-send-timeout": "172800",
+            "nginx.ingress.kubernetes.io/proxy-connect-timeout": "3600",
+            "nginx.ingress.kubernetes.io/websocket-services": service_name,
+            "nginx.ingress.kubernetes.io/rewrite-target": "/ws",
+            "nginx.ingress.kubernetes.io/ssl-redirect": "true",
+            "nginx.ingress.kubernetes.io/backend-protocol": "HTTP",
+            "nginx.ingress.kubernetes.io/upstream-vhost": service_name,
+        }
+
         ingress_spec = client.V1Ingress(
             api_version="networking.k8s.io/v1",
             kind="Ingress",
             metadata=client.V1ObjectMeta(
                 name=ingress_name,
                 namespace="default",
-                annotations={
-                    "kubernetes.io/ingress.class": "nginx",
-                    "nginx.ingress.kubernetes.io/proxy-read-timeout": "3600",
-                    "nginx.ingress.kubernetes.io/proxy-send-timeout": "3600",
-                    "nginx.ingress.kubernetes.io/websocket-services": "true",
-                    "nginx.ingress.kubernetes.io/rewrite-target": "/ws",
-                },
+                annotations=annotations,
             ),
             spec=client.V1IngressSpec(
+                # NO TLS section - uses the main domain certificate from main-ingress
                 rules=[
                     client.V1IngressRule(
+                        host=environment.SESSION_DOMAIN,
                         http=client.V1HTTPIngressRuleValue(
                             paths=[
                                 client.V1HTTPIngressPath(
@@ -417,33 +424,20 @@ class KubernetesService:
                                     ),
                                 )
                             ]
-                        )
+                        ),
                     )
-                ]
+                ],
             ),
         )
 
         self.networking_v1_api.create_namespaced_ingress(namespace="default", body=ingress_spec)
 
-        logger.info(f"Created Ingress rule {ingress_name} for session {session_id}")
+        logger.info(f"Created Ingress rule {ingress_name} for session {session_id} (using main domain certificate)")
 
-        # Get the Ingress Controller's external IP
-        try:
-            ingress_controller = self.core_v1_api.read_namespaced_service(
-                name="nginx-ingress-ingress-nginx-controller", namespace="ingress-system"
-            )
+        # Use the session domain with WSS for secure WebSocket connections
+        websocket_url = f"wss://{environment.SESSION_DOMAIN}{path}"
 
-            external_ip = None
-            if ingress_controller.status.load_balancer.ingress:
-                external_ip = (
-                    ingress_controller.status.load_balancer.ingress[0].ip
-                    or ingress_controller.status.load_balancer.ingress[0].hostname
-                )
-        except Exception as e:
-            logger.warning(f"Failed to get Ingress Controller IP: {e}")
-            external_ip = "ingress-controller-ip-not-found"
-
-        return {"ingress_name": ingress_name, "external_ip": external_ip, "path": path}
+        return {"ingress_name": ingress_name, "websocket_url": websocket_url, "path": path}
 
     async def _wait_for_pod_ready(self, pod_name: str, timeout_seconds: int = 60) -> None:
         """Wait for pod to be ready with a shorter timeout"""
