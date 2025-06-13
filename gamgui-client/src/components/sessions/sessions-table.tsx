@@ -6,7 +6,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ExternalLink, MoreHorizontal, Trash2 } from "lucide-react";
+import { ExternalLink, Loader2, MoreHorizontal, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -50,6 +50,18 @@ export function SessionsTable({ sessions, isLoading }: SessionsTableProps) {
   const deleteSessionMutation = useDeleteSession();
   const navigate = useNavigate();
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
+
+  const handleDeleteSession = async (sessionId: string) => {
+    try {
+      setDeletingSessionId(sessionId);
+      await deleteSessionMutation.mutateAsync(sessionId);
+    } catch (error) {
+      // Error is handled by the mutation hook
+    } finally {
+      setDeletingSessionId(null);
+    }
+  };
 
   const columns: ColumnDef<Session>[] = [
     {
@@ -108,11 +120,16 @@ export function SessionsTable({ sessions, isLoading }: SessionsTableProps) {
                 Open
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => deleteSessionMutation.mutate(session.id)}
+                onClick={() => handleDeleteSession(session.id)}
                 className="text-red-600"
+                disabled={deletingSessionId === session.id}
               >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
+                {deletingSessionId === session.id ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="mr-2 h-4 w-4" />
+                )}
+                {deletingSessionId === session.id ? "Deleting..." : "Delete"}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
