@@ -72,20 +72,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
 
   return (
-    <Sidebar collapsible="offcanvas" {...props}>
+    <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-2">
               <SidebarMenuButton
                 asChild
-                className="data-[slot=sidebar-menu-button]:!p-1.5 flex-1"
+                className="data-[slot=sidebar-menu-button]:!p-1.5 group-data-[collapsible=icon]:!p-2"
               >
                 <Link to="/">
                   <Logo clickable />
                 </Link>
               </SidebarMenuButton>
-              <SidebarTrigger className="size-8 shrink-0" />
+              <SidebarTrigger className="size-7 shrink-0 group-data-[collapsible=icon]:size-8" />
             </div>
           </SidebarMenuItem>
         </SidebarMenu>

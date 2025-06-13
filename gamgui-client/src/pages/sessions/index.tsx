@@ -15,7 +15,7 @@ export function SessionsPage() {
   const showEmptyState = !isLoading && !error && !hasSessions;
 
   return (
-    <div className="space-y-8 py-6">
+    <div className="space-y-8 pt-2 pb-4">
       <SessionsHeader />
 
       {error && (
@@ -27,26 +27,15 @@ export function SessionsPage() {
         </Alert>
       )}
 
-      {showEmptyState && (
+      {showEmptyState && !isConfigured && (
         <div className="text-center py-12">
-          {!isConfigured ? (
-            <>
-              <h3 className="text-lg font-medium mb-2">No sessions yet</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Configure your Google Workspace credentials and create your first session to get started.
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Use the "Configure" button above to set up your credentials, then create a new session.
-              </p>
-            </>
-          ) : (
-            <>
-              <h3 className="text-lg font-medium mb-2">Ready to create sessions</h3>
-              <p className="text-sm text-muted-foreground">
-                Your credentials are configured! Use the "New Session" button above to start managing your Google Workspace.
-              </p>
-            </>
-          )}
+          <h3 className="text-lg font-medium mb-2">No sessions yet</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Configure your Google Workspace credentials and create your first session to get started.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Use the "Configure" button above to set up your credentials, then create a new session.
+          </p>
         </div>
       )}
 

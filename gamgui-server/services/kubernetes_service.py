@@ -430,7 +430,7 @@ class KubernetesService:
         # Get the Ingress Controller's external IP
         try:
             ingress_controller = self.core_v1_api.read_namespaced_service(
-                name="nginx-ingress-ingress-nginx-controller", namespace="ingress-system"
+                name="nginx-ingress-ingress-nginx-controller", namespace="nginx-ingress"
             )
 
             external_ip = None

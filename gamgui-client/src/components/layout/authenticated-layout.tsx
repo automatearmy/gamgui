@@ -20,14 +20,8 @@ function LayoutContent({ children }: { children: ReactNode }) {
     <>
       <AppSidebar variant="inset" />
       <SidebarInset>
-        {!sidebarOpen && (
-          <div className="fixed top-4 left-4 z-50">
-            <SidebarTrigger className="size-8 bg-transparent border-0 shadow-none hover:bg-transparent transition-all duration-200 opacity-70 hover:opacity-100" />
-          </div>
-        )}
-
         <div className="flex flex-1 flex-col">
-          <div className={`@container/main flex flex-1 flex-col gap-2 px-4 lg:px-6 ${!sidebarOpen ? "pt-16 pb-4" : "py-4"}`}>
+          <div className={`@container/main flex flex-1 flex-col gap-2 px-4 lg:px-6 ${!sidebarOpen ? "pt-4 pb-4" : "py-4"}`}>
             {children}
           </div>
         </div>
