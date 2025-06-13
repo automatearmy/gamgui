@@ -174,8 +174,8 @@ export function SessionDetailPage() {
 
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left side - File upload */}
-        <div className="w-80 border-r bg-gray-50 p-4 flex-shrink-0">
+        {/* File upload section - Hidden for now */}
+        <div className="hidden w-80 border-r bg-gray-50 p-4 flex-shrink-0">
           <h3 className="font-medium mb-4">File Upload</h3>
           <FileDropZone
             onFilesDropped={handleFileUpload}
@@ -183,7 +183,7 @@ export function SessionDetailPage() {
           />
         </div>
 
-        {/* Right side - Terminal */}
+        {/* Terminal - Full width */}
         <div className="flex-1 p-4 min-w-0 overflow-hidden">
           <CustomTerminal
             output={terminalOutput}
