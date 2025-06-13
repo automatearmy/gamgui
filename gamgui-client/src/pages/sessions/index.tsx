@@ -15,7 +15,7 @@ export function SessionsPage() {
   const showEmptyState = !isLoading && !error && !hasSessions;
 
   return (
-    <div className="space-y-8 pt-2 pb-4">
+    <div className="space-y-6">
       <SessionsHeader />
 
       {error && (

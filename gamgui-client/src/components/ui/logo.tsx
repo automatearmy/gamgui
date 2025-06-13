@@ -69,7 +69,7 @@ export function Logo({
     return (
       <Terminal
         className={cn(
-          "text-black",
+          "text-black shrink-0",
           sizes.icon,
           hoverClasses,
           className,
@@ -94,9 +94,9 @@ export function Logo({
       aria-label={clickable ? "Navigate to dashboard" : undefined}
     >
       <Terminal
-        className={cn("text-black", sizes.icon)}
+        className={cn("text-black shrink-0", sizes.icon)}
       />
-      <div className={cn("font-bold tracking-wide", sizes.text)}>
+      <div className={cn("font-bold tracking-wide leading-none", sizes.text)}>
         <span className="text-black">GAM</span>
         <span style={{ color: "#86aef6" }}>GUI</span>
       </div>

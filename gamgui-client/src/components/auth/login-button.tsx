@@ -17,14 +17,14 @@ export function LoginButton() {
 
     try {
       await signInWithGoogle(credentialResponse.credential || "");
+      // Don't reset loading states here - let the redirect handle it
     }
     catch (error) {
       console.error("Login failed:", error);
       toast.error("Authentication failed", {
         description: "There was a problem signing you in.",
       });
-    }
-    finally {
+      // Only reset on error
       setIsSigningIn(false);
       setLoading("login", false);
     }

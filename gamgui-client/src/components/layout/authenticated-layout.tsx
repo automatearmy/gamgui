@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { AppSidebar } from "@/components/navigation/app-sidebar";
+import { Logo } from "@/components/ui/logo";
 import {
   SidebarInset,
   SidebarProvider,
@@ -13,15 +14,20 @@ type AuthenticatedLayoutProps = {
 };
 
 function LayoutContent({ children }: { children: ReactNode }) {
-  const { state } = useSidebar();
-  const sidebarOpen = state === "expanded";
-
   return (
     <>
       <AppSidebar variant="inset" />
       <SidebarInset>
-        <div className="flex flex-1 flex-col">
-          <div className={`@container/main flex flex-1 flex-col gap-2 px-4 lg:px-6 ${!sidebarOpen ? "pt-4 pb-4" : "py-4"}`}>
+        <div className="flex flex-1 flex-col min-h-screen">
+          {/* Mobile Header */}
+          <header className="flex h-16 shrink-0 items-center gap-2 px-4 lg:hidden border-b bg-background">
+            <SidebarTrigger className="size-8" />
+            <div className="flex items-center gap-2">
+              <Logo size="sm" />
+            </div>
+          </header>
+
+          <div className="@container/main flex flex-1 flex-col gap-6 p-6 lg:p-8">
             {children}
           </div>
         </div>
@@ -35,7 +41,7 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
     <SidebarProvider
       style={
         {
-          "--sidebar-width": "calc(var(--spacing) * 72)",
+          "--sidebar-width": "16rem",
         } as React.CSSProperties
       }
     >

@@ -76,16 +76,25 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <div className="flex items-center justify-between group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-2">
+            <div className="flex items-center justify-between w-full group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-3 group-data-[collapsible=icon]:items-center">
               <SidebarMenuButton
                 asChild
-                className="data-[slot=sidebar-menu-button]:!p-1.5 group-data-[collapsible=icon]:!p-2"
+                className="data-[slot=sidebar-menu-button]:!p-2 group-data-[collapsible=icon]:!p-2.5 flex-1 group-data-[collapsible=icon]:flex-none"
               >
-                <Link to="/">
-                  <Logo clickable />
+                <Link to="/" className="flex items-center justify-start group-data-[collapsible=icon]:justify-center">
+                  <Logo
+                    clickable
+                    iconOnly={false}
+                    className="group-data-[collapsible=icon]:hidden"
+                  />
+                  <Logo
+                    clickable
+                    iconOnly={true}
+                    className="hidden group-data-[collapsible=icon]:block"
+                  />
                 </Link>
               </SidebarMenuButton>
-              <SidebarTrigger className="size-7 shrink-0 group-data-[collapsible=icon]:size-8" />
+              <SidebarTrigger className="size-8 shrink-0 group-data-[collapsible=icon]:size-8 flex items-center justify-center" />
             </div>
           </SidebarMenuItem>
         </SidebarMenu>
