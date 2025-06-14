@@ -7,7 +7,7 @@ type AutomateArmyLogoProps = {
 
 const sizeClasses = {
   sm: "h-3 w-auto",
-  md: "h-4 w-auto", 
+  md: "h-4 w-auto",
   lg: "h-6 w-auto",
 };
 

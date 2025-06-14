@@ -57,7 +57,7 @@ export function CreateSessionModal({ children }: CreateSessionModalProps) {
         navigate(`/sessions/${response.data.id}`);
       }
     }
-    catch (error) {
+    catch {
       // Error is handled by the mutation hook
     }
   };
@@ -78,7 +78,7 @@ export function CreateSessionModal({ children }: CreateSessionModalProps) {
             </div>
           </div>
         )}
-        
+
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogHeader>
             <DialogTitle>Create New Session</DialogTitle>

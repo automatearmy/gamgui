@@ -1,5 +1,5 @@
 import Cookies from "js-cookie";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import { SessionStatus } from "@/components/sessions/session-status";
@@ -18,7 +18,7 @@ export function SessionDetailPage() {
   const [terminalOutput, setTerminalOutput] = useState<string[]>([]);
   const websocketRef = useRef<WebSocket | null>(null);
 
-  const connectWebSocket = () => {
+  const connectWebSocket = useCallback(() => {
     if (!session?.websocket_url)
       return;
 
@@ -61,7 +61,7 @@ export function SessionDetailPage() {
       setConnectionStatus("error");
       setTerminalOutput(prev => [...prev, "Failed to connect"]);
     }
-  };
+  }, [session?.websocket_url]);
 
   const sendCommand = (command: string) => {
     if (websocketRef.current?.readyState === WebSocket.OPEN) {
@@ -72,7 +72,6 @@ export function SessionDetailPage() {
 
   const handleFileUpload = async (files: File[]) => {
     // TODO: Implement file upload to session
-    console.log("Files to upload:", files);
     setTerminalOutput(prev => [...prev, `Uploaded ${files.length} file(s)`]);
   };
 
@@ -87,7 +86,7 @@ export function SessionDetailPage() {
         websocketRef.current.close();
       }
     };
-  }, [session]);
+  }, [session, connectWebSocket]);
 
   if (isLoading) {
     return (

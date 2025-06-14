@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useSecretsStatus } from "@/hooks/use-secrets";
 
 import { CreateSessionModal } from "./create-session-modal";

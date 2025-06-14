@@ -56,9 +56,11 @@ export function SessionsTable({ sessions, isLoading }: SessionsTableProps) {
     try {
       setDeletingSessionId(sessionId);
       await deleteSessionMutation.mutateAsync(sessionId);
-    } catch (error) {
+    }
+    catch {
       // Error is handled by the mutation hook
-    } finally {
+    }
+    finally {
       setDeletingSessionId(null);
     }
   };
@@ -124,12 +126,16 @@ export function SessionsTable({ sessions, isLoading }: SessionsTableProps) {
                 className="text-red-600"
                 disabled={deletingSessionId === session.id}
               >
-                {deletingSessionId === session.id ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="mr-2 h-4 w-4" />
-                )}
-                {deletingSessionId === session.id ? "Deleting..." : "Delete"}
+                {deletingSessionId === session.id
+                  ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )
+                  : (
+                      <Trash2 className="mr-2 h-4 w-4" />
+                    )}
+                {deletingSessionId === session.id
+                  ? "Deleting..."
+                  : "Delete"}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -216,23 +222,21 @@ export function SessionsTable({ sessions, isLoading }: SessionsTableProps) {
         </TableHeader>
         <TableBody>
           {table.getRowModel().rows?.length
-            ? (
-                table.getRowModel().rows.map(row => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && "selected"}
-                  >
-                    {row.getVisibleCells().map(cell => (
-                      <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              )
+            ? table.getRowModel().rows.map(row => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                >
+                  {row.getVisibleCells().map(cell => (
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
             : (
                 <TableRow>
                   <TableCell
