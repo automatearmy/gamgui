@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 
 import { LoginForm } from "@/components/auth/login-form";
+import { AutomateArmyLogo } from "@/components/ui/automate-army-logo";
 import { LoadingOverlay } from "@/components/ui/loading-overlay";
 import { Logo } from "@/components/ui/logo";
 import { useLoading } from "@/contexts/loading-context";
@@ -22,10 +23,12 @@ export function LoginPage() {
               <LoginForm />
             </div>
           </div>
-          <div className="flex justify-center pb-6">
-            <p className="text-xs text-muted-foreground">
-              By Automate Army
-            </p>
+          <div className="flex justify-center items-center gap-3 pb-6">
+            <span className="text-xs text-muted-foreground">Built by</span>
+            <div className="flex items-center gap-1">
+              <AutomateArmyLogo size="md" />
+              <span className="text-xs text-muted-foreground">Automate Army</span>
+            </div>
           </div>
         </div>
         <div className="bg-muted relative hidden lg:block">
