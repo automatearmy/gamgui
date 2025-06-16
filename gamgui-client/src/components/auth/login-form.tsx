@@ -1,5 +1,3 @@
-import { Link } from "react-router-dom";
-
 import { LoginButton } from "./login-button";
 
 export function LoginForm() {
@@ -21,19 +19,6 @@ export function LoginForm() {
         <div className="flex justify-center">
           <LoginButton />
         </div>
-      </div>
-      <div className="text-center text-sm">
-        By continuing, you agree to our
-        {" "}
-        <Link to="/terms" className="underline underline-offset-4">
-          Terms of Service
-        </Link>
-        {" "}
-        and
-        {" "}
-        <Link to="/privacy" className="underline underline-offset-4">
-          Privacy Policy
-        </Link>
       </div>
     </div>
   );

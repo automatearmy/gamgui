@@ -35,9 +35,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = useCallback(async () => {
     try {
-      // Remove the token from the cookie
       Cookies.remove(AUTHENTICATION_TOKEN_KEY);
-
       delete api.defaults.headers.common["X-Access-Token"];
 
       setIsAuthenticated(false);
@@ -81,26 +79,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error("Google Invalid token");
       }
 
-      // Save the token to a cookie
       Cookies.set(AUTHENTICATION_TOKEN_KEY, response.data.token, {
-        expires: 1, // expires in 1 day
+        expires: 1,
       });
 
-      // Add the token to the defaults of the api as X-Access-Token
       api.defaults.headers.common["X-Access-Token"] = response.data.token;
 
       setIsAuthenticated(true);
       setUser(response.data.user as User);
 
-      // Navigate to dashboard after successful sign-in
+      // Don't set loading to false here - let the redirect handle the state
       window.location.href = "/";
     }
     catch (error) {
       console.error("Error during Google sign-in:", error);
       await signOut();
+      setLoading(false);
     }
-
-    setLoading(false);
   }, [signOut]);
 
   useEffect(() => {
@@ -126,7 +121,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [user, loading, isAuthenticated, signInWithGoogle, signOut],
   );
 
-  // Get Google client ID from environment variables
   const googleClientId = env?.CLIENT_OAUTH_CLIENT_ID || "";
 
   return (

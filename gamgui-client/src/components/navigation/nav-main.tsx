@@ -31,19 +31,24 @@ export function NavMain({
 
   return (
     <SidebarGroup>
-      <SidebarGroupContent className="flex flex-col gap-2">
-        <SidebarGroupLabel>Main Menu</SidebarGroupLabel>
-        <SidebarMenu>
+      <SidebarGroupContent className="flex flex-col gap-1">
+        <SidebarGroupLabel className="px-2 py-1.5 text-xs font-medium text-sidebar-foreground/70">
+          Main Menu
+        </SidebarGroupLabel>
+        <SidebarMenu className="gap-1">
           {items.map(item => (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton
                 tooltip={item.title}
                 asChild
                 isActive={isActive(item.url)}
+                className="h-9 px-2 data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground"
               >
-                <Link to={item.url}>
-                  {item.icon && <item.icon />}
-                  <span>{item.title}</span>
+                <Link to={item.url} className="flex items-center gap-3 w-full">
+                  {item.icon && (
+                    <item.icon className="size-4 shrink-0 text-current" />
+                  )}
+                  <span className="truncate font-medium">{item.title}</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

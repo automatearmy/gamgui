@@ -1,11 +1,11 @@
 import {
-  IconDashboard,
   IconHelp,
   IconListDetails,
   IconSearch,
   IconSettings,
   IconUserCircle,
 } from "@tabler/icons-react";
+import { Link } from "react-router-dom";
 
 import { NavMain } from "@/components/navigation/nav-main";
 import { NavSecondary } from "@/components/navigation/nav-secondary";
@@ -18,6 +18,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -31,13 +32,8 @@ const data = {
   },
   navMain: [
     {
-      title: "Dashboard",
-      url: "/",
-      icon: IconDashboard,
-    },
-    {
       title: "Sessions",
-      url: "/sessions",
+      url: "/",
       icon: IconListDetails,
     },
   ],
@@ -76,16 +72,30 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
 
   return (
-    <Sidebar collapsible="offcanvas" {...props}>
+    <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              className="data-[slot=sidebar-menu-button]:!p-1.5"
-            >
-              <Logo />
-            </SidebarMenuButton>
+            <div className="flex items-center justify-between w-full group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-3 group-data-[collapsible=icon]:items-center">
+              <SidebarMenuButton
+                asChild
+                className="data-[slot=sidebar-menu-button]:!p-2 group-data-[collapsible=icon]:!p-2.5 flex-1 group-data-[collapsible=icon]:flex-none"
+              >
+                <Link to="/" className="flex items-center justify-start group-data-[collapsible=icon]:justify-center">
+                  <Logo
+                    clickable
+                    iconOnly={false}
+                    className="group-data-[collapsible=icon]:hidden"
+                  />
+                  <Logo
+                    clickable
+                    iconOnly={true}
+                    className="hidden group-data-[collapsible=icon]:block"
+                  />
+                </Link>
+              </SidebarMenuButton>
+              <SidebarTrigger className="size-8 shrink-0 group-data-[collapsible=icon]:size-8 flex items-center justify-center" />
+            </div>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>

@@ -2,7 +2,6 @@ import { Route, Routes } from "react-router-dom";
 
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { AccountPage } from "@/pages/account";
-import { DashboardPage } from "@/pages/dashboard";
 import { LoginPage } from "@/pages/login";
 import { SessionsPage } from "@/pages/sessions";
 import { SessionDetailPage } from "@/pages/sessions/[id]";
@@ -18,7 +17,7 @@ const publicRoutes = [
 const protectedRoutes = [
   {
     path: "/",
-    element: <DashboardPage />,
+    element: <SessionsPage />,
   },
   {
     path: "/sessions",

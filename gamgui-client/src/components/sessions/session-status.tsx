@@ -3,9 +3,18 @@ import { cn } from "@/lib/utils";
 type SessionStatusProps = {
   status: string;
   className?: string;
+  isDeleting?: boolean;
 };
 
-function getStatusConfig(status: string) {
+function getStatusConfig(status: string, isDeleting?: boolean) {
+  // Override status if session is being deleted
+  if (isDeleting) {
+    return {
+      label: "Deleting",
+      className: "text-red-700 bg-red-50 border-red-200",
+    };
+  }
+
   const normalizedStatus = status.toLowerCase();
 
   switch (normalizedStatus) {
@@ -42,8 +51,8 @@ function getStatusConfig(status: string) {
   }
 }
 
-export function SessionStatus({ status, className }: SessionStatusProps) {
-  const { label, className: statusClassName } = getStatusConfig(status);
+export function SessionStatus({ status, className, isDeleting }: SessionStatusProps) {
+  const { label, className: statusClassName } = getStatusConfig(status, isDeleting);
 
   return (
     <span
