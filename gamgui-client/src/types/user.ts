@@ -1,12 +1,12 @@
 export type User = {
-  id: string; // Typically added by the database
+  id: string;
   email: string;
   display_name: string;
-  picture?: string; // Optional
+  picture: string;
   role_id: string;
   organization_id: string;
   theme: string;
   timezone: string;
   status: string;
-  last_login_at?: string; // Datetime as string in the frontend
+  last_login_at: string;
 };
