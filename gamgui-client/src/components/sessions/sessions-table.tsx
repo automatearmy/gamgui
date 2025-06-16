@@ -56,15 +56,21 @@ export function SessionsTable({ sessions, isLoading }: SessionsTableProps) {
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
 
   const handleDeleteSession = async (sessionId: string) => {
+    // Set deleting state immediately to prevent flash
+    setDeletingSessionId(sessionId);
+
     try {
-      setDeletingSessionId(sessionId);
       await deleteSessionMutation.mutateAsync(sessionId);
     }
     catch {
       // Error is handled by the mutation hook
+      // Reset deleting state on error
+      setDeletingSessionId(null);
     }
     finally {
-      setDeletingSessionId(null);
+      // Only reset if the session still exists (wasn't deleted successfully)
+      // If deletion was successful, the session will be removed from the list
+      // and this component will unmount, so we don't need to reset the state
     }
   };
 
@@ -79,18 +85,33 @@ export function SessionsTable({ sessions, isLoading }: SessionsTableProps) {
     {
       accessorKey: "description",
       header: "Description",
-      cell: ({ row }) => (
-        <div className="text-muted-foreground max-w-xs truncate">
-          {row.getValue("description")}
-        </div>
-      ),
+      cell: ({ row }) => {
+        const description = row.getValue("description") as string;
+
+        // Handle undefined/null/empty description
+        const hasDescription = description && description.trim();
+        const displayText = hasDescription ? description : "—";
+
+        return (
+          <div className={`max-w-xs truncate ${
+            hasDescription
+              ? "text-foreground"
+              : "text-muted-foreground"
+          }`}
+          >
+            {displayText}
+          </div>
+        );
+      },
     },
     {
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => {
         const status = row.getValue("status") as string;
-        return <SessionStatus status={status} />;
+        const session = row.original;
+        const isDeleting = deletingSessionId === session.id;
+        return <SessionStatus status={status} isDeleting={isDeleting} />;
       },
     },
     {
