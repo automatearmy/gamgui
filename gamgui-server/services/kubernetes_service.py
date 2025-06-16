@@ -221,7 +221,6 @@ class KubernetesService:
             # Wait for pod to be ready with a shorter timeout
             await self._wait_for_pod_ready(pod.metadata.name, timeout_seconds=60)
 
-            # Get the WebSocket URL from the ingress creation
             websocket_url = ingress_info["websocket_url"]
 
             return {
@@ -407,7 +406,6 @@ class KubernetesService:
                 annotations=annotations,
             ),
             spec=client.V1IngressSpec(
-                # NO TLS section - uses the main domain certificate from main-ingress
                 rules=[
                     client.V1IngressRule(
                         host=environment.SESSION_DOMAIN,
