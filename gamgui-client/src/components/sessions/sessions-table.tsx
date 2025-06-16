@@ -31,6 +31,9 @@ import {
 } from "@/components/ui/table";
 import { useDeleteSession } from "@/hooks/use-sessions";
 
+// Pre-defined skeleton row keys for better performance and readability
+const SKELETON_ROWS = Array.from({ length: 3 }, (_, i) => `skeleton-row-${i}`);
+
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString("en-US", {
     year: "numeric",
@@ -109,9 +112,9 @@ export function SessionsTable({ sessions, isLoading }: SessionsTableProps) {
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
+              <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-accent/80 transition-all duration-200 group">
                 <span className="sr-only">Open menu</span>
-                <MoreHorizontal className="h-4 w-4" />
+                <MoreHorizontal className="h-4 w-4 transition-transform duration-200 group-hover:rotate-90" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -170,8 +173,8 @@ export function SessionsTable({ sessions, isLoading }: SessionsTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {Array.from({ length: 3 }).map((_, rowIndex) => (
-              <TableRow key={`skeleton-row-${rowIndex}`}>
+            {SKELETON_ROWS.map(skeletonId => (
+              <TableRow key={skeletonId}>
                 <TableCell>
                   <Skeleton className="h-4 w-32" />
                 </TableCell>
