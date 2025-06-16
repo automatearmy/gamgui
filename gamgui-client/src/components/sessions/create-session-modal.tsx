@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 
 import type { CreateSessionRequest } from "@/types/session";
@@ -25,6 +26,7 @@ type CreateSessionModalProps = {
 
 export function CreateSessionModal({ children }: CreateSessionModalProps) {
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
   const createSessionMutation = useCreateSession();
 
   const createSessionSchema = z.object({
@@ -48,12 +50,15 @@ export function CreateSessionModal({ children }: CreateSessionModalProps) {
 
   const onSubmit = async (data: CreateSessionRequest) => {
     try {
-      await createSessionMutation.mutateAsync(data);
-      setOpen(false);
-      reset();
+      const response = await createSessionMutation.mutateAsync(data);
+      if (response.success && response.data) {
+        setOpen(false);
+        reset();
+        navigate(`/sessions/${response.data.id}`);
+      }
     }
-    catch (error) {
-      console.error("Failed to create session:", error);
+    catch {
+      // Error is handled by the mutation hook
     }
   };
 
@@ -63,6 +68,17 @@ export function CreateSessionModal({ children }: CreateSessionModalProps) {
         {children}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
+        {createSessionMutation.isPending && (
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm rounded-lg flex items-center justify-center z-10">
+            <div className="flex flex-col items-center gap-3 p-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <p className="text-sm text-muted-foreground font-medium">
+                Creating session, please wait...
+              </p>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogHeader>
             <DialogTitle>Create New Session</DialogTitle>
@@ -77,6 +93,7 @@ export function CreateSessionModal({ children }: CreateSessionModalProps) {
               <Input
                 id="name"
                 placeholder="Enter session name"
+                disabled={createSessionMutation.isPending}
                 {...register("name")}
               />
               {errors.name && (
@@ -89,6 +106,7 @@ export function CreateSessionModal({ children }: CreateSessionModalProps) {
               <Input
                 id="description"
                 placeholder="Enter session description"
+                disabled={createSessionMutation.isPending}
                 {...register("description")}
               />
               {errors.description && (
@@ -101,6 +119,7 @@ export function CreateSessionModal({ children }: CreateSessionModalProps) {
               <Input
                 id="domain"
                 placeholder="example.com"
+                disabled={createSessionMutation.isPending}
                 {...register("domain")}
               />
               {errors.domain && (
@@ -115,6 +134,7 @@ export function CreateSessionModal({ children }: CreateSessionModalProps) {
                 type="number"
                 min="1"
                 max="480"
+                disabled={createSessionMutation.isPending}
                 {...register("timeout_minutes", { valueAsNumber: true })}
               />
               {errors.timeout_minutes && (
@@ -127,6 +147,7 @@ export function CreateSessionModal({ children }: CreateSessionModalProps) {
             <Button
               type="button"
               variant="outline"
+              disabled={createSessionMutation.isPending}
               onClick={() => setOpen(false)}
             >
               Cancel

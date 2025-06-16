@@ -6,7 +6,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ExternalLink, MoreHorizontal, Trash2 } from "lucide-react";
+import { ExternalLink, Loader2, MoreHorizontal, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -31,6 +31,9 @@ import {
 } from "@/components/ui/table";
 import { useDeleteSession } from "@/hooks/use-sessions";
 
+// Pre-defined skeleton row keys for better performance and readability
+const SKELETON_ROWS = Array.from({ length: 3 }, (_, i) => `skeleton-row-${i}`);
+
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString("en-US", {
     year: "numeric",
@@ -50,6 +53,26 @@ export function SessionsTable({ sessions, isLoading }: SessionsTableProps) {
   const deleteSessionMutation = useDeleteSession();
   const navigate = useNavigate();
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
+
+  const handleDeleteSession = async (sessionId: string) => {
+    // Set deleting state immediately to prevent flash
+    setDeletingSessionId(sessionId);
+
+    try {
+      await deleteSessionMutation.mutateAsync(sessionId);
+    }
+    catch {
+      // Error is handled by the mutation hook
+      // Reset deleting state on error
+      setDeletingSessionId(null);
+    }
+    finally {
+      // Only reset if the session still exists (wasn't deleted successfully)
+      // If deletion was successful, the session will be removed from the list
+      // and this component will unmount, so we don't need to reset the state
+    }
+  };
 
   const columns: ColumnDef<Session>[] = [
     {
@@ -62,18 +85,33 @@ export function SessionsTable({ sessions, isLoading }: SessionsTableProps) {
     {
       accessorKey: "description",
       header: "Description",
-      cell: ({ row }) => (
-        <div className="text-muted-foreground max-w-xs truncate">
-          {row.getValue("description")}
-        </div>
-      ),
+      cell: ({ row }) => {
+        const description = row.getValue("description") as string;
+
+        // Handle undefined/null/empty description
+        const hasDescription = description && description.trim();
+        const displayText = hasDescription ? description : "—";
+
+        return (
+          <div className={`max-w-xs truncate ${
+            hasDescription
+              ? "text-foreground"
+              : "text-muted-foreground"
+          }`}
+          >
+            {displayText}
+          </div>
+        );
+      },
     },
     {
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => {
         const status = row.getValue("status") as string;
-        return <SessionStatus status={status} />;
+        const session = row.original;
+        const isDeleting = deletingSessionId === session.id;
+        return <SessionStatus status={status} isDeleting={isDeleting} />;
       },
     },
     {
@@ -95,9 +133,9 @@ export function SessionsTable({ sessions, isLoading }: SessionsTableProps) {
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
+              <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-accent/80 transition-all duration-200 group">
                 <span className="sr-only">Open menu</span>
-                <MoreHorizontal className="h-4 w-4" />
+                <MoreHorizontal className="h-4 w-4 transition-transform duration-200 group-hover:rotate-90" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -108,11 +146,20 @@ export function SessionsTable({ sessions, isLoading }: SessionsTableProps) {
                 Open
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => deleteSessionMutation.mutate(session.id)}
+                onClick={() => handleDeleteSession(session.id)}
                 className="text-red-600"
+                disabled={deletingSessionId === session.id}
               >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
+                {deletingSessionId === session.id
+                  ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )
+                  : (
+                      <Trash2 className="mr-2 h-4 w-4" />
+                    )}
+                {deletingSessionId === session.id
+                  ? "Deleting..."
+                  : "Delete"}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -135,20 +182,45 @@ export function SessionsTable({ sessions, isLoading }: SessionsTableProps) {
   if (isLoading) {
     return (
       <div className="rounded-lg border bg-card">
-        <div className="p-6">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-            </div>
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-            </div>
-          </div>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead><Skeleton className="h-4 w-16" /></TableHead>
+              <TableHead><Skeleton className="h-4 w-24" /></TableHead>
+              <TableHead><Skeleton className="h-4 w-16" /></TableHead>
+              <TableHead><Skeleton className="h-4 w-20" /></TableHead>
+              <TableHead><Skeleton className="h-4 w-20" /></TableHead>
+              <TableHead><Skeleton className="h-4 w-16" /></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {SKELETON_ROWS.map(skeletonId => (
+              <TableRow key={skeletonId}>
+                <TableCell>
+                  <Skeleton className="h-4 w-32" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-48" />
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-2 w-2 rounded-full" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-24" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-24" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-8 w-8 rounded" />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </div>
     );
   }
@@ -174,23 +246,21 @@ export function SessionsTable({ sessions, isLoading }: SessionsTableProps) {
         </TableHeader>
         <TableBody>
           {table.getRowModel().rows?.length
-            ? (
-                table.getRowModel().rows.map(row => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && "selected"}
-                  >
-                    {row.getVisibleCells().map(cell => (
-                      <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              )
+            ? table.getRowModel().rows.map(row => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                >
+                  {row.getVisibleCells().map(cell => (
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
             : (
                 <TableRow>
                   <TableCell

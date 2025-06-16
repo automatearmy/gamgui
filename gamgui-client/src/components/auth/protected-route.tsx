@@ -13,7 +13,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   // Show loading state while checking authentication
   if (loading) {
-    return <LoadingSpinner fullPage />;
+    return <LoadingSpinner fullPage size="xl" message="Verifying authentication..." />;
   }
 
   // Redirect to login if not authenticated

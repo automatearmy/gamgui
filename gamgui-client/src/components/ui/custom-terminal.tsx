@@ -67,40 +67,40 @@ export function CustomTerminal({ output, onCommand, className }: CustomTerminalP
   return (
     <div
       className={cn(
-        "h-full bg-gray-900 text-green-400 font-mono text-sm flex flex-col rounded-md overflow-hidden",
+        "h-full bg-gray-900 text-green-400 font-mono text-sm flex flex-col overflow-hidden",
         className,
       )}
       onClick={handleTerminalClick}
     >
-      {/* Output area */}
+      {/* Output area with hidden scrollbar */}
       <div
         ref={outputRef}
-        className="flex-1 p-4 overflow-y-auto scrollbar-thin scrollbar-track-gray-800 scrollbar-thumb-gray-600"
+        className="flex-1 p-4 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
         style={{ minHeight: 0 }}
       >
         {output.map((line, index) => (
-          <div key={index} className="whitespace-pre-wrap break-words">
+          <div key={index} className="whitespace-pre-wrap break-words leading-relaxed">
             {line}
           </div>
         ))}
         {output.length === 0 && (
-          <div className="text-gray-500">
+          <div className="text-gray-500 italic">
             Welcome to the terminal. Type commands to interact with the session.
           </div>
         )}
       </div>
 
-      {/* Input area */}
-      <div className="border-t border-gray-700 p-4">
+      {/* Input area - fixed at bottom */}
+      <div className="flex-none border-t border-gray-700 bg-gray-800/50 p-4">
         <form onSubmit={handleSubmit} className="flex items-center">
-          <span className="text-green-400 mr-2 flex-shrink-0">$</span>
+          <span className="text-green-400 mr-2 flex-shrink-0 font-bold">$</span>
           <input
             ref={inputRef}
             type="text"
             value={currentCommand}
             onChange={e => setCurrentCommand(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="flex-1 bg-transparent text-green-400 outline-none placeholder-gray-500"
+            className="flex-1 bg-transparent text-green-400 outline-none placeholder-gray-500 focus:placeholder-gray-400"
             placeholder="Type a command..."
             autoFocus
           />

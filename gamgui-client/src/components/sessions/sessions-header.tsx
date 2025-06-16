@@ -3,23 +3,43 @@ import { Link } from "react-router-dom";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useSecretsStatus } from "@/hooks/use-secrets";
 
 import { CreateSessionModal } from "./create-session-modal";
 
 export function SessionsHeader() {
   const { data: secretsStatus, isLoading } = useSecretsStatus();
-
   const isConfigured = secretsStatus?.all_secrets_exist;
 
   return (
     <div className="space-y-4">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold">Sessions</h1>
-        <p className="text-sm text-muted-foreground">
-          Manage your active Google Workspace management sessions.
-        </p>
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold">Sessions</h1>
+          <p className="text-sm text-muted-foreground">
+            Manage your active Google Workspace management sessions.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {!isConfigured && (
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/settings">
+                <Settings className="mr-2 h-4 w-4" />
+                Configure
+              </Link>
+            </Button>
+          )}
+
+          {isConfigured && (
+            <CreateSessionModal>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                New Session
+              </Button>
+            </CreateSessionModal>
+          )}
+        </div>
       </div>
 
       {/* Configuration Status Alert */}
@@ -35,47 +55,6 @@ export function SessionsHeader() {
           </AlertDescription>
         </Alert>
       )}
-
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {isLoading
-            ? (
-                <Skeleton className="h-6 w-32" />
-              )
-            : (
-                <span className="text-sm text-muted-foreground">
-                  {isConfigured ? "Ready to create sessions" : "Setup required"}
-                </span>
-              )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          {!isConfigured && (
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/settings">
-                <Settings className="mr-2 h-4 w-4" />
-                Configure
-              </Link>
-            </Button>
-          )}
-
-          {isConfigured
-            ? (
-                <CreateSessionModal>
-                  <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    New Session
-                  </Button>
-                </CreateSessionModal>
-              )
-            : (
-                <Button disabled>
-                  <Plus className="mr-2 h-4 w-4" />
-                  New Session
-                </Button>
-              )}
-        </div>
-      </div>
     </div>
   );
 }
