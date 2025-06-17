@@ -13,11 +13,12 @@ export function LoginForm() {
     if (credentialResponse.credential) {
       try {
         await signIn(credentialResponse.credential);
-      } catch (error) {
-        console.log("error")
+      }
+      catch {
         toast.error("Sign-in failed. Please try again.");
       }
-    } else {
+    }
+    else {
       toast.error("Authentication failed: No credential received");
     }
   };
@@ -38,18 +39,20 @@ export function LoginForm() {
       </div>
       <div className="grid gap-6">
         <div className="flex justify-center">
-          {isSigningIn ? (
-            <div>
-              <LoadingSpinner />
-            </div>
-          ) : (
-            <GoogleLogin
-              onSuccess={handleSuccess}
-              onError={handleError}
-              shape="pill"
-              theme="outline"
-            />
-          )}
+          {isSigningIn
+            ? (
+                <div>
+                  <LoadingSpinner />
+                </div>
+              )
+            : (
+                <GoogleLogin
+                  onSuccess={handleSuccess}
+                  onError={handleError}
+                  shape="pill"
+                  theme="outline"
+                />
+              )}
         </div>
       </div>
     </form>
