@@ -1,6 +1,7 @@
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import Cookies from "js-cookie";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import type { User } from "@/types/user";
 
@@ -17,6 +18,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSigningIn, setIsSigningIn] = useState<boolean>(false);
   const { data: env } = useEnv();
+  const navigate = useNavigate();
 
   const signOut = useCallback(async () => {
     try {
@@ -26,12 +28,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsAuthenticated(false);
       setUser({} as User);
       setIsLoading(false);
+      navigate("/");
     }
     catch (error) {
       console.error("Error during sign out:", error);
-      window.location.reload();
+      navigate(0);
     }
-  }, []);
+  }, [navigate]);
 
   const checkSession = useCallback(async () => {
     setIsLoading(true);
@@ -75,7 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsAuthenticated(true);
       setUser(response.data.user as User);
 
-      window.location.href = "/";
+      navigate("/");
 
       setIsLoading(false);
       setIsSigningIn(false);
@@ -87,7 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       throw error
     }
-  }, [signOut]);
+  }, [navigate]);
 
   useEffect(() => {
     const token = Cookies.get(AUTHENTICATION_TOKEN_KEY);
