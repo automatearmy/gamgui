@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img width="300" src="/img/logoname-white.svg#gh-dark-mode-only" alt="infisical">
+  <img width="300" src="/docs/logo-gamgui-horizontal.svg" alt="Gamgui logo">
 </h1>
 <p align="center">
   <p align="center"><b>A Self-Hosted & Centrally Managed GAM(Google Apps Manager) Server</b><br />For Google IT admins that need to have security, audit logs, access controls, and manage long running GAM jobs with ease.
