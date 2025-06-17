@@ -14,14 +14,14 @@
 </h4>
 
 <h4 align="center">
-  <a href="https://github.com/automatearmy/gamgui-app/blob/main/LICENSE">
+  <a href="https://github.com/automatearmy/gamgui/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="Gamgui is released under the MIT license." />
   </a>
-  <a href="https://github.com/automatearmy/gamgui-app/blob/main/CONTRIBUTING.md">
+  <a href="https://github.com/automatearmy/gamgui/blob/main/CONTRIBUTING.md">
     <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen" alt="PRs welcome!" />
   </a>
-  <a href="https://github.com/automatearmy/gamgui-app/issues">
-    <img src="https://img.shields.io/github/commit-activity/m/automatearmy/gamgui-app" alt="git commit activity" />
+  <a href="https://github.com/automatearmy/gamgui/issues">
+    <img src="https://img.shields.io/github/commit-activity/m/automatearmy/gamgui" alt="git commit activity" />
   </a>
 </h4>
 

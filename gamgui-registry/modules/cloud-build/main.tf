@@ -15,7 +15,7 @@
 /**
  * Cloud Build Module
  * 
- * This module creates Cloud Build triggers for CI/CD pipelines for the gamgui-app project.
+ * This module creates Cloud Build triggers for CI/CD pipelines for the gamgui project.
  * It sets up separate triggers for Client, Server, and Session components in both production and staging environments.
  */
 

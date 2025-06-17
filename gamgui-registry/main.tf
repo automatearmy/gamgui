@@ -15,7 +15,7 @@
 /**
  * Main Terraform configuration for gamgui-registry
  * 
- * This file sets up the Google Cloud infrastructure for the gamgui-app CI/CD pipeline
+ * This file sets up the Google Cloud infrastructure for the gamgui CI/CD pipeline
  * including Artifact Registry repositories, Cloud Build triggers, and IAM permissions.
  */
 
