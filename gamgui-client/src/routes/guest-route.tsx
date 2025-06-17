@@ -8,9 +8,9 @@ type GuestRouteProps = {
 };
 
 export function GuestRoute({ children }: GuestRouteProps) {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
-  if (loading) {
+  if (isLoading) {
     return <LoadingSpinner fullPage size="lg" />;
   }
 
