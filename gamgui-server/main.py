@@ -1,5 +1,5 @@
 """
-Main entry point for GAMGUI Session API
+Main entry point for GAMGUI Session
 """
 
 from contextlib import asynccontextmanager
