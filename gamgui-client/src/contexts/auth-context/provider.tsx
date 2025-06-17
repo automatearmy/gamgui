@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import Cookies from "js-cookie";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -17,6 +19,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User>({} as User);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSigningIn, setIsSigningIn] = useState<boolean>(false);
+
   const { data: env } = useEnv();
   const navigate = useNavigate();
 
@@ -34,7 +37,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Error during sign out:", error);
       navigate(0);
     }
-  }, [navigate]);
+  }, []);
 
   const checkSession = useCallback(async () => {
     setIsLoading(true);
@@ -47,17 +50,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(response.data.user);
       }
       else {
-        await signOut();
+        signOut();
       }
     }
-    catch (error) {
-      console.error("Error checking session:", error);
-      setIsAuthenticated(false);
-      setUser({} as User);
+    catch {
+      signOut();
     }
 
     setIsLoading(false);
-  }, [signOut]);
+  }, []);
 
   const signIn = useCallback(async (credential: string) => {
     setIsSigningIn(true);
@@ -88,7 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(false);
       setIsSigningIn(false);
 
-      throw error
+      throw error;
     }
   }, [navigate]);
 
