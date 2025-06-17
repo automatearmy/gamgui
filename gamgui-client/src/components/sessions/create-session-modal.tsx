@@ -79,7 +79,7 @@ export function CreateSessionModal({ children }: CreateSessionModalProps) {
           </div>
         )}
 
-        <form onSubmit={handleSubmit(onSubmit)}>
+        <form onSubmit={handleSubmit(onSubmit)} autoComplete="off" data-1p-ignore>
           <DialogHeader>
             <DialogTitle>Create New Session</DialogTitle>
             <DialogDescription>
@@ -94,6 +94,8 @@ export function CreateSessionModal({ children }: CreateSessionModalProps) {
                 id="name"
                 placeholder="Enter session name"
                 disabled={createSessionMutation.isPending}
+                autoComplete="organization"
+                data-1p-ignore
                 {...register("name")}
               />
               {errors.name && (
@@ -107,6 +109,8 @@ export function CreateSessionModal({ children }: CreateSessionModalProps) {
                 id="description"
                 placeholder="Enter session description"
                 disabled={createSessionMutation.isPending}
+                autoComplete="off"
+                data-1p-ignore
                 {...register("description")}
               />
               {errors.description && (
@@ -120,6 +124,8 @@ export function CreateSessionModal({ children }: CreateSessionModalProps) {
                 id="domain"
                 placeholder="example.com"
                 disabled={createSessionMutation.isPending}
+                autoComplete="url"
+                data-1p-ignore
                 {...register("domain")}
               />
               {errors.domain && (
@@ -135,6 +141,8 @@ export function CreateSessionModal({ children }: CreateSessionModalProps) {
                 min="1"
                 max="480"
                 disabled={createSessionMutation.isPending}
+                autoComplete="off"
+                data-1p-ignore
                 {...register("timeout_minutes", { valueAsNumber: true })}
               />
               {errors.timeout_minutes && (
