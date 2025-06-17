@@ -21,9 +21,7 @@ class TokenResponse(BaseModel):
     """Response model for successful authentication"""
 
     token: str
-    email: str
-    name: Optional[str] = None
-    picture: Optional[str] = None
+    user: User
     expires_at: datetime.datetime
 
 

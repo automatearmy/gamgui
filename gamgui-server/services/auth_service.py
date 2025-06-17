@@ -103,9 +103,7 @@ class AuthService:
                 # Create token response
                 token_response = TokenResponse(
                     token=jwt_token,
-                    email=email,
-                    name=id_info.get("name"),
-                    picture=id_info.get("picture"),
+                    user=user,
                     expires_at=expires_at,
                 )
 
