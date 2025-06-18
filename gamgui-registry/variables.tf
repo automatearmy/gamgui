@@ -31,7 +31,7 @@ variable "region" {
 variable "repository_name" {
   description = "The name of the GitHub repository"
   type        = string
-  default     = "gamgui-app"
+  default     = "gamgui"
 }
 
 variable "github_owner" {

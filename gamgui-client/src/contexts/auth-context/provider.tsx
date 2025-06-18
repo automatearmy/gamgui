@@ -1,37 +1,27 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import Cookies from "js-cookie";
-import { createContext, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import type { User } from "@/types/user";
 
-import { getSession, signIn } from "@/api/auth";
+import { signIn as apiSignIn, getSession } from "@/api/auth";
 import { useEnv } from "@/hooks/use-env";
 import { api } from "@/lib/api";
 import { AUTHENTICATION_TOKEN_KEY } from "@/lib/constants/cookies";
 
-type AuthContextType = {
-  user: User;
-  isAuthenticated: boolean;
-  signInWithGoogle: (credential: string) => Promise<void>;
-  signOut: () => Promise<void>;
-  loading: boolean;
-};
-
-const DEFAULT_PROPS: AuthContextType = {
-  user: {} as User,
-  isAuthenticated: false,
-  signInWithGoogle: async () => {},
-  signOut: async () => {},
-  loading: true,
-};
-
-export const AuthContext = createContext<AuthContextType>(DEFAULT_PROPS);
+import { AuthContext } from "./context";
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [user, setUser] = useState<User>({} as User);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isSigningIn, setIsSigningIn] = useState<boolean>(false);
+
   const { data: env } = useEnv();
+  const navigate = useNavigate();
 
   const signOut = useCallback(async () => {
     try {
@@ -40,16 +30,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setIsAuthenticated(false);
       setUser({} as User);
-      setLoading(false);
+      setIsLoading(false);
+      navigate("/");
     }
     catch (error) {
       console.error("Error during sign out:", error);
-      window.location.reload();
+      navigate(0);
     }
   }, []);
 
   const checkSession = useCallback(async () => {
-    setLoading(true);
+    setIsLoading(true);
 
     try {
       const response = await getSession();
@@ -59,21 +50,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(response.data.user);
       }
       else {
-        await signOut();
+        signOut();
       }
     }
-    catch (error) {
-      console.error("Error checking session:", error);
-      setIsAuthenticated(false);
-      setUser({} as User);
+    catch {
+      signOut();
     }
 
-    setLoading(false);
-  }, [signOut]);
+    setIsLoading(false);
+  }, []);
 
-  const signInWithGoogle = useCallback(async (credential: string) => {
+  const signIn = useCallback(async (credential: string) => {
+    setIsSigningIn(true);
+
     try {
-      const response = await signIn(credential);
+      const response = await apiSignIn(credential);
 
       if (!response.success || !response.data.token) {
         throw new Error("Google Invalid token");
@@ -88,15 +79,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsAuthenticated(true);
       setUser(response.data.user as User);
 
-      // Don't set loading to false here - let the redirect handle the state
-      window.location.href = "/";
+      navigate("/");
+
+      setIsLoading(false);
+      setIsSigningIn(false);
     }
     catch (error) {
-      console.error("Error during Google sign-in:", error);
-      await signOut();
-      setLoading(false);
+      setUser({} as User);
+      setIsLoading(false);
+      setIsSigningIn(false);
+
+      throw error;
     }
-  }, [signOut]);
+  }, [navigate]);
 
   useEffect(() => {
     const token = Cookies.get(AUTHENTICATION_TOKEN_KEY);
@@ -106,19 +101,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       checkSession();
     }
     else {
-      setLoading(false);
+      setIsLoading(false);
     }
   }, [checkSession]);
 
   const contextValue = useMemo(
     () => ({
       user,
-      loading,
       isAuthenticated,
-      signInWithGoogle,
+      isSigningIn,
+      isLoading,
+      signIn,
       signOut,
     }),
-    [user, loading, isAuthenticated, signInWithGoogle, signOut],
+    [user, isAuthenticated, isSigningIn, isLoading, signIn, signOut],
   );
 
   const googleClientId = env?.CLIENT_OAUTH_CLIENT_ID || "";

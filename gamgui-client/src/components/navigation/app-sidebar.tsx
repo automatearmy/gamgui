@@ -45,12 +45,12 @@ const data = {
     },
     {
       title: "Get Help",
-      url: "https://github.com/automatearmy/gamgui-app",
+      url: "https://github.com/automatearmy/gamgui",
       icon: IconHelp,
     },
     {
       title: "Search",
-      url: "https://github.com/automatearmy/gamgui-app",
+      url: "https://github.com/automatearmy/gamgui",
       icon: IconSearch,
     },
   ],

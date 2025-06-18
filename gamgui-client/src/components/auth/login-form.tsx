@@ -1,25 +1,60 @@
-import { LoginButton } from "./login-button";
+import { GoogleLogin } from "@react-oauth/google";
+import { toast } from "sonner";
+
+import { useAuth } from "@/hooks/use-auth";
+
+import { CardDescription, CardHeader, CardTitle } from "../ui/card";
+import { LoadingSpinner } from "../ui/loading-spinner";
 
 export function LoginForm() {
+  const { signIn, isSigningIn } = useAuth();
+
+  const handleSuccess = async (credentialResponse: any) => {
+    if (credentialResponse.credential) {
+      try {
+        await signIn(credentialResponse.credential);
+      }
+      catch {
+        toast.error("Sign-in failed. Please try again.");
+      }
+    }
+    else {
+      toast.error("Authentication failed: No credential received");
+    }
+  };
+
+  const handleError = () => {
+    toast.error("Google Sign-In failed. Please try again.");
+  };
+
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col items-center gap-2 text-center">
-        <h1 className="text-2xl font-bold">Welcome to GAMGUI</h1>
-        <p className="text-muted-foreground text-sm text-balance">
-          Sign in with Google to access your account
-        </p>
+    <form className="flex flex-col gap-6">
+      <div>
+        <CardHeader className="text-center">
+          <CardTitle className="text-xl">Welcome back</CardTitle>
+          <CardDescription>
+            Login with your Google account
+          </CardDescription>
+        </CardHeader>
       </div>
       <div className="grid gap-6">
-        <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
-          <span className="bg-background text-muted-foreground relative z-10 px-2">
-            Continue with
-          </span>
-        </div>
-
         <div className="flex justify-center">
-          <LoginButton />
+          {isSigningIn
+            ? (
+                <div>
+                  <LoadingSpinner />
+                </div>
+              )
+            : (
+                <GoogleLogin
+                  onSuccess={handleSuccess}
+                  onError={handleError}
+                  shape="pill"
+                  theme="outline"
+                />
+              )}
         </div>
       </div>
-    </div>
+    </form>
   );
 }

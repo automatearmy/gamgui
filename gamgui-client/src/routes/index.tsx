@@ -1,11 +1,13 @@
 import { Route, Routes } from "react-router-dom";
 
-import { ProtectedRoute } from "@/components/auth/protected-route";
 import { AccountPage } from "@/pages/account";
 import { LoginPage } from "@/pages/login";
 import { SessionsPage } from "@/pages/sessions";
 import { SessionDetailPage } from "@/pages/sessions/[id]";
 import { SettingsPage } from "@/pages/settings";
+
+import { AuthRoute } from "./auth-route";
+import { GuestRoute } from "./guest-route";
 
 const publicRoutes = [
   {
@@ -14,7 +16,7 @@ const publicRoutes = [
   },
 ] as const;
 
-const protectedRoutes = [
+const authRoutes = [
   {
     path: "/",
     element: <SessionsPage />,
@@ -40,15 +42,21 @@ const protectedRoutes = [
 export function AppRoutes() {
   return (
     <Routes>
+      {/* Guest routes, cannot access when auth */}
       {publicRoutes.map(({ path, element }) => (
-        <Route key={path} path={path} element={element} />
-      ))}
-
-      {protectedRoutes.map(({ path, element }) => (
         <Route
           key={path}
           path={path}
-          element={<ProtectedRoute>{element}</ProtectedRoute>}
+          element={<GuestRoute>{element}</GuestRoute>}
+        />
+      ))}
+
+      {/* Auth routes, cannot access when no auth */}
+      {authRoutes.map(({ path, element }) => (
+        <Route
+          key={path}
+          path={path}
+          element={<AuthRoute>{element}</AuthRoute>}
         />
       ))}
     </Routes>

@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img width="300" src="/img/logoname-white.svg#gh-dark-mode-only" alt="infisical">
+  <img width="300" src="/docs/logo-gamgui-horizontal.svg" alt="Gamgui logo">
 </h1>
 <p align="center">
   <p align="center"><b>A Self-Hosted & Centrally Managed GAM(Google Apps Manager) Server</b><br />For Google IT admins that need to have security, audit logs, access controls, and manage long running GAM jobs with ease.
@@ -14,14 +14,14 @@
 </h4>
 
 <h4 align="center">
-  <a href="https://github.com/automatearmy/gamgui-app/blob/main/LICENSE">
+  <a href="https://github.com/automatearmy/gamgui/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="Gamgui is released under the MIT license." />
   </a>
-  <a href="https://github.com/automatearmy/gamgui-app/blob/main/CONTRIBUTING.md">
+  <a href="https://github.com/automatearmy/gamgui/blob/main/CONTRIBUTING.md">
     <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen" alt="PRs welcome!" />
   </a>
-  <a href="https://github.com/automatearmy/gamgui-app/issues">
-    <img src="https://img.shields.io/github/commit-activity/m/automatearmy/gamgui-app" alt="git commit activity" />
+  <a href="https://github.com/automatearmy/gamgui/issues">
+    <img src="https://img.shields.io/github/commit-activity/m/automatearmy/gamgui" alt="git commit activity" />
   </a>
 </h4>
 

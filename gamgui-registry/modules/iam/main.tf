@@ -23,7 +23,7 @@
 resource "google_service_account" "cloudbuild_service_account" {
   account_id   = "gamgui-registry-cloud-builder"
   display_name = "Cloud Build Service Account"
-  description  = "Service account used by Cloud Build for the gamgui-app repository"
+  description  = "Service account used by Cloud Build for the gamgui repository"
   project      = var.project_id
 }
 

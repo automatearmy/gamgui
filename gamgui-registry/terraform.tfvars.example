@@ -11,7 +11,7 @@ region = "us-central1"
 github_owner = "automatearmy"
 
 # GitHub repository name
-repository_name = "gamgui-app"
+repository_name = "gamgui"
 
 # GitHub app installation ID for Cloud Build connection
 github_app_installation_id = "54757105"
