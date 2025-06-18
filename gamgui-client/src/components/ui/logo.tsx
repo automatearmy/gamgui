@@ -1,5 +1,3 @@
-import { Terminal } from "lucide-react";
-
 import { cn } from "@/lib/utils";
 
 type LogoProps = {
@@ -12,22 +10,22 @@ type LogoProps = {
 
 const sizeClasses = {
   sm: {
-    icon: "h-4 w-4",
+    svg: "h-4 w-auto",
     text: "text-sm",
     spacing: "gap-1.5",
   },
   md: {
-    icon: "h-6 w-6",
+    svg: "h-6 w-auto",
     text: "text-lg",
     spacing: "gap-2",
   },
   lg: {
-    icon: "h-8 w-8",
+    svg: "h-8 w-auto",
     text: "text-2xl",
     spacing: "gap-3",
   },
   xl: {
-    icon: "h-10 w-10",
+    svg: "h-10 w-auto",
     text: "text-3xl",
     spacing: "gap-4",
   },
@@ -66,40 +64,38 @@ export function Logo({
   }
 
   if (iconOnly) {
+    // Show the custom logo icon for collapsed sidebar
     return (
-      <Terminal
+      <img
+        src="/logo-icon-only.svg"
+        alt="GAMGUI Icon"
         className={cn(
-          "text-black shrink-0",
-          sizes.icon,
+          "shrink-0 object-contain",
+          sizes.svg,
           hoverClasses,
           className,
         )}
         role={clickable ? "button" : undefined}
         tabIndex={clickable ? 0 : undefined}
-        aria-label={clickable ? "Navigate to dashboard" : undefined}
+        aria-label={clickable ? "Navigate to dashboard" : "GAMGUI Logo"}
       />
     );
   }
 
+  // Full logo for expanded sidebar and login page
   return (
-    <div
+    <img
+      src="/gamgui-logo.svg"
+      alt="GAMGUI Logo"
       className={cn(
-        "flex items-center",
-        sizes.spacing,
+        "shrink-0 object-contain",
+        sizes.svg,
         hoverClasses,
         className,
       )}
       role={clickable ? "button" : undefined}
       tabIndex={clickable ? 0 : undefined}
-      aria-label={clickable ? "Navigate to dashboard" : undefined}
-    >
-      <Terminal
-        className={cn("text-black shrink-0", sizes.icon)}
-      />
-      <div className={cn("font-bold tracking-wide leading-none", sizes.text)}>
-        <span className="text-black">GAM</span>
-        <span style={{ color: "#86aef6" }}>GUI</span>
-      </div>
-    </div>
+      aria-label={clickable ? "Navigate to dashboard" : "GAMGUI Logo"}
+    />
   );
 }
