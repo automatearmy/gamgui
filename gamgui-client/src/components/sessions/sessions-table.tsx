@@ -133,9 +133,9 @@ export function SessionsTable({ sessions, isLoading }: SessionsTableProps) {
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-accent/80 transition-all duration-200 group">
+              <Button variant="ghost" className="h-8 w-8 p-0">
                 <span className="sr-only">Open menu</span>
-                <MoreHorizontal className="h-4 w-4 transition-transform duration-200 group-hover:rotate-90" />
+                <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
