@@ -88,8 +88,8 @@ ${prefix} [data-chart=${id}] {
 ${colorConfig
       .map(([key, itemConfig]) => {
         const color
-      = itemConfig.theme?.[theme as keyof typeof itemConfig.theme]
-        || itemConfig.color;
+          = itemConfig.theme?.[theme as keyof typeof itemConfig.theme]
+            || itemConfig.color;
         return color ? `  --color-${key}: ${color};` : null;
       })
       .join("\n")}
@@ -118,8 +118,8 @@ function ChartTooltipContent({
   color,
   nameKey,
   labelKey,
-}: React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
-  React.ComponentProps<"div"> & {
+}: React.ComponentProps<typeof RechartsPrimitive.Tooltip>
+  & React.ComponentProps<"div"> & {
     hideLabel?: boolean;
     hideIndicator?: boolean;
     indicator?: "line" | "dot" | "dashed";
@@ -260,8 +260,8 @@ function ChartLegendContent({
   payload,
   verticalAlign = "bottom",
   nameKey,
-}: React.ComponentProps<"div"> &
-  Pick<RechartsPrimitive.LegendProps, "payload" | "verticalAlign"> & {
+}: React.ComponentProps<"div">
+  & Pick<RechartsPrimitive.LegendProps, "payload" | "verticalAlign"> & {
     hideIcon?: boolean;
     nameKey?: string;
   }) {
