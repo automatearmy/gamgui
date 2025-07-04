@@ -1,6 +1,5 @@
 """Command history repository for GAMGUI"""
 
-import re
 from typing import List
 
 from models.command_history_model import CommandHistory
@@ -24,20 +23,6 @@ class CommandHistoryRepository(BaseRepository[CommandHistory]):
         history.sort(key=lambda cmd: cmd.created_at, reverse=True)
         return history[:limit]
 
-    async def get_by_command_pattern(self, pattern: str) -> List[CommandHistory]:
-        """Get command history matching a pattern"""
-        all_commands = await self.get_all()
-        regex = re.compile(pattern)
-        return [cmd for cmd in all_commands if regex.search(cmd.command)]
-
-    async def get_failed_commands(self) -> List[CommandHistory]:
-        """Get all failed commands (non-zero exit code)"""
-        all_commands = await self.get_all()
-        return [cmd for cmd in all_commands if cmd.exit_code != 0]
-
-    async def get_user_session_history(self, user_id: str, session_id: str) -> List[CommandHistory]:
-        """Get command history for a specific user and session"""
-        return await self.query_multi([("user_id", "==", user_id), ("session_id", "==", session_id)])
 
     async def get_session_history_ordered(self, session_id: str, user_id: str) -> List[CommandHistory]:
         """Get command history for a session ordered by creation time"""
