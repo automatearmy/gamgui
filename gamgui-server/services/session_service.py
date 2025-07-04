@@ -4,12 +4,13 @@ Session management service for GAMGUI API.
 
 from datetime import datetime, timedelta
 import logging
-from typing import List, Optional
+from typing import Dict, List, Optional
 import uuid
 
 from config import environment
 from errors.exceptions import APIException
 from models.session_model import PodInfo, Session
+from repositories.command_history_repository import CommandHistoryRepository
 from repositories.session_repository import SessionRepository
 from schemas.common import SessionStatus
 from schemas.session_schemas import CreateSessionRequest, SessionListItem
@@ -24,6 +25,7 @@ class SessionService:
     def __init__(self):
         self.kubernetes_service = KubernetesService()
         self.session_repository = SessionRepository()
+        self.command_history_repository = CommandHistoryRepository()
 
     def _generate_session_id(self) -> str:
         """Generate a unique session ID"""
@@ -32,6 +34,7 @@ class SessionService:
     def _calculate_expiry(self, timeout_minutes: int) -> datetime:
         """Calculate session expiry time"""
         return datetime.utcnow() + timedelta(minutes=timeout_minutes)
+
 
     async def create_session(self, user_id: str, request: CreateSessionRequest) -> Session:
         """Create a new session"""
@@ -235,3 +238,179 @@ class SessionService:
                 error_code="SESSION_DELETION_FAILED",
                 exception=str(e),
             )
+
+    # NEW: Command history methods for persistent sessions
+    
+    async def get_session_history(self, session_id: str, user_id: str) -> List[dict]:
+        """Get complete command history for a session"""
+        try:
+            # First verify user has access to this session
+            session = await self.get_session(session_id, user_id)
+            if not session:
+                return []
+
+            # Get command history ordered by sequence
+            commands = await self.command_history_repository.get_session_history_ordered(session_id, user_id)
+            
+            # Convert to dict format for API response
+            history = []
+            for cmd in commands:
+                history.append({
+                    "command_id": cmd.command_id,
+                    "command": cmd.command,
+                    "status": cmd.status,
+                    "sequence_number": cmd.sequence_number,
+                    "started_at": cmd.started_at.isoformat() if cmd.started_at else None,
+                    "completed_at": cmd.completed_at.isoformat() if cmd.completed_at else None,
+                    "exit_code": cmd.exit_code,
+                    "duration": cmd.duration,
+                    "output_lines": cmd.output_lines,
+                    "output_preview": cmd.output[:200] + "..." if len(cmd.output) > 200 else cmd.output
+                })
+            
+            
+            logger.info(f"Retrieved {len(history)} commands for session {session_id}")
+            return history
+
+        except Exception as e:
+            logger.error(f"Failed to get session history for {session_id}: {e}")
+            return []
+
+    async def get_command_details(self, session_id: str, command_id: str, user_id: str) -> Optional[dict]:
+        """Get detailed information about a specific command"""
+        try:
+            # First verify user has access to this session
+            session = await self.get_session(session_id, user_id)
+            if not session:
+                return None
+
+            # Get command details
+            command = await self.command_history_repository.get_by_command_id(command_id)
+            
+            if not command or command.session_id != session_id or command.user_id != user_id:
+                return None
+
+            # Return full command details
+            return {
+                "command_id": command.command_id,
+                "session_id": command.session_id,
+                "command": command.command,
+                "status": command.status,
+                "sequence_number": command.sequence_number,
+                "started_at": command.started_at.isoformat() if command.started_at else None,
+                "completed_at": command.completed_at.isoformat() if command.completed_at else None,
+                "last_output_at": command.last_output_at.isoformat() if command.last_output_at else None,
+                "exit_code": command.exit_code,
+                "duration": command.duration,
+                "output_lines": command.output_lines,
+                "output": command.output,  # Full output for detailed view
+                "created_at": command.created_at.isoformat() if command.created_at else None,
+                "updated_at": command.updated_at.isoformat() if command.updated_at else None
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to get command details {command_id}: {e}")
+            return None
+
+    async def resume_session(self, session_id: str, user_id: str) -> Optional[dict]:
+        """Resume a session and get current status"""
+        try:
+            # Get session details
+            session = await self.get_session(session_id, user_id)
+            if not session:
+                return None
+
+            # Get recent command history (last 10 commands)
+            all_history = await self.get_session_history(session_id, user_id)
+            recent_history = all_history[-10:] if len(all_history) > 10 else all_history
+
+            # Get running commands
+            running_commands = await self.command_history_repository.get_running_commands(session_id)
+            
+            # Check if session pod is still alive
+            pod_alive = False
+            try:
+                pod_status = await self.kubernetes_service.get_pod_status(session_id)
+                pod_alive = pod_status.get("status") == SessionStatus.RUNNING
+            except Exception as e:
+                logger.warning(f"Could not check pod status for session {session_id}: {e}")
+
+            resume_info = {
+                "session_id": session_id,
+                "session_name": session.name,
+                "session_status": session.status,
+                "websocket_url": session.websocket_url,
+                "pod_alive": pod_alive,
+                "total_commands": len(all_history),
+                "running_commands": len(running_commands),
+                "recent_history": recent_history,
+                "last_activity": session.last_activity_at.isoformat() if session.last_activity_at else None,
+                "expires_at": session.expires_at.isoformat() if session.expires_at else None,
+                "can_reconnect": pod_alive and session.status == SessionStatus.RUNNING
+            }
+
+            logger.info(f"Session {session_id} resume info prepared for user {user_id}")
+            return resume_info
+
+        except Exception as e:
+            logger.error(f"Failed to resume session {session_id}: {e}")
+            return None
+
+    async def log_command(self, session_id: str, user_id: str, command_data: Dict) -> Optional[dict]:
+        """Log a command that was executed in the session"""
+        try:
+            # First verify user has access to this session
+            session = await self.get_session(session_id, user_id)
+            if not session:
+                return None
+
+            # Extract command info from data
+            command = command_data.get("command", "").strip()
+            if not command:
+                return None
+
+            # Generate command ID and get sequence number
+            command_id = f"cmd_{uuid.uuid4().hex[:12]}"
+            sequence_number = await self.command_history_repository.get_next_sequence_number(session_id)
+
+            # Create command record - output will be captured from real WebSocket stream
+            from models.command_history_model import CommandHistory
+            from schemas.common import CommandStatus
+            
+            # Extract output from command data if provided, otherwise empty
+            output = command_data.get("output", "")
+            exit_code = command_data.get("exit_code", 0)
+            duration = command_data.get("duration", 0)
+            
+            command_record = CommandHistory(
+                id=command_id,  # BaseModel requires 'id' field
+                command_id=command_id,
+                session_id=session_id,
+                user_id=user_id,
+                command=command,
+                status=CommandStatus.COMPLETED if exit_code == 0 else CommandStatus.FAILED,
+                sequence_number=sequence_number,
+                started_at=datetime.utcnow(),
+                completed_at=datetime.utcnow(),
+                output=output,
+                exit_code=exit_code,
+                duration=duration,
+                output_lines=len(output.split("\n")) if output else 0
+            )
+
+            # Save to Firestore
+            saved_record = await self.command_history_repository.create_command_start(command_record)
+            
+            logger.info(f"Logged command {command_id} for session {session_id}: {command}")
+            
+            return {
+                "command_id": command_id,
+                "session_id": session_id,
+                "command": command,
+                "status": "completed" if exit_code == 0 else "failed",
+                "sequence_number": sequence_number
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to log command for session {session_id}: {e}")
+            return None

@@ -27,6 +27,250 @@ export function SessionDetailPage() {
   const [terminalOutput, setTerminalOutput] = useState<string[]>([]);
   const websocketRef = useRef<WebSocket | null>(null);
 
+  // Track current command for output capture
+  const currentCommandRef = useRef<{
+    command: string;
+    startTime: number;
+    output: string[];
+  } | null>(null);
+
+  const persistCommandWithOutput = async (command: string, output: string, exitCode: number, duration: number) => {
+    try {
+      const token = Cookies.get(AUTHENTICATION_TOKEN_KEY);
+      if (token && id) {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"}/sessions/${id}/commands`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Access-Token": token,
+          },
+          body: JSON.stringify({
+            command,
+            output,
+            exit_code: exitCode,
+            duration,
+          }),
+        });
+
+        if (response.ok) {
+          console.log("✅ Command with output persisted to API");
+        } else {
+          console.warn("⚠️ Failed to persist command to API:", response.status);
+        }
+      }
+    } catch (error) {
+      console.warn("⚠️ Error persisting command to API:", error);
+    }
+  };
+
+  // API-based history functions with localStorage fallback
+  const getStorageKey = (suffix: string) => `gamgui-session-${id}-${suffix}`;
+
+  const saveToLocalStorage = useCallback((output: string[]) => {
+    if (!id) {
+      return;
+    }
+    try {
+      localStorage.setItem(getStorageKey("output"), JSON.stringify(output));
+      localStorage.setItem(getStorageKey("timestamp"), new Date().toISOString());
+    }
+    catch (error) {
+      console.warn("Failed to save to localStorage:", error);
+    }
+  }, [id]);
+
+  const loadFromLocalStorage = useCallback(() => {
+    if (!id) {
+      return null;
+    }
+    try {
+      const savedOutput = localStorage.getItem(getStorageKey("output"));
+      if (savedOutput) {
+        return {
+          output: JSON.parse(savedOutput) as string[],
+          timestamp: localStorage.getItem(getStorageKey("timestamp")) || null,
+        };
+      }
+    }
+    catch (error) {
+      console.warn("Failed to load from localStorage:", error);
+    }
+    return null;
+  }, [id]);
+
+  const loadFromAPI = useCallback(async () => {
+    if (!id) return null;
+    try {
+      // Use the existing API client from sessions
+      const { getSessionHistory } = await import("@/api/sessions");
+      const response = await getSessionHistory(id);
+      
+      if (response.success && response.data && response.data.length > 0) {
+        // Convert API history to terminal output format
+        const output: string[] = [];
+
+        response.data.forEach((cmd: any) => {
+          output.push(`$ ${cmd.command}`);
+
+          // Use full output if available, otherwise use preview
+          const commandOutput = cmd.output || cmd.output_preview;
+          if (commandOutput) {
+            // Add the output as-is, preserving original formatting
+            output.push(commandOutput);
+          }
+
+          // Add status message
+          if (cmd.status === "completed") {
+            output.push(cmd.exit_code === 0 ? "✅ Command completed successfully" : "❌ Command failed");
+          }
+          else if (cmd.status === "failed") {
+            output.push("❌ Command failed");
+          }
+          else if (cmd.status === "cancelled") {
+            output.push("⏹️ Command cancelled");
+          }
+        });
+
+        return {
+          output,
+          timestamp: new Date().toISOString(),
+          source: "api",
+        };
+      }
+    }
+    catch (error) {
+      console.warn("❌ Failed to load from API:", error);
+    }
+    return null;
+  }, [id]);
+
+  const clearLocalStorage = useCallback(() => {
+    if (!id) return;
+    try {
+      localStorage.removeItem(getStorageKey("output"));
+      localStorage.removeItem(getStorageKey("timestamp"));
+    }
+    catch (error) {
+      console.warn("Failed to clear localStorage:", error);
+    }
+  }, [id]);
+
+  // Load history from API only - focus on making API work
+  useEffect(() => {
+    const loadHistory = async () => {
+      console.log("🔍 Loading session history from API for session:", id);
+      
+      try {
+        const apiData = await loadFromAPI();
+        console.log("📡 API response:", apiData);
+        
+        if (apiData && apiData.output.length > 0) {
+          console.log("✅ Loaded history from API:", apiData.output.length, "lines");
+          setTerminalOutput((prev) => {
+            const systemMessages = prev.filter(line => 
+              line.includes("Initializing connection...") ||
+              line.includes("Connected to session")
+            );
+            return [...systemMessages, "📁 Restored session history (from server)", ...apiData.output];
+          });
+        } else {
+          console.log("📭 No history found in API");
+          // Try to call API directly to debug
+          const { getSessionHistory } = await import("@/api/sessions");
+          const response = await getSessionHistory(id!);
+          console.log("🔍 Direct API call result:", response);
+        }
+      } catch (error) {
+        console.error("❌ Error loading from API:", error);
+      }
+    };
+
+    // Only load if we have a session ID
+    if (id) {
+      loadHistory();
+    }
+  }, [id, loadFromAPI]);
+
+  // Save to localStorage whenever output changes
+  useEffect(() => {
+    if (terminalOutput.length > 0) {
+      saveToLocalStorage(terminalOutput);
+    }
+  }, [terminalOutput, saveToLocalStorage]);
+
+  // Periodic sync with API for cross-browser updates - only when needed
+  useEffect(() => {
+    if (!id) return;
+
+    const syncInterval = setInterval(async () => {
+      try {
+        const { getSessionHistory } = await import("@/api/sessions");
+        const response = await getSessionHistory(id);
+        
+        if (response.success && response.data && response.data.length > 0) {
+          // Convert API history to terminal output format
+          const apiOutput: string[] = [];
+          
+          response.data.forEach((cmd: any) => {
+            apiOutput.push(`$ ${cmd.command}`);
+            
+            const commandOutput = cmd.output || cmd.output_preview;
+            if (commandOutput) {
+              apiOutput.push(commandOutput);
+            }
+            
+            if (cmd.status === "completed") {
+              apiOutput.push(cmd.exit_code === 0 ? "✅ Command completed successfully" : "❌ Command failed");
+            }
+            else if (cmd.status === "failed") {
+              apiOutput.push("❌ Command failed");
+            }
+            else if (cmd.status === "cancelled") {
+              apiOutput.push("⏹️ Command cancelled");
+            }
+          });
+
+          // Only update if API has more content than current terminal
+          setTerminalOutput((prev) => {
+            const currentCommandCount = prev.filter(line => line.startsWith("$ ")).length;
+            const apiCommandCount = apiOutput.filter(line => line.startsWith("$ ")).length;
+            
+            if (apiCommandCount > currentCommandCount) {
+              console.log("✅ Updating with new commands from API");
+              const systemMessages = prev.filter(line => 
+                line.includes("Initializing connection...") ||
+                line.includes("Connected to session") ||
+                line.includes("📁 Restored session history") ||
+                line.includes("🔄 Synced with server")
+              );
+              return [...systemMessages, "🔄 Synced with server", ...apiOutput];
+            }
+            return prev;
+          });
+        }
+      } catch (error) {
+        console.warn("❌ Failed to sync with API:", error);
+      }
+    }, 5000); // Check every 5 seconds (less frequent)
+
+    return () => clearInterval(syncInterval);
+  }, [id]); // Remove terminalOutput dependency to prevent excessive polling
+
+  // Listen for localStorage changes from other tabs
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key?.startsWith(`gamgui-session-${id}-`)) {
+        const savedData = loadFromLocalStorage();
+        if (savedData) {
+          setTerminalOutput(savedData.output);
+        }
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, [id, loadFromLocalStorage]);
+
   const connectWebSocket = useCallback(() => {
     if (!session?.websocket_url)
       return;
@@ -53,7 +297,87 @@ export function SessionDetailPage() {
       };
 
       ws.onmessage = (event) => {
-        setTerminalOutput(prev => [...prev, event.data]);
+        try {
+          // Try to parse as JSON for structured messages
+          const message = JSON.parse(event.data);
+
+          if (message.type === "session_busy") {
+            setTerminalOutput(prev => [...prev, "⚠️ Session is busy. Only one command can be executed at a time."]);
+          }
+          else if (message.type === "command_start") {
+            setTerminalOutput(prev => [...prev, "🔄 Command started..."]);
+          }
+          else if (message.type === "command_complete") {
+            const status = message.success ? "✅ Command completed successfully" : "❌ Command failed";
+            setTerminalOutput(prev => [...prev, status]);
+            
+            // Persist command with captured output
+            if (currentCommandRef.current) {
+              const duration = Date.now() - currentCommandRef.current.startTime;
+              const fullOutput = currentCommandRef.current.output.join("\n");
+              const exitCode = message.success ? 0 : 1;
+              
+              persistCommandWithOutput(
+                currentCommandRef.current.command,
+                fullOutput,
+                exitCode,
+                duration
+              );
+              
+              // Clear current command
+              currentCommandRef.current = null;
+            }
+          }
+          else if (message.type === "cancelled") {
+            setTerminalOutput(prev => [...prev, "⏹️ Command cancelled"]);
+            
+            // Persist cancelled command
+            if (currentCommandRef.current) {
+              const duration = Date.now() - currentCommandRef.current.startTime;
+              const fullOutput = currentCommandRef.current.output.join("\n");
+              
+              persistCommandWithOutput(
+                currentCommandRef.current.command,
+                fullOutput,
+                -1, // Exit code for cancelled
+                duration
+              );
+              
+              currentCommandRef.current = null;
+            }
+          }
+          else if (message.type === "output") {
+            // Handle structured output messages
+            setTerminalOutput(prev => [...prev, message.data]);
+            
+            // Capture output for persistence
+            if (currentCommandRef.current) {
+              currentCommandRef.current.output.push(message.data);
+            }
+          }
+          else if (message.type === "welcome") {
+            // Don't show welcome JSON, just show clean message
+            return;
+          }
+          else if (message.type === "debug") {
+            // Show debug messages for persistence troubleshooting
+            setTerminalOutput(prev => [...prev, `🔥 DEBUG: ${message.message}`]);
+          }
+          else {
+            // For other JSON messages, don't display them as terminal output
+            console.log("Received structured message:", message);
+          }
+        }
+        catch {
+          // Not JSON, treat as regular terminal output
+          const output = event.data;
+          setTerminalOutput(prev => [...prev, output]);
+          
+          // Capture raw output for persistence
+          if (currentCommandRef.current) {
+            currentCommandRef.current.output.push(output);
+          }
+        }
       };
 
       ws.onclose = () => {
@@ -106,12 +430,36 @@ export function SessionDetailPage() {
 
   const handleClearTerminal = () => {
     setTerminalOutput([]);
+    clearLocalStorage(); // Clear saved history when terminal is cleared
   };
 
-  const sendCommand = (command: string) => {
+  const sendCommand = async (command: string) => {
     if (websocketRef.current?.readyState === WebSocket.OPEN) {
+      // Track command for output capture
+      currentCommandRef.current = {
+        command,
+        startTime: Date.now(),
+        output: [],
+      };
+
+      // Send command as plain text - backend handles everything
       websocketRef.current.send(command);
       setTerminalOutput(prev => [...prev, `$ ${command}`]);
+
+      // IMMEDIATELY persist the command (don't wait for WebSocket completion)
+      // This ensures commands are saved even if WebSocket doesn't send structured messages
+      setTimeout(async () => {
+        if (currentCommandRef.current && currentCommandRef.current.command === command) {
+          const duration = Date.now() - currentCommandRef.current.startTime;
+          const output = currentCommandRef.current.output.join("\n") || "Command executed";
+          
+          console.log("🔄 Auto-persisting command after 3 seconds:", command);
+          await persistCommandWithOutput(command, output, 0, duration);
+          
+          // Clear the command ref
+          currentCommandRef.current = null;
+        }
+      }, 3000); // Wait 3 seconds for output, then persist
     }
   };
 
@@ -180,7 +528,7 @@ export function SessionDetailPage() {
   const getConnectionBadgeVariant = () => {
     switch (connectionStatus) {
       case "connected":
-        return "default"; // Green like Running status
+        return "default";
       case "connecting":
         return "secondary";
       case "error":
@@ -217,7 +565,7 @@ export function SessionDetailPage() {
         <div className="flex items-center gap-3">
           <SessionStatus status={session.status} />
 
-          {/* Animated Connection Badge - now green when connected */}
+          {/* Connection Badge */}
           <Badge
             variant={getConnectionBadgeVariant()}
             className={`
@@ -237,7 +585,7 @@ export function SessionDetailPage() {
             {connectionStatus !== "connecting" && getConnectionBadgeText()}
           </Badge>
 
-          {/* Subtle close button */}
+          {/* Close button */}
           <Button
             variant="ghost"
             size="sm"
@@ -250,7 +598,7 @@ export function SessionDetailPage() {
       </div>
 
       {/* Terminal - clean and full screen */}
-      <div className="h-[calc(100vh-10rem)]">
+      <div className="h-[calc(100vh-12rem)]">
         <CustomTerminal
           output={terminalOutput}
           onCommand={sendCommand}
@@ -258,7 +606,7 @@ export function SessionDetailPage() {
         />
       </div>
 
-      {/* Floating Action Button - repositioned to bottom-right */}
+      {/* Floating Action Button */}
       <div className="fixed bottom-6 right-6 z-50">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

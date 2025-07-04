@@ -179,3 +179,184 @@ class SessionController:
                 exception=str(e),
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+    # NEW: Command history methods for persistent sessions
+    
+    async def get_session_history(self, request: Request, session_id: str) -> SuccessResponse[List[Dict]]:
+        """
+        Get complete command history for a session.
+
+        Args:
+            request: FastAPI request object
+            session_id: ID of the session
+
+        Returns:
+            SuccessResponse with the command history
+
+        Raises:
+            APIException: If session not found or history retrieval fails
+        """
+        try:
+            user_id = request.state.user.get("sub")
+
+            # Get session history
+            history = await self.session_service.get_session_history(session_id=session_id, user_id=user_id)
+
+            return SuccessResponse(
+                success=True, 
+                message=f"Found {len(history)} commands in session history", 
+                data=history
+            )
+
+        except APIException:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to get session history for {session_id}: {e}")
+            raise APIException(
+                message="Failed to get session history",
+                error_code="SESSION_HISTORY_FAILED",
+                exception=str(e),
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    async def get_command_details(self, request: Request, session_id: str, command_id: str) -> SuccessResponse[Dict]:
+        """
+        Get detailed information about a specific command.
+
+        Args:
+            request: FastAPI request object
+            session_id: ID of the session
+            command_id: ID of the command
+
+        Returns:
+            SuccessResponse with the command details
+
+        Raises:
+            APIException: If command not found or retrieval fails
+        """
+        try:
+            user_id = request.state.user.get("sub")
+
+            # Get command details
+            command = await self.session_service.get_command_details(
+                session_id=session_id, 
+                command_id=command_id, 
+                user_id=user_id
+            )
+
+            if not command:
+                raise APIException(
+                    message=f"Command {command_id} not found in session {session_id}",
+                    error_code="COMMAND_NOT_FOUND",
+                    status_code=status.HTTP_404_NOT_FOUND,
+                )
+
+            return SuccessResponse(
+                success=True, 
+                message="Command details retrieved successfully", 
+                data=command
+            )
+
+        except APIException:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to get command details {command_id} in session {session_id}: {e}")
+            raise APIException(
+                message="Failed to get command details",
+                error_code="COMMAND_DETAILS_FAILED",
+                exception=str(e),
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    async def resume_session(self, request: Request, session_id: str) -> SuccessResponse[Dict]:
+        """
+        Resume a session and get current status.
+
+        Args:
+            request: FastAPI request object
+            session_id: ID of the session to resume
+
+        Returns:
+            SuccessResponse with session resume information
+
+        Raises:
+            APIException: If session not found or resume fails
+        """
+        try:
+            user_id = request.state.user.get("sub")
+
+            # Resume session
+            resume_info = await self.session_service.resume_session(session_id=session_id, user_id=user_id)
+
+            if not resume_info:
+                raise APIException(
+                    message=f"Session {session_id} not found or cannot be resumed",
+                    error_code="SESSION_RESUME_FAILED",
+                    status_code=status.HTTP_404_NOT_FOUND,
+                )
+
+            return SuccessResponse(
+                success=True, 
+                message="Session resumed successfully", 
+                data=resume_info
+            )
+
+        except APIException:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to resume session {session_id}: {e}")
+            raise APIException(
+                message="Failed to resume session",
+                error_code="SESSION_RESUME_FAILED",
+                exception=str(e),
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    async def log_command(self, request: Request, session_id: str, command_data: Dict) -> SuccessResponse[Dict]:
+        """
+        Log a command that was executed in the session.
+
+        Args:
+            request: FastAPI request object
+            session_id: ID of the session
+            command_data: Command information to log
+
+        Returns:
+            SuccessResponse with confirmation
+
+        Raises:
+            APIException: If logging fails
+        """
+        try:
+            user_id = request.state.user.get("sub")
+
+            # Log the command
+            result = await self.session_service.log_command(
+                session_id=session_id, 
+                user_id=user_id, 
+                command_data=command_data
+            )
+
+            if not result:
+                raise APIException(
+                    message=f"Failed to log command for session {session_id}",
+                    error_code="COMMAND_LOG_FAILED",
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                )
+
+            return SuccessResponse(
+                success=True, 
+                message="Command logged successfully", 
+                data=result
+            )
+
+        except APIException:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to log command for session {session_id}: {e}")
+            raise APIException(
+                message="Failed to log command",
+                error_code="COMMAND_LOG_FAILED",
+                exception=str(e),
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )

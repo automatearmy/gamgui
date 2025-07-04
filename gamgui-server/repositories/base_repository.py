@@ -65,7 +65,18 @@ class BaseRepository(Generic[T]):
 
         return entity
 
-    async def update(self, entity: T) -> T:
+    async def update(self, id: str, update_data: dict) -> bool:
+        """Update an existing entity with specific fields"""
+        try:
+            update_data["updated_at"] = datetime.now(UTC)
+            doc_ref = self._get_document_ref(id)
+            doc_ref.update(update_data)
+            return True
+        except Exception as e:
+            print(f"Update failed: {e}")
+            return False
+
+    async def update_entity(self, entity: T) -> T:
         """Update an existing entity"""
         entity.updated_at = datetime.now(UTC)
 

@@ -54,3 +54,41 @@ router.add_api_route(
     summary="Delete session",
     description="Terminates and deletes a specific session",
 )
+
+# NEW: Command history endpoints for persistent sessions
+router.add_api_route(
+    path="/{session_id}/history",
+    endpoint=session_controller.get_session_history,
+    methods=["GET"],
+    response_model=SuccessResponse[List[Dict]],
+    summary="Get session command history",
+    description="Returns complete command history for a session",
+)
+
+router.add_api_route(
+    path="/{session_id}/commands/{command_id}",
+    endpoint=session_controller.get_command_details,
+    methods=["GET"],
+    response_model=SuccessResponse[Dict],
+    summary="Get command details",
+    description="Returns detailed information about a specific command",
+)
+
+router.add_api_route(
+    path="/{session_id}/resume",
+    endpoint=session_controller.resume_session,
+    methods=["POST"],
+    response_model=SuccessResponse[Dict],
+    summary="Resume session",
+    description="Resume a session and get current status",
+)
+
+# NEW: Command logging endpoint
+router.add_api_route(
+    path="/{session_id}/commands",
+    endpoint=session_controller.log_command,
+    methods=["POST"],
+    response_model=SuccessResponse[Dict],
+    summary="Log command execution",
+    description="Log a command that was executed in the session",
+)
