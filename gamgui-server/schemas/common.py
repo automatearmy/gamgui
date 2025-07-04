@@ -15,3 +15,13 @@ class SessionStatus(str, Enum):
     STOPPED = "stopped"
     TERMINATED = "terminated"
     ERROR = "error"
+
+
+class CommandStatus(str, Enum):
+    """Command status enumeration"""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"

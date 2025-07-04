@@ -23,3 +23,8 @@ export async function deleteSession(id: string): Promise<ApiResponse<void>> {
   const response = await api.delete(`/sessions/${id}`, { withCredentials: true });
   return response.data;
 }
+
+export async function getSessionHistory(id: string): Promise<ApiResponse<any[]>> {
+  const response = await api.get(`/sessions/${id}/history`, { withCredentials: true });
+  return response.data;
+}

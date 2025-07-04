@@ -4,7 +4,7 @@ These models represent the database schema for session-related entities.
 """
 
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import Field
 
@@ -34,3 +34,10 @@ class Session(BaseModel):
     last_activity_at: Optional[datetime] = Field(None, description="Last activity timestamp")
     terminated_at: Optional[datetime] = Field(None, description="Termination timestamp")
     websocket_url: Optional[str] = Field(None, description="WebSocket URL for direct connection")
+    
+    # Persistent session fields
+    is_persistent: bool = Field(False, description="Whether session is persistent")
+    session_tags: List[str] = Field(default_factory=list, description="Session tags")
+    auto_cleanup_hours: int = Field(24, description="Auto cleanup timeout in hours")
+    last_command_sequence: int = Field(0, description="Last command sequence number")
+    total_commands: int = Field(0, description="Total commands executed")

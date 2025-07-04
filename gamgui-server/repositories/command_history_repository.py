@@ -38,3 +38,28 @@ class CommandHistoryRepository(BaseRepository[CommandHistory]):
     async def get_user_session_history(self, user_id: str, session_id: str) -> List[CommandHistory]:
         """Get command history for a specific user and session"""
         return await self.query_multi([("user_id", "==", user_id), ("session_id", "==", session_id)])
+
+    async def get_session_history_ordered(self, session_id: str, user_id: str) -> List[CommandHistory]:
+        """Get command history for a session ordered by creation time"""
+        commands = await self.query_multi([("session_id", "==", session_id), ("user_id", "==", user_id)])
+        # Sort by created_at
+        commands.sort(key=lambda cmd: cmd.created_at if cmd.created_at else cmd.id)
+        return commands
+
+    async def get_by_command_id(self, command_id: str) -> CommandHistory:
+        """Get command by command ID"""
+        return await self.get_by_id(command_id)
+
+    async def get_running_commands(self, session_id: str) -> List[CommandHistory]:
+        """Get running commands for a session"""
+        # No status field in simplified model, return empty list
+        return []
+
+    async def get_next_sequence_number(self, session_id: str) -> int:
+        """Get next sequence number for a session"""
+        commands = await self.query("session_id", "==", session_id)
+        return len(commands) + 1
+
+    async def create_command_start(self, command: CommandHistory) -> CommandHistory:
+        """Create a command record"""
+        return await self.create(command)

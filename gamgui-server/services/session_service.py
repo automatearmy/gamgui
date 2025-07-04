@@ -256,15 +256,12 @@ class SessionService:
             history = []
             for cmd in commands:
                 history.append({
-                    "command_id": cmd.command_id,
+                    "command_id": cmd.id,
                     "command": cmd.command,
-                    "status": cmd.status,
-                    "sequence_number": cmd.sequence_number,
-                    "started_at": cmd.started_at.isoformat() if cmd.started_at else None,
-                    "completed_at": cmd.completed_at.isoformat() if cmd.completed_at else None,
+                    "status": "completed" if cmd.exit_code == 0 else "failed",
                     "exit_code": cmd.exit_code,
                     "duration": cmd.duration,
-                    "output_lines": cmd.output_lines,
+                    "output": cmd.output,
                     "output_preview": cmd.output[:200] + "..." if len(cmd.output) > 200 else cmd.output
                 })
             
@@ -364,7 +361,7 @@ class SessionService:
             if not session:
                 return None
 
-            # Extract command info from data
+            # Extract command info from dict
             command = command_data.get("command", "").strip()
             if not command:
                 return None
@@ -373,29 +370,22 @@ class SessionService:
             command_id = f"cmd_{uuid.uuid4().hex[:12]}"
             sequence_number = await self.command_history_repository.get_next_sequence_number(session_id)
 
-            # Create command record - output will be captured from real WebSocket stream
+            # Create command record
             from models.command_history_model import CommandHistory
-            from schemas.common import CommandStatus
             
-            # Extract output from command data if provided, otherwise empty
+            # Extract output from dict
             output = command_data.get("output", "")
             exit_code = command_data.get("exit_code", 0)
             duration = command_data.get("duration", 0)
             
             command_record = CommandHistory(
                 id=command_id,  # BaseModel requires 'id' field
-                command_id=command_id,
                 session_id=session_id,
                 user_id=user_id,
                 command=command,
-                status=CommandStatus.COMPLETED if exit_code == 0 else CommandStatus.FAILED,
-                sequence_number=sequence_number,
-                started_at=datetime.utcnow(),
-                completed_at=datetime.utcnow(),
                 output=output,
                 exit_code=exit_code,
-                duration=duration,
-                output_lines=len(output.split("\n")) if output else 0
+                duration=duration
             )
 
             # Save to Firestore
