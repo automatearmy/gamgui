@@ -1,0 +1,39 @@
+steps:
+  # Install
+  - name: "node:20-alpine"
+    id: install-dependencies
+    dir: frontend
+    entrypoint: npm
+    args: [ci]
+
+  # Lint
+  - name: "node:20-alpine"
+    id: execute-lint
+    dir: frontend
+    entrypoint: npm
+    args: [run, lint]
+
+  # Test
+  - name: "node:20-alpine"
+    id: execute-tests
+    dir: frontend
+    entrypoint: npm
+    args: [run, test]
+
+  # Verify Dockerfile builds correctly
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --no-cache
+      - --pull
+      - -t
+      - "${_IMAGE_NAME}:validate"
+      - .
+    dir: frontend
+    id: docker-build-validate
+
+timeout: 1200s
+options:
+  logStreamingOption: STREAM_ON
+  logging: CLOUD_LOGGING_ONLY
+serviceAccount: "projects/${PROJECT_ID}/serviceAccounts/gamgui-registry-cloud-builder@${PROJECT_ID}.iam.gserviceaccount.com"

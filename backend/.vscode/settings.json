@@ -1,0 +1,51 @@
+{
+  // --- Python Specific Settings ---
+  "python.defaultInterpreterPath": "${workspaceFolder}/venv/bin/python",
+  // Set the analysis path to include the API source for better import resolution
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}"
+  ],
+  // --- Formatting Settings ---
+  // Use Ruff as the default formatter for Python files
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true, // Format on save
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit", // Allow Ruff to fix issues on save
+      "source.organizeImports": "explicit" // Allow Ruff to organize imports on save
+    }
+  },
+  // --- Linting Settings ---
+  // Enable Ruff linting
+  "ruff.lint.enable": true,
+  // --- General Editor Settings ---
+  "files.exclude": {
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/CVS": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    "**/__pycache__": true,
+    "**/.pytest_cache": true,
+    "**/.ruff_cache": true,
+  },
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/*/**": true,
+    "**/.hg/store/**": true,
+    "**/.ruff_cache": true,
+    ".venv/**": true,
+    "venv/**": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/bower_components": true,
+    "**/*.code-search": true,
+    ".venv": true,
+    "venv": true,
+    "**/.ruff_cache": true
+  },
+  "editor.tabSize": 4
+}

@@ -1,0 +1,18 @@
+steps:
+  # Verify Dockerfile builds correctly
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - '--no-cache'
+      - '--pull'
+      - '-t'
+      - '${_IMAGE_NAME}:validate'
+      - .
+    dir: docker/gamgui-session
+    id: docker-build-validate
+
+timeout: 1200s
+options:
+  logStreamingOption: STREAM_ON
+  logging: CLOUD_LOGGING_ONLY
+serviceAccount: 'projects/${PROJECT_ID}/serviceAccounts/gamgui-registry-cloud-builder@${PROJECT_ID}.iam.gserviceaccount.com'

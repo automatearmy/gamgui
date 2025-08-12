@@ -1,0 +1,59 @@
+# pyproject.toml
+[tool.mypy]
+strict = true
+
+[tool.ruff]
+# Linter, Formatter, and Import Sorter configuration
+line-length = 120
+# Select rule codes to enable. Add more as needed (e.g., 'I' for isort).
+# See https://docs.astral.sh/ruff/rules/ for all rules.
+select = ["E", "F", "W", "I"] # E=pycodestyle errors, F=pyflakes, W=pycodestyle warnings, I=isort
+ignore = []
+fixable = []
+unfixable = []
+
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    ".env",
+]
+
+[tool.ruff.format]
+# Use black formatting style via ruff's formatter (optional, can use black directly too)
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.ruff.lint]
+# Allow unused variables in `__init__.py` files commonly used for exports.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.isort]
+# Configure import sorting
+known-first-party = ["config", "controllers", "middleware", "models", "repositories", "schemas", "services", "utils"] # Define project's own modules
+force-sort-within-sections = true

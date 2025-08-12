@@ -1,0 +1,24 @@
+# Web Framework & Server
+fastapi[standard]
+uvicorn[standard]
+python-multipart==0.0.20
+websockets==15.0.1
+python-socketio==5.13.0
+
+# Data Validation & Models
+pydantic==2.11.5
+
+# Authentication & Security
+PyJWT==2.10.1
+
+# Cloud & Infrastructure
+google-auth==2.40.3
+google-cloud-container==2.53.0
+google-cloud-secret-manager==2.24.0
+google-cloud-logging==3.12.1
+kubernetes==32.0.1
+firebase-admin==6.9.0
+python-dotenv==1.1.0
+
+# Development Tools
+ruff==0.11.13
