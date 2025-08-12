@@ -1,8 +1,31 @@
 {
-  "name": "gamgui",
+  "name": "gamgui-frontend",
   "type": "module",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
+  "description": "Frontend for GAMGUI - A self-hosted, open-source, centrally managed, auditable GAM server for Google IT Admins",
+  "author": "Automate Army <team@automatearmy.com>",
+  "license": "MIT",
+  "homepage": "https://gamgui.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/automatearmy/gamgui.git"
+  },
+  "bugs": {
+    "url": "https://github.com/automatearmy/gamgui/issues"
+  },
+  "keywords": [
+    "google",
+    "workspace",
+    "gam",
+    "admin",
+    "management",
+    "react",
+    "typescript",
+    "vite"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "dev": "concurrently --names \"proxy,frontend\" --prefix-colors \"blue,green\" --prefix \"[{name}]\" \"npm run dev:proxy\" \"npm run dev:frontend\"",
     "dev:frontend": "vite",

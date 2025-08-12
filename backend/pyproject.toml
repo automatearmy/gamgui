@@ -1,4 +1,50 @@
 # pyproject.toml
+[project]
+name = "gamgui-backend"
+version = "0.1.0"
+description = "Backend API for GAMGUI - A self-hosted, open-source, centrally managed, auditable GAM server for Google IT Admins"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+    { name = "Automate Army", email = "team@automatearmy.com" }
+]
+maintainers = [
+    { name = "Automate Army", email = "team@automatearmy.com" }
+]
+keywords = ["google", "workspace", "gam", "admin", "management", "fastapi", "python"]
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi[standard]",
+    "uvicorn[standard]",
+    "python-multipart==0.0.20",
+    "websockets==15.0.1",
+    "python-socketio==5.13.0",
+    "pydantic==2.11.5",
+    "PyJWT==2.10.1",
+    "google-auth==2.40.3",
+    "google-cloud-container==2.53.0",
+    "google-cloud-secret-manager==2.24.0",
+    "google-cloud-logging==3.12.1",
+    "kubernetes==32.0.1",
+    "firebase-admin==6.9.0",
+    "python-dotenv==1.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff==0.11.13",
+]
+
+[project.urls]
+Homepage = "https://gamgui.com"
+Repository = "https://github.com/automatearmy/gamgui.git"
+Issues = "https://github.com/automatearmy/gamgui/issues"
+Documentation = "https://gamgui.com/docs"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [tool.mypy]
 strict = true
 
