@@ -11,3 +11,4 @@ class CreateSessionRequest(BaseModel):
 
     name: str = Field(..., description="Session name", min_length=1, max_length=100)
     description: str = Field(..., description="Session description", max_length=500)
+    session_type: str = Field("User", description="Session type: 'User' or 'Admin'")

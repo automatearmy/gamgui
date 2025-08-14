@@ -27,6 +27,10 @@ class UserRepository(BaseRepository[User]):
         """Get all users with a specific role"""
         return await self.query("role_id", "==", role_id)
 
+    async def get_all(self) -> List[User]:
+        """Get all users"""
+        return await self.list()
+
     async def update_last_login(self, user_id: str) -> bool:
         """Update user's last login timestamp"""
         user = await self.get_by_id(user_id)

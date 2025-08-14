@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { FileDropZone } from "@/components/ui/file-drop-zone";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useUploadSecret } from "@/hooks/use-secrets";
+import { useUploadAdminSecret, useUploadSecret } from "@/hooks/use-secrets";
 
 type SecretType = "client_secrets" | "oauth2" | "oauth2service";
 
@@ -20,10 +20,12 @@ type CredentialCardProps = {
   config: SecretConfig;
   isUploaded: boolean;
   isLoading?: boolean;
+  isAdmin?: boolean;
 };
 
-export function CredentialCard({ config, isUploaded, isLoading = false }: CredentialCardProps) {
+export function CredentialCard({ config, isUploaded, isLoading = false, isAdmin = false }: CredentialCardProps) {
   const uploadSecret = useUploadSecret();
+  const uploadAdminSecret = useUploadAdminSecret();
   const [isUploading, setIsUploading] = useState(false);
 
   const validateFile = useCallback((file: File, config: SecretConfig): string | null => {
@@ -53,12 +55,15 @@ export function CredentialCard({ config, isUploaded, isLoading = false }: Creden
     setIsUploading(true);
 
     try {
-      await uploadSecret.mutateAsync({ secretType: config.key, file });
-    }
-    finally {
+      if (isAdmin) {
+        await uploadAdminSecret.mutateAsync({ secretType: config.key, file });
+      } else {
+        await uploadSecret.mutateAsync({ secretType: config.key, file });
+      }
+    } finally {
       setIsUploading(false);
     }
-  }, [uploadSecret, validateFile, config]);
+  }, [uploadSecret, uploadAdminSecret, validateFile, config, isAdmin]);
 
   if (isLoading) {
     return (

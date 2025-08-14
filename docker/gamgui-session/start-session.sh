@@ -13,6 +13,11 @@ if [ -z "$PROJECT_ID" ]; then
     exit 1
 fi
 
+if [ -z "$SESSION_TYPE" ]; then
+    echo "WARNING: SESSION_TYPE not set, defaulting to 'User'"
+    SESSION_TYPE="User"
+fi
+
 # Only run setup once - check if GAM config already exists
 if [ ! -f "/root/.gam/client_secrets.json" ]; then
     echo "Setting up GAM configuration for user: $USER_ID"
@@ -23,11 +28,20 @@ if [ ! -f "/root/.gam/client_secrets.json" ]; then
     # Create GAM directory
     mkdir -p /root/.gam
     
-    # Fetch secrets from Secret Manager
-    echo "Fetching GAM secrets..."
-    gcloud secrets versions access latest --secret="client_secrets___${USER_ID}" > /root/.gam/client_secrets.json
-    gcloud secrets versions access latest --secret="oauth2___${USER_ID}" > /root/.gam/oauth2.txt
-    gcloud secrets versions access latest --secret="oauth2service___${USER_ID}" > /root/.gam/oauth2service.json
+    # Fetch secrets from Secret Manager based on session type
+    echo "Fetching GAM secrets for session type: $SESSION_TYPE"
+    
+    if [ "$SESSION_TYPE" = "Admin" ]; then
+        echo "Using admin secrets..."
+        gcloud secrets versions access latest --secret="client_secrets___admin" > /root/.gam/client_secrets.json
+        gcloud secrets versions access latest --secret="oauth2___admin" > /root/.gam/oauth2.txt
+        gcloud secrets versions access latest --secret="oauth2service___admin" > /root/.gam/oauth2service.json
+    else
+        echo "Using user secrets..."
+        gcloud secrets versions access latest --secret="client_secrets___${USER_ID}" > /root/.gam/client_secrets.json
+        gcloud secrets versions access latest --secret="oauth2___${USER_ID}" > /root/.gam/oauth2.txt
+        gcloud secrets versions access latest --secret="oauth2service___${USER_ID}" > /root/.gam/oauth2service.json
+    fi
     
     # Set permissions
     chmod 600 /root/.gam/*

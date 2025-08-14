@@ -26,6 +26,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useAuth } from "@/hooks/use-auth";
 import { useCreateSession } from "@/hooks/use-sessions";
 
 type CreateSessionModalProps = {
@@ -42,10 +44,12 @@ export function CreateSessionModal({ children, open: controlledOpen, onOpenChang
   const setOpen = onOpenChange || setInternalOpen;
   const navigate = useNavigate();
   const createSessionMutation = useCreateSession();
+  const { user } = useAuth();
 
   const createSessionSchema = z.object({
     name: z.string().min(1, "Session name is required"),
     description: z.string().min(1, "Description is required"),
+    session_type: z.string().optional(),
   });
 
   const form = useForm<CreateSessionRequest>({
@@ -53,8 +57,11 @@ export function CreateSessionModal({ children, open: controlledOpen, onOpenChang
     defaultValues: {
       name: "",
       description: "",
+      session_type: "User",
     },
   });
+
+  const isAdmin = user?.role_id === "Admin";
 
   const onSubmit = async (data: CreateSessionRequest) => {
     try {
@@ -123,6 +130,30 @@ export function CreateSessionModal({ children, open: controlledOpen, onOpenChang
                   </FormItem>
                 )}
               />
+
+              {isAdmin && (
+                <FormField
+                  control={form.control}
+                  name="session_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Session Type</FormLabel>
+                      <FormControl>
+                        <ToggleGroup
+                          type="single"
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          disabled={createSessionMutation.isPending}
+                        >
+                          <ToggleGroupItem value="User">User Credentials</ToggleGroupItem>
+                          <ToggleGroupItem value="Admin">Admin Credentials</ToggleGroupItem>
+                        </ToggleGroup>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
 
             <DialogFooter className="gap-2">

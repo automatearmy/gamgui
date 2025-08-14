@@ -27,3 +27,4 @@ class Session(BaseModel):
     status: SessionStatus = Field(SessionStatus.PENDING, description="Session status")
     pod_name: str = Field(..., description="Kubernetes POD name")
     pod_namespace: str = Field(..., description="Kubernetes POD namespace")
+    session_type: str = Field("User", description="Session type: 'User' or 'Admin'")

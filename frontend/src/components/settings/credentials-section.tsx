@@ -1,4 +1,5 @@
-import { useSecretsStatus } from "@/hooks/use-secrets";
+import { useAuth } from "@/hooks/use-auth";
+import { useAdminSecretsStatus, useSecretsStatus } from "@/hooks/use-secrets";
 
 import { CredentialCard } from "./credential-card";
 
@@ -37,7 +38,11 @@ const secrets: SecretConfig[] = [
 ];
 
 export function CredentialsSection() {
+  const { user } = useAuth();
   const { data: secretsStatus, isLoading } = useSecretsStatus();
+  const { data: adminSecretsStatus, isLoading: isLoadingAdmin } = useAdminSecretsStatus();
+
+  const isAdmin = user?.role_id === "Admin";
 
   const getSecretStatus = (key: SecretType) => {
     if (!secretsStatus)
@@ -55,29 +60,78 @@ export function CredentialsSection() {
     }
   };
 
+  const getAdminSecretStatus = (key: SecretType) => {
+    if (!adminSecretsStatus)
+      return false;
+
+    switch (key) {
+      case "client_secrets":
+        return adminSecretsStatus.client_secrets_exists;
+      case "oauth2":
+        return adminSecretsStatus.oauth2_exists;
+      case "oauth2service":
+        return adminSecretsStatus.oauth2service_exists;
+      default:
+        return false;
+    }
+  };
+
   return (
-    <div className="space-y-4">
-      <div className="space-y-1">
-        <h2 className="text-lg font-medium">Credentials</h2>
-        <p className="text-sm text-muted-foreground">
-          Upload your Google Workspace authentication credentials.
-        </p>
+    <div className="space-y-8">
+      <div className="space-y-4">
+        <div className="space-y-1">
+          <h2 className="text-lg font-medium">User Credentials</h2>
+          <p className="text-sm text-muted-foreground">
+            Upload your personal Google Workspace authentication credentials.
+          </p>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-3">
+          {secrets.map((config) => {
+            const isUploaded = getSecretStatus(config.key);
+
+            return (
+              <CredentialCard
+                key={config.key}
+                config={config}
+                isUploaded={isUploaded}
+                isLoading={isLoading}
+              />
+            );
+          })}
+        </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        {secrets.map((config) => {
-          const isUploaded = getSecretStatus(config.key);
+      {isAdmin && (
+        <div className="space-y-4">
+          <div className="space-y-1">
+            <h2 className="text-lg font-medium">Admin Credentials</h2>
+            <p className="text-sm text-muted-foreground">
+              Upload shared admin credentials that can be used by all admin users.
+            </p>
+          </div>
 
-          return (
-            <CredentialCard
-              key={config.key}
-              config={config}
-              isUploaded={isUploaded}
-              isLoading={isLoading}
-            />
-          );
-        })}
-      </div>
+          <div className="grid gap-6 md:grid-cols-3">
+            {secrets.map((config) => {
+              const isUploaded = getAdminSecretStatus(config.key);
+
+              return (
+                <CredentialCard
+                  key={`admin-${config.key}`}
+                  config={{
+                    ...config,
+                    title: `Admin ${config.title}`,
+                    description: `Shared ${config.description.toLowerCase()}`,
+                  }}
+                  isUploaded={isUploaded}
+                  isLoading={isLoadingAdmin}
+                  isAdmin={true}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

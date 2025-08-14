@@ -8,6 +8,7 @@ export type Session = {
   user_id: string;
   pod_name: string;
   pod_namespace: string;
+  session_type: string;
   created_at: string;
   updated_at: string;
 };
@@ -23,6 +24,7 @@ export type SessionListItem = {
 export type CreateSessionRequest = {
   name: string;
   description: string;
+  session_type?: string;
 };
 
 export type AuditLog = {

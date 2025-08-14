@@ -59,7 +59,7 @@ class SessionService:
         try:
             # Create Kubernetes pod first - if this fails, we don't create the session
             pod_created = await self.k8s_service.create_session_pod(
-                pod_name, session_id, user_id, namespace=pod_namespace
+                pod_name, session_id, user_id, namespace=pod_namespace, session_type=request.session_type
             )
 
             if not pod_created:
@@ -79,6 +79,7 @@ class SessionService:
                 status=SessionStatus.PENDING,
                 pod_name=pod_name,
                 pod_namespace=pod_namespace,
+                session_type=request.session_type,
             )
 
             # Save session to repository

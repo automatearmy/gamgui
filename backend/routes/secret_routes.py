@@ -34,3 +34,21 @@ router.add_api_route(
     summary="Get secrets status",
     description="Check if all required GAM secrets exist for the current user",
 )
+
+router.add_api_route(
+    path="/admin/upload/{secret_type}",
+    endpoint=secret_controller.upload_admin_secret,
+    methods=["POST"],
+    response_model=SuccessResponse,
+    summary="Upload GAM admin secret",
+    description="Upload a GAM admin secret file (client_secrets.json, oauth2.txt, or oauth2service.json). Admin role required.",
+)
+
+router.add_api_route(
+    path="/admin/status",
+    endpoint=secret_controller.get_admin_secrets_status,
+    methods=["GET"],
+    response_model=SuccessResponse[SecretStatusResponse],
+    summary="Get admin secrets status",
+    description="Check if all required GAM admin secrets exist. Admin role required.",
+)

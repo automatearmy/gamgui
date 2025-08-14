@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { getSecretsStatus, uploadSecret } from "@/api/secrets";
+import { getAdminSecretsStatus, getSecretsStatus, uploadAdminSecret, uploadSecret } from "@/api/secrets";
 
 export function useSecretsStatus() {
   return useQuery({
@@ -25,6 +25,32 @@ export function useUploadSecret() {
     },
     onError: (_, { secretType }) => {
       toast.error(`Failed to upload ${secretType}`);
+    },
+  });
+}
+
+export function useAdminSecretsStatus() {
+  return useQuery({
+    queryKey: ["secrets", "admin", "status"],
+    queryFn: async () => {
+      const response = await getAdminSecretsStatus();
+      return response.data;
+    },
+  });
+}
+
+export function useUploadAdminSecret() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ secretType, file }: { secretType: string; file: File }) =>
+      uploadAdminSecret(secretType, file),
+    onSuccess: (_, { secretType }) => {
+      queryClient.invalidateQueries({ queryKey: ["secrets", "admin", "status"] });
+      toast.success(`Admin ${secretType} uploaded successfully`);
+    },
+    onError: (_, { secretType }) => {
+      toast.error(`Failed to upload admin ${secretType}`);
     },
   });
 }

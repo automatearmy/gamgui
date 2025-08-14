@@ -132,7 +132,7 @@ class KubernetesService:
         """Check if Kubernetes client is available"""
         return self.core_v1_api is not None
 
-    def _get_pod_template(self, pod_name: str, session_id: str, user_id: str, user_email: str = None) -> Dict[str, Any]:
+    def _get_pod_template(self, pod_name: str, session_id: str, user_id: str, user_email: str = None, session_type: str = "User") -> Dict[str, Any]:
         """Get the pod template for a session"""
 
         # Build environment variables - USER_ID is required
@@ -141,6 +141,7 @@ class KubernetesService:
             {"name": "SESSION_ID", "value": session_id},
             {"name": "PROJECT_ID", "value": environment.PROJECT_ID},
             {"name": "USER_ID", "value": user_id},
+            {"name": "SESSION_TYPE", "value": session_type},
         ]
 
         # Add user email if provided
@@ -182,12 +183,12 @@ class KubernetesService:
         }
 
     async def create_session_pod(
-        self, pod_name: str, session_id: str, user_id: str, user_email: str = None, namespace: str = "default"
+        self, pod_name: str, session_id: str, user_id: str, user_email: str = None, namespace: str = "default", session_type: str = "User"
     ) -> bool:
         """Create a new pod for the session"""
         try:
             # Get pod template
-            pod_manifest = self._get_pod_template(pod_name, session_id, user_id, user_email)
+            pod_manifest = self._get_pod_template(pod_name, session_id, user_id, user_email, session_type)
 
             # Create the pod
             resp = self.core_v1_api.create_namespaced_pod(namespace=namespace, body=pod_manifest)

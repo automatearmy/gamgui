@@ -177,6 +177,7 @@ class AuthService:
         """
         Ensure a user exists in Firestore.
         If the user doesn't exist, create a new one with default values.
+        First user becomes Admin, subsequent users become User.
 
         Args:
             email: User email
@@ -200,9 +201,12 @@ class AuthService:
                 return user
 
             # User doesn't exist, create new user
-            # Get default role and organization (for simplicity, using defaults)
-            # [!UPDATE_LATER!]
-            default_role_id = "role_default"
+            # Check if this is the first user in the system
+            all_users = await self.user_repository.get_all()
+            is_first_user = len(all_users) == 0
+            
+            # Set role based on whether this is the first user
+            role_id = "Admin" if is_first_user else "User"
             default_org_id = "org_default"
 
             # Create new user
@@ -211,7 +215,7 @@ class AuthService:
                 email=email,
                 display_name=name,
                 picture=picture,
-                role_id=default_role_id,
+                role_id=role_id,
                 organization_id=default_org_id,
                 theme="light",
                 timezone="UTC",
@@ -221,7 +225,7 @@ class AuthService:
 
             # Save to repository
             await self.user_repository.create(new_user)
-            logger.info(f"Created new user: {email}")
+            logger.info(f"Created new user: {email} with role: {role_id}")
 
             return new_user
 

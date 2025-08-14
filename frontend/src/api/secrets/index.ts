@@ -22,3 +22,17 @@ export async function getSecretsStatus(): Promise<ApiResponse<SecretStatusData>>
   const response = await api.get("/secrets/status");
   return response.data;
 }
+
+export async function uploadAdminSecret(secretType: string, file: File): Promise<ApiResponse<null>> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await api.post(`/secrets/admin/upload/${secretType}`, formData);
+
+  return response.data;
+}
+
+export async function getAdminSecretsStatus(): Promise<ApiResponse<SecretStatusData>> {
+  const response = await api.get("/secrets/admin/status");
+  return response.data;
+}
