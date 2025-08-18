@@ -38,6 +38,10 @@ class SessionRepository(BaseRepository[Session]):
 
             return pending_sessions + running_sessions
 
+    async def get_admin_sessions(self) -> List[Session]:
+        """Get all admin sessions"""
+        return await self.query("session_type", "==", "Admin")
+
     async def update_status(self, session_id: str, status: SessionStatus) -> bool:
         """Update session status"""
         session = await self.get_by_id(session_id)

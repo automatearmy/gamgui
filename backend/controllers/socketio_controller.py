@@ -13,6 +13,7 @@ import socketio
 
 from config import environment
 from errors.exceptions import APIException
+from repositories.user_repository import UserRepository
 from services.audit_service import AuditService
 from services.kubernetes_service import KubernetesService
 from services.session_service import SessionService
@@ -27,6 +28,7 @@ class SocketIOController:
         self.session_service = SessionService()
         self.kubernetes_service = KubernetesService()
         self.audit_service = AuditService()
+        self.user_repository = UserRepository()
         self.active_connections: Dict[str, Dict[str, Any]] = {}
         self.command_buffers: Dict[str, str] = {}  # sid -> command buffer
 
@@ -81,8 +83,12 @@ class SocketIOController:
             user: Authenticated user data
         """
         try:
-            # Get session details
-            session = await self.session_service.get_session(session_id, user["sub"])
+            # Get user from database to check role
+            user_obj = await self.user_repository.get_by_id(user["sub"])
+            user_role = user_obj.role_id if user_obj else "User"
+
+            # Get session details with role information
+            session = await self.session_service.get_session(session_id, user["sub"], user_role)
             if not session:
                 await sio.emit("error", {"message": "Session not found"}, room=sid)
                 return

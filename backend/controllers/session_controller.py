@@ -10,6 +10,7 @@ from fastapi import Request, UploadFile, status
 
 from errors.exceptions import APIException
 from models.session_model import Session
+from repositories.user_repository import UserRepository
 from schemas.responses import SuccessResponse
 from schemas.session_schemas import CreateSessionRequest
 from services.audit_service import AuditService
@@ -24,6 +25,7 @@ class SessionController:
     def __init__(self):
         self.session_service = SessionService()
         self.audit_service = AuditService()
+        self.user_repository = UserRepository()
 
     async def create_session(self, request: Request, create_request: CreateSessionRequest) -> SuccessResponse[Session]:
         """
@@ -65,6 +67,7 @@ class SessionController:
     async def list_sessions(self, request: Request) -> SuccessResponse[List[Session]]:
         """
         List all sessions for the authenticated user.
+        If user is admin, also includes all admin sessions from other users.
 
         Args:
             request: FastAPI request object
@@ -79,8 +82,12 @@ class SessionController:
             # User data is already verified and available in request.state.user
             user_id = request.state.user.get("sub")
 
-            # Get the user's sessions
-            sessions = await self.session_service.list_user_sessions(user_id)
+            # Get user from database to check role
+            user = await self.user_repository.get_by_id(user_id)
+            user_role = user.role_id if user else "User"
+
+            # Get the user's sessions (including admin sessions if user is admin)
+            sessions = await self.session_service.list_user_sessions(user_id, user_role)
 
             return SuccessResponse(success=True, message=f"Found {len(sessions)} sessions", data=sessions)
 
@@ -114,8 +121,12 @@ class SessionController:
             # User data is already verified and available in request.state.user
             user_id = request.state.user.get("sub")
 
+            # Get user from database to check role
+            user = await self.user_repository.get_by_id(user_id)
+            user_role = user.role_id if user else "User"
+
             # Get the session
-            session = await self.session_service.get_session(session_id=session_id, user_id=user_id)
+            session = await self.session_service.get_session(session_id=session_id, user_id=user_id, user_role=user_role)
 
             if not session:
                 raise APIException(
@@ -156,8 +167,12 @@ class SessionController:
             # User data is already verified and available in request.state.user
             user_id = request.state.user.get("sub")
 
+            # Get user from database to check role
+            user = await self.user_repository.get_by_id(user_id)
+            user_role = user.role_id if user else "User"
+
             # End the session
-            session = await self.session_service.end_session(session_id=session_id, user_id=user_id)
+            session = await self.session_service.end_session(session_id=session_id, user_id=user_id, user_role=user_role)
 
             if not session:
                 raise APIException(

@@ -58,8 +58,9 @@ class SessionService:
 
         try:
             # Create Kubernetes pod first - if this fails, we don't create the session
+            # Always use "User" session type regardless of request
             pod_created = await self.k8s_service.create_session_pod(
-                pod_name, session_id, user_id, namespace=pod_namespace, session_type=request.session_type
+                pod_name, session_id, user_id, namespace=pod_namespace, session_type="User"
             )
 
             if not pod_created:
@@ -70,7 +71,7 @@ class SessionService:
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
 
-            # Create session object
+            # Create session object - always create as "User" type
             session = Session(
                 id=session_id,
                 user_id=user_id,
@@ -79,7 +80,7 @@ class SessionService:
                 status=SessionStatus.PENDING,
                 pod_name=pod_name,
                 pod_namespace=pod_namespace,
-                session_type=request.session_type,
+                session_type="User",  # Force all sessions to be User type
             )
 
             # Save session to repository
@@ -123,12 +124,14 @@ class SessionService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-    async def list_user_sessions(self, user_id: str) -> List[Session]:
+    async def list_user_sessions(self, user_id: str, user_role: str = None) -> List[Session]:
         """
         List all sessions for a user.
+        Since all sessions are now User type, only return user's own sessions.
 
         Args:
             user_id: ID of the user
+            user_role: Role of the user (Admin or User) - kept for compatibility
 
         Returns:
             List of session items sorted by created_at (newest first)
@@ -139,11 +142,11 @@ class SessionService:
         try:
             logger.info(f"Listing sessions for user {user_id}")
 
-            # Get sessions from repository
-            sessions = await self.session_repository.get_by_user(user_id)
+            # Get user's own sessions (all sessions are now User type)
+            user_sessions = await self.session_repository.get_by_user(user_id)
 
             session_items = []
-            for session in sessions:
+            for session in user_sessions:
                 # Update status based on current pod status if session was active
                 if session.status in [SessionStatus.PENDING, SessionStatus.RUNNING]:
                     current_pod_status = await self.k8s_service.get_pod_status(session.pod_name, session.pod_namespace)
@@ -171,13 +174,15 @@ class SessionService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-    async def get_session(self, session_id: str, user_id: str) -> Optional[Session]:
+    async def get_session(self, session_id: str, user_id: str, user_role: str = None) -> Optional[Session]:
         """
         Get a specific session by ID.
+        Since all sessions are now User type, only allow access to own sessions.
 
         Args:
             session_id: ID of the session
             user_id: ID of the user (for authorization)
+            user_role: Role of the user (Admin or User) - kept for compatibility
 
         Returns:
             Session object if found and user has access, None otherwise
@@ -195,7 +200,7 @@ class SessionService:
                 logger.info(f"Session {session_id} not found")
                 return None
 
-            # Check if user has access to this session
+            # Check if user owns this session (all sessions are User type now)
             if session.user_id != user_id:
                 logger.warning(f"User {user_id} attempted to access session {session_id} owned by {session.user_id}")
                 return None
@@ -221,13 +226,15 @@ class SessionService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-    async def end_session(self, session_id: str, user_id: str) -> Optional[Session]:
+    async def end_session(self, session_id: str, user_id: str, user_role: str = None) -> Optional[Session]:
         """
         Gracefully end a session by running exit command and updating status to Succeeded.
+        Since all sessions are now User type, only allow users to end their own sessions.
 
         Args:
             session_id: ID of the session to end
             user_id: ID of the user (for authorization)
+            user_role: Role of the user (Admin or User) - kept for compatibility
 
         Returns:
             Updated session object if found and user has access, None otherwise
@@ -245,7 +252,7 @@ class SessionService:
                 logger.info(f"Session {session_id} not found")
                 return None
 
-            # Check if user has access to this session
+            # Check if user owns this session (all sessions are User type now)
             if session.user_id != user_id:
                 logger.warning(f"User {user_id} attempted to end session {session_id} owned by {session.user_id}")
                 return None
