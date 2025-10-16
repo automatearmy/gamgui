@@ -266,6 +266,48 @@ This script will:
 The deployment process will create all necessary GCP resources. The frontend service will be accessible via IAP, while the backend service remains internal-only for security. The process typically takes 15-20 minutes to complete.
 </walkthrough-footnote>
 
+<!-- #################### STEP 12 #################### -->
+<!-- #################### STEP 12 #################### -->
+
+## Configure IAP Access
+
+Now that GAMGUI is deployed, let's grant yourself access to the application:
+
+```sh
+./steps/06_configure_iap_access.sh <walkthrough-project-id/>
+```
+
+This script will automatically grant your account the necessary IAM roles to access the GAMGUI frontend:
+
+- **`roles/iap.httpsResourceAccessor`** - Allows access through the IAP authentication layer
+- **`roles/run.invoker`** - Allows invoking the Cloud Run frontend service
+
+After running this script, you'll be able to access GAMGUI immediately!
+
+<walkthrough-footnote>
+Identity-Aware Proxy (IAP) provides enterprise-grade security by ensuring only authorized users can access your application. The script grants access to your current Cloud Shell account automatically.
+</walkthrough-footnote>
+
+<!-- #################### STEP 13 #################### -->
+<!-- #################### STEP 13 #################### -->
+
+## Grant Access to Other Users (optional)
+
+To give other users in your organization access to GAMGUI:
+
+1. Go to [IAM & Admin](https://console.cloud.google.com/iam-admin/iam?project=<walkthrough-project-id/>)
+2. Click **"Grant Access"**
+3. In **"New principals"**, enter the user's email address
+4. Click **"Add another role"** and add both:
+   - **IAP-secured Web App User** (`roles/iap.httpsResourceAccessor`)
+   - **Cloud Run Invoker** (`roles/run.invoker`)
+5. Click **"Save"**
+
+
+<walkthrough-footnote>
+Both roles are required for users to access GAMGUI. The IAP role allows them through the authentication layer, while the Cloud Run Invoker role allows them to actually invoke the service.
+</walkthrough-footnote>
+
 <!-- #################### FINAL STEP #################### -->
 <!-- #################### FINAL STEP #################### -->
 

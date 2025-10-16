@@ -1,10 +1,8 @@
 locals {
-  # Environment suffix for service names
-  env_suffix = "-${var.environment}"
-
-  # Service names with environment support
-  backend_service_name  = "gamgui-backend${local.env_suffix}"
-  frontend_service_name = "gamgui-frontend${local.env_suffix}"
+  # Service names without environment suffix
+  # This ensures standard Cloud Run URL format: https://[service]-[project-id]-[region].a.run.app
+  backend_service_name  = "gamgui-backend"
+  frontend_service_name = "gamgui-frontend"
 
   # Container image paths
   backend_image_path  = "${var.registry_region}-docker.pkg.dev/${var.registry_project_id}/${var.registry_repository_name}/${var.backend_image_name}"
