@@ -28,7 +28,7 @@ output "backend_service_id" {
 
 output "frontend_service_url" {
   description = "URL of the deployed frontend service (predictable format)"
-  value       = "https://${google_cloud_run_v2_service.frontend.name}-${var.project_number}-${var.region}.run.app"
+  value       = "https://${google_cloud_run_v2_service.frontend.name}-${var.project_number}.${var.region}.run.app"
 }
 
 output "frontend_service_name" {
@@ -53,8 +53,8 @@ output "frontend_service_id" {
 output "service_urls" {
   description = "Map of all service URLs"
   value = {
-    backend  = "https://${google_cloud_run_v2_service.backend.name}-${var.project_number}-${var.region}.run.app"
-    frontend = "https://${google_cloud_run_v2_service.frontend.name}-${var.project_number}-${var.region}.run.app"
+    backend  = "https://${google_cloud_run_v2_service.backend.name}-${var.project_number}.${var.region}.run.app"
+    frontend = "https://${google_cloud_run_v2_service.frontend.name}-${var.project_number}.${var.region}.run.app"
   }
 }
 
