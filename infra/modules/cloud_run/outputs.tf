@@ -4,7 +4,7 @@
 
 output "backend_service_url" {
   description = "URL of the deployed backend service (predictable format)"
-  value       = "https://${google_cloud_run_v2_service.backend.name}-${var.project_number}-${var.region}.run.app"
+  value       = "https://${google_cloud_run_v2_service.backend.name}-${var.project_number}.${var.region}.run.app"
 }
 
 output "backend_service_name" {
