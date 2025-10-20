@@ -35,7 +35,7 @@ else
 fi
 
 # Construct frontend URL
-FRONTEND_URL="https://gamgui-frontend-${PROJECT_NUMBER}-${REGION}.run.app"
+FRONTEND_URL="https://gamgui-frontend-${PROJECT_NUMBER}.${REGION}.run.app"
 
 echo
 log_info "GAMGUI Frontend URL: ${COLOR_BOLD}${FRONTEND_URL}${COLOR_RESET}"
