@@ -143,7 +143,7 @@ resource "google_cloud_run_v2_service" "frontend" {
 
       env {
         name  = "BACKEND_URL"
-        value = google_cloud_run_v2_service.backend.uri
+        value = "https://${google_cloud_run_v2_service.backend.name}-${var.project_number}.${var.region}.run.app"
       }
 
       # OAuth credentials from Secret Manager
