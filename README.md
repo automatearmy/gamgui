@@ -8,8 +8,7 @@
 <h4 align="center">
   <a href="http://groups.google.com/group/google-apps-manager">GAM Google Group</a> |
   <a href="https://github.com/GAM-team/GAM">GAM Github Repo</a> |
-  <a href="https://gamgui.com/docs/installation">Installation</a> |
-  <a href="https://gamgui.com/docs">Docs</a> |
+  <a href="https://gamgui.com/docs">Installation & Docs</a> |
   <a href="https://automatearmy.com">Automate Army Website</a> |
 </h4>
 
@@ -52,7 +51,7 @@ Our mission is to eliminate complexity and make enterprise-grade IT automation a
 
 ## Getting started
 
-Check out the [Quickstart Guides](https://gamgui.com/docs/getting-started/introduction)
+Check out the [Quickstart Guides](https://gamgui.com/docs)
 
 ### Run Gamgui On GCP
 
@@ -84,7 +83,7 @@ Not sure where to get started? You can:
 
 ## Resources
 
-- [Docs](https://gamgui.com/docs/) for comprehensive documentation and guides
+- [Docs](https://gamgui.com/docs/) for documentation and guide
 - [GAM Community](http://groups.google.com/group/google-apps-manager) for discussion with the community and GAM & Automate Army team.
 - [GitHub](https://github.com/automatearmy/gamgui) for code, issues, and pull requests
 - [Changelog](https://gamgui.com/changelog) for recent code updates.
