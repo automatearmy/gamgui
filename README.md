@@ -52,7 +52,7 @@ Our mission is to eliminate complexity and make enterprise-grade IT automation a
 
 ## Getting started
 
-Check out the [Quickstart Guides](https://gamgui.com/docs/getting-started/introduction)
+Check out the [Quickstart Guides](https://github.com/automatearmy/gamgui/tree/main/infra)
 
 ### Run Gamgui On GCP
 
