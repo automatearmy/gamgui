@@ -1,20 +1,20 @@
 steps:
   # Install
-  - name: "node:20-alpine"
+  - name: "node:24.22.1-alpine"
     id: install-dependencies
     dir: frontend
     entrypoint: npm
     args: [ci]
 
   # Lint
-  - name: "node:20-alpine"
+  - name: "node:24.22.1-alpine"
     id: execute-lint
     dir: frontend
     entrypoint: npm
     args: [run, lint]
 
   # Test
-  - name: "node:20-alpine"
+  - name: "node:24.22.1-alpine"
     id: execute-tests
     dir: frontend
     entrypoint: npm
