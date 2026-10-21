@@ -40,7 +40,7 @@ This project and everyone participating in it is governed by our [Code of Conduc
 
 ### Prerequisites
 
-- **Node.js** (>= 18.0.0) - for frontend development
+- **Node.js** (>= 24.22.1) - for frontend development
 - **Python** (>= 3.10) - for backend development
 - **Docker** - for local development environment
 - **Git** - for version control
